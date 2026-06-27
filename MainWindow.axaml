@@ -1,9 +1,80 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="InfraDroneDesktop.MainWindow"
-        Title="InfraDroneDesktop">
-    Welcome to Avalonia!
+        Title="InfraDrone GCS — DAMbv"
+        Width="1400" Height="900"
+        MinWidth="1200" MinHeight="700"
+        Background="#0f1923">
+
+  <Grid ColumnDefinitions="220,*">
+
+    <!-- Sidebar -->
+    <Border Grid.Column="0" Background="#1a2637"
+            BorderBrush="#2d3f52" BorderThickness="0,0,1,0">
+      <StackPanel>
+
+        <!-- Brand -->
+        <StackPanel Margin="16,20,16,16">
+          <TextBlock Text="✈ InfraDrone" FontSize="16" FontWeight="Bold"
+                     Foreground="#e2e8f0"/>
+          <TextBlock Text="DAMbv GCS" FontSize="11" Foreground="#64748b"/>
+        </StackPanel>
+
+        <!-- Status Panel -->
+        <Border Margin="8" Background="#0f1923" CornerRadius="8" Padding="10">
+          <StackPanel>
+            <TextBlock Text="AIRCRAFT STATUS" FontSize="9" FontWeight="Bold"
+                       Foreground="#4a5568" LetterSpacing="1" Margin="0,0,0,6"/>
+            <StackPanel Orientation="Horizontal" Margin="0,2">
+              <Ellipse Width="8" Height="8" Fill="#ef4444" Margin="0,0,6,0"
+                       Name="ConnDot"/>
+              <TextBlock Name="ConnText" Text="Offline" FontSize="11"
+                         Foreground="#94a3b8"/>
+            </StackPanel>
+            <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+              <TextBlock Text="Mode" FontSize="11" Foreground="#64748b"/>
+              <TextBlock Name="ModeText" Text="—" FontSize="11"
+                         Foreground="#e2e8f0" Grid.Column="1" FontFamily="Consolas"/>
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+              <TextBlock Text="Battery" FontSize="11" Foreground="#64748b"/>
+              <TextBlock Name="BattText" Text="—" FontSize="11"
+                         Foreground="#e2e8f0" Grid.Column="1" FontFamily="Consolas"/>
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+              <TextBlock Text="GPS" FontSize="11" Foreground="#64748b"/>
+              <TextBlock Name="GpsText" Text="—" FontSize="11"
+                         Foreground="#e2e8f0" Grid.Column="1" FontFamily="Consolas"/>
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <!-- Nav -->
+        <TextBlock Text="FLIGHT OPS" FontSize="9" FontWeight="Bold"
+                   Foreground="#4a5568" Margin="16,12,16,4" LetterSpacing="1"/>
+        <Button Content="✈  Flight view" Classes="nav" Click="OnFlightView"/>
+        <Button Content="🗺  Mission planner" Classes="nav" Click="OnMissionView"/>
+        <Button Content="☑  Pre-flight check" Classes="nav" Click="OnPreflightView"/>
+        <Button Content="🌤  Weather" Classes="nav" Click="OnWeatherView"/>
+
+        <TextBlock Text="AIRCRAFT" FontSize="9" FontWeight="Bold"
+                   Foreground="#4a5568" Margin="16,12,16,4" LetterSpacing="1"/>
+        <Button Content="⚙  Parameters" Classes="nav" Click="OnParamsView"/>
+        <Button Content="📋  Audit log" Classes="nav" Click="OnAuditView"/>
+
+        <TextBlock Text="CONNECTION" FontSize="9" FontWeight="Bold"
+                   Foreground="#4a5568" Margin="16,12,16,4" LetterSpacing="1"/>
+        <Button Content="🔌  Connect" Classes="nav-connect" Click="OnConnect"/>
+
+      </StackPanel>
+    </Border>
+
+    <!-- Main content -->
+    <Border Grid.Column="1" Name="ContentArea">
+      <TextBlock Text="Select a view from the sidebar"
+                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                 Foreground="#4a5568" FontSize="14"/>
+    </Border>
+
+  </Grid>
 </Window>
