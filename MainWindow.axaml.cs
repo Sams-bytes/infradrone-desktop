@@ -3,6 +3,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using InfraDroneDesktop.Services;
 using InfraDroneDesktop.Views;
+using InfraDroneDesktop.Services;
 using System.Threading.Tasks;
 
 namespace InfraDroneDesktop;
@@ -42,9 +43,23 @@ public partial class MainWindow : Window
         }
         ContentArea.Child = _flightView;
     }
-    private void OnMissionView(object? sender, RoutedEventArgs e) { }
+    private MissionView? _missionView;
+    private void OnMissionView(object? sender, RoutedEventArgs e)
+    {
+        if (_missionView == null)
+        {
+            _missionView = new MissionView();
+            _missionView.SetMavLink(_mav);
+        }
+        ContentArea.Child = _missionView;
+    }
     private void OnPreflightView(object? sender, RoutedEventArgs e) { }
-    private void OnWeatherView(object? sender, RoutedEventArgs e) { }
+    private NotamView? _notamView;
+    private void OnWeatherView(object? sender, RoutedEventArgs e)
+    {
+        if (_notamView == null) _notamView = new NotamView();
+        ContentArea.Child = _notamView;
+    }
     private void OnParamsView(object? sender, RoutedEventArgs e) { }
     private void OnAuditView(object? sender, RoutedEventArgs e) { }
 

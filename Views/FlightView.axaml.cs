@@ -94,7 +94,7 @@ public partial class FlightView : UserControl
         map.Layers.Add(_droneLayer);
 
         var groningen = SphericalMercator.FromLonLat(6.5665, 53.2194);
-        map.Home = n => n.CenterOnAndZoomTo(new MPoint(groningen.x, groningen.y), 50);
+        map.Home = n => n.CenterOnAndZoomTo(new MPoint(groningen.x, groningen.y), 5);
         _map = map;
         _mapControl!.Map = map;
     }
