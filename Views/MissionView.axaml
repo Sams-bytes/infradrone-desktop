@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:maps="clr-namespace:Mapsui.UI.Avalonia;assembly=Mapsui.UI.Avalonia"
+             x:Class="InfraDroneDesktop.Views.MissionView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Toolbar -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Mission Planner" FontSize="14" FontWeight="Bold"
+                   Foreground="#e2e8f0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        <Button Name="BtnClear" Content="🗑 Clear" Click="OnClear"
+                Background="#3d1515" Foreground="#ef4444"
+                BorderBrush="#ef4444" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <Button Name="BtnUpload" Content="⬆ Upload to drone" Click="OnUpload"
+                Background="#0d3d2e" Foreground="#0d9e75"
+                BorderBrush="#0d9e75" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <Button Name="BtnExportKml" Content="📍 Export KML" Click="OnExportKml"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <Button Name="BtnExportGpx" Content="🗺 Export GPX" Click="OnExportGpx"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <Button Name="BtnImportKml" Content="📂 Import KML/GPX" Click="OnImport"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <TextBlock Name="StatusText" Text="Click map to add waypoints"
+                   FontSize="11" Foreground="#64748b"
+                   VerticalAlignment="Center" Margin="12,0,0,0"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Map -->
+    <maps:MapControl Grid.Row="1" Name="MapControl"/>
+
+    <!-- Waypoint list -->
+    <Border Grid.Row="2" Background="#1a2637" MaxHeight="160"
+            BorderBrush="#1e3a5f" BorderThickness="0,1,0,0">
+      <Grid RowDefinitions="Auto,*">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="16"
+                    Margin="16,8,16,4">
+          <TextBlock Text="WAYPOINTS" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" LetterSpacing="1" VerticalAlignment="Center"/>
+          <TextBlock Name="WpCount" Text="0 points" FontSize="11"
+                     Foreground="#64748b" VerticalAlignment="Center"/>
+          <TextBlock Name="TotalDist" Text="0.0 km total" FontSize="11"
+                     Foreground="#64748b" VerticalAlignment="Center"/>
+        </StackPanel>
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto">
+          <ItemsControl Name="WaypointList" Margin="8,0,8,8">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="4"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+  </Grid>
+</UserControl>
