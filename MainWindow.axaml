@@ -2,8 +2,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="InfraDroneDesktop.MainWindow"
         Title="InfraDrone GCS — DAMbv"
-        Width="1400" Height="900"
+        Width="2300" Height="1300"
         MinWidth="1200" MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
         Background="#0f1923">
 
   <Grid ColumnDefinitions="220,*">

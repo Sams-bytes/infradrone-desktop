@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:maps="clr-namespace:Mapsui.UI.Avalonia;assembly=Mapsui.UI.Avalonia"
+             x:Class="InfraDroneDesktop.Views.FlightLogView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Header -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="Flight Log Replay" FontSize="14" FontWeight="Bold"
+                     Foreground="#e2e8f0" VerticalAlignment="Center"/>
+          <Button Name="BtnOpen" Content="📂 Open tlog" Click="OnOpen"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6"/>
+          <TextBlock Name="StatusText" Text="No log loaded"
+                     FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" Margin="0,0,8,0">
+          <StackPanel>
+            <TextBlock Text="MAX ALT" FontSize="8" Foreground="#4a5568" FontWeight="Bold"/>
+            <TextBlock Name="MaxAlt" Text="—" FontSize="13" Foreground="#0d9e75" FontFamily="Consolas"/>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Text="MAX SPEED" FontSize="8" Foreground="#4a5568" FontWeight="Bold"/>
+            <TextBlock Name="MaxSpeed" Text="—" FontSize="13" Foreground="#e2e8f0" FontFamily="Consolas"/>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Text="DISTANCE" FontSize="8" Foreground="#4a5568" FontWeight="Bold"/>
+            <TextBlock Name="TotalDist" Text="—" FontSize="13" Foreground="#e2e8f0" FontFamily="Consolas"/>
+          </StackPanel>
+          <StackPanel>
+            <TextBlock Text="DURATION" FontSize="8" Foreground="#4a5568" FontWeight="Bold"/>
+            <TextBlock Name="Duration" Text="—" FontSize="13" Foreground="#e2e8f0" FontFamily="Consolas"/>
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Map -->
+    <maps:MapControl Grid.Row="1" Name="MapControl"/>
+
+    <!-- Replay controls -->
+    <Border Grid.Row="2" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,1,0,0">
+      <Grid RowDefinitions="Auto,Auto">
+        <Slider Grid.Row="0" Name="Timeline" Minimum="0" Maximum="100" Value="0"
+                Margin="0,0,0,6" IsEnabled="False"/>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8">
+          <Button Name="BtnPlay" Content="▶ Play" Click="OnPlay"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6" IsEnabled="False"/>
+          <Button Name="BtnPause" Content="⏸ Pause" Click="OnPause"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6" IsEnabled="False"/>
+          <Button Name="BtnReset" Content="⏮ Reset" Click="OnReset"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6" IsEnabled="False"/>
+          <TextBlock Name="TimeText" Text="00:00 / 00:00"
+                     FontSize="11" Foreground="#64748b" FontFamily="Consolas"
+                     VerticalAlignment="Center" Margin="8,0"/>
+          <TextBlock Name="PosText" Text=""
+                     FontSize="11" Foreground="#94a3b8" FontFamily="Consolas"
+                     VerticalAlignment="Center"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+  </Grid>
+</UserControl>
