@@ -1,47 +1,56 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
+using InfraDroneDesktop.Services;
+using System.Threading.Tasks;
 
 namespace InfraDroneDesktop;
 
 public partial class MainWindow : Window
 {
+    private readonly MavLinkService _mav = new MavLinkService();
+    private bool _mavRunning = false;
+
     public MainWindow()
     {
         InitializeComponent();
+        _mav.TelemetryUpdated += OnTelemetry;
     }
 
-    private void OnFlightView(object? sender, RoutedEventArgs e)
+    private void OnTelemetry(TelemetryData t)
     {
-        // TODO: Load flight view
+        Dispatcher.UIThread.Post(() =>
+        {
+            ConnDot.Fill = t.Connected
+                ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75"))
+                : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444"));
+            ConnText.Text = t.Connected ? "Online" : "Offline";
+            ModeText.Text = t.FlightMode;
+            BattText.Text = t.Connected ? $"{t.BatteryPct}%" : "—";
+            GpsText.Text = t.Connected ? $"{t.GpsSats} sat / fix {t.GpsFix}" : "—";
+        });
     }
 
-    private void OnMissionView(object? sender, RoutedEventArgs e)
-    {
-        // TODO: Load mission view
-    }
-
-    private void OnPreflightView(object? sender, RoutedEventArgs e)
-    {
-        // TODO: Load preflight view
-    }
-
-    private void OnWeatherView(object? sender, RoutedEventArgs e)
-    {
-        // TODO: Load weather view
-    }
-
-    private void OnParamsView(object? sender, RoutedEventArgs e)
-    {
-        // TODO: Load params view
-    }
-
-    private void OnAuditView(object? sender, RoutedEventArgs e)
-    {
-        // TODO: Load audit view
-    }
+    private void OnFlightView(object? sender, RoutedEventArgs e) { }
+    private void OnMissionView(object? sender, RoutedEventArgs e) { }
+    private void OnPreflightView(object? sender, RoutedEventArgs e) { }
+    private void OnWeatherView(object? sender, RoutedEventArgs e) { }
+    private void OnParamsView(object? sender, RoutedEventArgs e) { }
+    private void OnAuditView(object? sender, RoutedEventArgs e) { }
 
     private void OnConnect(object? sender, RoutedEventArgs e)
     {
-        // TODO: Connect to MAVLink
+        if (!_mavRunning)
+        {
+            _mavRunning = true;
+            Task.Run(() => _mav.StartAsync(14572));
+            ConnText.Text = "Connecting...";
+        }
+        else
+        {
+            _mav.Stop();
+            _mavRunning = false;
+            ConnText.Text = "Offline";
+        }
     }
 }
