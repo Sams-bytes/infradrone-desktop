@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:maps="clr-namespace:Mapsui.UI.Avalonia;assembly=Mapsui.UI.Avalonia"
+             x:Class="InfraDroneDesktop.Views.FlightView">
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Toolbar -->
+    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6"
+                Background="#0f1923" Margin="0"
+                HorizontalAlignment="Stretch">
+      <StackPanel.Styles>
+        <Style Selector="Button">
+          <Setter Property="Padding" Value="10,6"/>
+          <Setter Property="FontSize" Value="11"/>
+          <Setter Property="FontWeight" Value="SemiBold"/>
+          <Setter Property="CornerRadius" Value="6"/>
+          <Setter Property="BorderThickness" Value="0.5"/>
+          <Setter Property="Margin" Value="2,4"/>
+        </Style>
+      </StackPanel.Styles>
+      <Button Name="BtnArm" Background="#3d1515" Foreground="#ef4444"
+              BorderBrush="#ef4444" Click="OnArm">ARM</Button>
+      <Button Name="BtnDisarm" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnDisarm">DISARM</Button>
+      <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
+      <Button Name="BtnTakeoff" Background="#0d3d2e" Foreground="#0d9e75"
+              BorderBrush="#0d9e75" Click="OnTakeoff">TAKEOFF</Button>
+      <Button Name="BtnLand" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnLand">LAND</Button>
+      <Button Name="BtnRtl" Background="#3d2e0d" Foreground="#f59e0b"
+              BorderBrush="#f59e0b" Click="OnRtl">RTL</Button>
+      <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
+      <Button Name="BtnLoiter" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnLoiter">LOITER</Button>
+      <Button Name="BtnGuided" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnGuided">GUIDED</Button>
+      <Button Name="BtnAuto" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnAuto">AUTO</Button>
+      <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
+      <Button Name="BtnMapToggle" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnMapToggle">🗺 Street</Button>
+    </StackPanel>
+
+    <!-- Map -->
+    <maps:MapControl Grid.Row="1" Name="MapControl"/>
+
+    <!-- HUD strip -->
+    <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*,*,*,*"
+          Background="#0f1923" Height="54">
+      <StackPanel Grid.Column="0" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="ALTITUDE" FontSize="8" Foreground="#4a5568" FontWeight="Bold" HorizontalAlignment="Center"/>
+        <TextBlock Name="HudAlt" Text="—" FontSize="16" Foreground="#e2e8f0" FontFamily="Consolas" HorizontalAlignment="Center"/>
+      </StackPanel>
+      <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="SPEED" FontSize="8" Foreground="#4a5568" FontWeight="Bold" HorizontalAlignment="Center"/>
+        <TextBlock Name="HudSpeed" Text="—" FontSize="16" Foreground="#e2e8f0" FontFamily="Consolas" HorizontalAlignment="Center"/>
+      </StackPanel>
+      <StackPanel Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="HEADING" FontSize="8" Foreground="#4a5568" FontWeight="Bold" HorizontalAlignment="Center"/>
+        <TextBlock Name="HudHeading" Text="—" FontSize="16" Foreground="#e2e8f0" FontFamily="Consolas" HorizontalAlignment="Center"/>
+      </StackPanel>
+      <StackPanel Grid.Column="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="BATTERY" FontSize="8" Foreground="#4a5568" FontWeight="Bold" HorizontalAlignment="Center"/>
+        <TextBlock Name="HudBatt" Text="—" FontSize="16" Foreground="#e2e8f0" FontFamily="Consolas" HorizontalAlignment="Center"/>
+      </StackPanel>
+      <StackPanel Grid.Column="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="MODE" FontSize="8" Foreground="#4a5568" FontWeight="Bold" HorizontalAlignment="Center"/>
+        <TextBlock Name="HudMode" Text="—" FontSize="16" Foreground="#0d9e75" FontFamily="Consolas" HorizontalAlignment="Center"/>
+      </StackPanel>
+      <StackPanel Grid.Column="5" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="GPS" FontSize="8" Foreground="#4a5568" FontWeight="Bold" HorizontalAlignment="Center"/>
+        <TextBlock Name="HudGps" Text="—" FontSize="16" Foreground="#e2e8f0" FontFamily="Consolas" HorizontalAlignment="Center"/>
+      </StackPanel>
+      <StackPanel Grid.Column="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <TextBlock Text="LAT / LON" FontSize="8" Foreground="#4a5568" FontWeight="Bold" HorizontalAlignment="Center"/>
+        <TextBlock Name="HudPos" Text="—" FontSize="10" Foreground="#e2e8f0" FontFamily="Consolas" HorizontalAlignment="Center"/>
+      </StackPanel>
+    </Grid>
+
+  </Grid>
+</UserControl>
