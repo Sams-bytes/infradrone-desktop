@@ -4,3 +4,8 @@ obj/
 .vs/
 *.suo
 .DS_Store
+mav.parm
+mav.tlog
+mav.tlog.raw
+*.tlog
+*.parm
