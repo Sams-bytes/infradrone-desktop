@@ -61,7 +61,12 @@ public partial class MainWindow : Window
         ContentArea.Child = _notamView;
     }
     private void OnParamsView(object? sender, RoutedEventArgs e) { }
-    private void OnAuditView(object? sender, RoutedEventArgs e) { }
+    private FlightLogView? _flightLogView;
+    private void OnAuditView(object? sender, RoutedEventArgs e)
+    {
+        if (_flightLogView == null) _flightLogView = new FlightLogView();
+        ContentArea.Child = _flightLogView;
+    }
 
     private void OnConnect(object? sender, RoutedEventArgs e)
     {
