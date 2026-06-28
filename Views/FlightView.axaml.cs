@@ -12,6 +12,8 @@ using Mapsui.Nts.Extensions;
 using Mapsui.Nts;
 using Mapsui.Nts.Providers;
 using Mapsui.Rendering.Skia;
+using BruTile.Cache;
+using System.IO;
 using BruTile.Web;
 using System;
 using System.Collections.Generic;
@@ -28,6 +30,15 @@ public partial class FlightView : UserControl
     private int _mapMode = 0; // 0=OSM, 1=PDOK Aerial, 2=Hybrid
     private ILayer? _baseLayer;
     private ILayer? _labelLayer;
+
+    private static FileCache GetTileCache(string name)
+    {
+        var dir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "InfraDrone", "TileCache", name);
+        Directory.CreateDirectory(dir);
+        return new FileCache(dir, "jpg", TimeSpan.FromDays(30));
+    }
 
     public void ToggleMapLayer()
     {
@@ -47,7 +58,8 @@ public partial class FlightView : UserControl
             _baseLayer = new TileLayer(new HttpTileSource(
                 new BruTile.Predefined.GlobalSphericalMercator(),
                 "https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg",
-                name: "PDOK")) { Name = "PDOK Aerial" };
+                name: "PDOK",
+                persistentCache: GetTileCache("PDOK"))) { Name = "PDOK Aerial" };
             _map.Layers.Insert(0, _baseLayer);
         }
         else
@@ -55,7 +67,8 @@ public partial class FlightView : UserControl
             _baseLayer = new TileLayer(new HttpTileSource(
                 new BruTile.Predefined.GlobalSphericalMercator(),
                 "https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_ortho25/EPSG:3857/{z}/{x}/{y}.jpeg",
-                name: "PDOK")) { Name = "PDOK Aerial" };
+                name: "PDOK",
+                persistentCache: GetTileCache("PDOK"))) { Name = "PDOK Aerial" };
             _labelLayer = OpenStreetMap.CreateTileLayer("OSM Labels");
             ((TileLayer)_labelLayer).Opacity = 0.4;
             _map.Layers.Insert(0, _baseLayer);
