@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:maps="clr-namespace:Mapsui.UI.Avalonia;assembly=Mapsui.UI.Avalonia"
+             x:Class="InfraDroneDesktop.Views.GeofenceView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Toolbar -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBlock Text="Geofence Editor" FontSize="14" FontWeight="Bold"
+                   Foreground="#e2e8f0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        <Button Name="BtnDraw" Content="✏ Draw fence" Click="OnDraw"
+                Background="#0d3d2e" Foreground="#0d9e75"
+                BorderBrush="#0d9e75" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <Button Name="BtnUpload" Content="⬆ Upload to drone" Click="OnUpload"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6" IsEnabled="False"/>
+        <Button Name="BtnClear" Content="🗑 Clear" Click="OnClear"
+                Background="#3d1515" Foreground="#ef4444"
+                BorderBrush="#ef4444" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <TextBlock Name="StatusText" Text="Click 'Draw fence' then click map to add boundary points. Double-click to close."
+                   FontSize="11" Foreground="#64748b"
+                   VerticalAlignment="Center" Margin="12,0,0,0"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Map -->
+    <maps:MapControl Grid.Row="1" Name="MapControl"/>
+
+    <!-- Info strip -->
+    <Border Grid.Row="2" Background="#1a2637" Padding="16,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,1,0,0">
+      <StackPanel Orientation="Horizontal" Spacing="24">
+        <StackPanel>
+          <TextBlock Text="POINTS" FontSize="8" FontWeight="Bold" Foreground="#4a5568"/>
+          <TextBlock Name="PointCount" Text="0" FontSize="13" Foreground="#e2e8f0" FontFamily="Consolas"/>
+        </StackPanel>
+        <StackPanel>
+          <TextBlock Text="AREA" FontSize="8" FontWeight="Bold" Foreground="#4a5568"/>
+          <TextBlock Name="AreaText" Text="—" FontSize="13" Foreground="#0d9e75" FontFamily="Consolas"/>
+        </StackPanel>
+        <StackPanel>
+          <TextBlock Text="STATUS" FontSize="8" FontWeight="Bold" Foreground="#4a5568"/>
+          <TextBlock Name="FenceStatus" Text="No fence defined" FontSize="13" Foreground="#64748b" FontFamily="Consolas"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+  </Grid>
+</UserControl>

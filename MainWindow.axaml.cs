@@ -53,7 +53,16 @@ public partial class MainWindow : Window
         }
         ContentArea.Child = _missionView;
     }
-    private void OnPreflightView(object? sender, RoutedEventArgs e) { }
+    private GeofenceView? _geofenceView;
+    private void OnPreflightView(object? sender, RoutedEventArgs e)
+    {
+        if (_geofenceView == null)
+        {
+            _geofenceView = new GeofenceView();
+            _geofenceView.SetMavLink(_mav);
+        }
+        ContentArea.Child = _geofenceView;
+    }
     private NotamView? _notamView;
     private void OnWeatherView(object? sender, RoutedEventArgs e)
     {
