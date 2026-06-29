@@ -62,6 +62,7 @@
         <TextBlock Text="AIRCRAFT" FontSize="9" FontWeight="Bold"
                    Foreground="#4a5568" Margin="10,8,10,2" LetterSpacing="1"/>
         <Button Content="🏔  Terrain" Classes="nav" Click="OnTerrainView"/>
+        <Button Content="⬡  Geofence" Classes="nav" Click="OnGeofenceView"/>
         <Button Content="⚙  Parameters" Classes="nav" Click="OnParamsView"/>
         <Button Content="📋  Audit log" Classes="nav" Click="OnAuditView"/>
 

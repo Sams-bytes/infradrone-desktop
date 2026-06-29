@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.PreflightView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Header -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <StackPanel>
+          <TextBlock Text="Pre-Flight Checklist" FontSize="14" FontWeight="Bold"
+                     Foreground="#e2e8f0"/>
+          <TextBlock Name="DateText" Text="" FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+        <Button Grid.Column="1" Name="BtnReset" Content="↺ Reset" Click="OnReset"
+                Background="#3d1515" Foreground="#ef4444"
+                BorderBrush="#ef4444" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6" Margin="4,0"/>
+        <Button Grid.Column="2" Name="BtnSignOff" Content="✓ Sign off &amp; log" Click="OnSignOff"
+                Background="#1a2637" Foreground="#64748b"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6" IsEnabled="False"/>
+      </Grid>
+    </Border>
+
+    <!-- Checklist -->
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Name="ChecklistPanel" Margin="16,8" Spacing="4"/>
+    </ScrollViewer>
+
+    <!-- Sign-off strip -->
+    <Border Grid.Row="2" Background="#1a2637" Padding="12,10"
+            BorderBrush="#1e3a5f" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Name="ProgressText" Text="0/0 items checked"
+                     FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
+          <Border Name="StatusBadge" Background="#3d1515" CornerRadius="4" Padding="6,3">
+            <TextBlock Name="StatusText" Text="NOT READY" FontSize="9"
+                       FontWeight="Bold" Foreground="#ef4444"/>
+          </Border>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="16,0">
+          <TextBlock Text="Pilot:" FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
+          <TextBox Name="PilotName" Text="Ehetasham (Sam) Tahir"
+                   Background="#0f1923" Foreground="#e2e8f0"
+                   BorderBrush="#2d3f52" BorderThickness="0.5"
+                   Padding="6,3" CornerRadius="4" Width="200"/>
+        </StackPanel>
+        <TextBlock Grid.Column="2" Name="SignOffText" Text=""
+                   FontSize="10" Foreground="#0d9e75" VerticalAlignment="Center"/>
+      </Grid>
+    </Border>
+
+  </Grid>
+</UserControl>
