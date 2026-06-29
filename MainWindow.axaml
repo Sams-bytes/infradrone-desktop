@@ -67,6 +67,7 @@
 
         <TextBlock Text="CONNECTION" FontSize="9" FontWeight="Bold"
                    Foreground="#4a5568" Margin="10,8,10,2" LetterSpacing="1"/>
+        <Button Content="🔑  License" Classes="nav" Click="OnParamsViewLicense"/>
         <Button Content="🔌  Connect" Classes="nav-connect" Click="OnConnect"/>
 
       </StackPanel>
