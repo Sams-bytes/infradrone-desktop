@@ -33,6 +33,7 @@ public class MavLinkService
 
     public TelemetryData Telemetry { get; private set; } = new TelemetryData();
     public event Action<TelemetryData>? TelemetryUpdated;
+    public event Action<string, bool>? CommandAck; // command name, success
 
     private static readonly Dictionary<int, string> FlightModes = new()
     {
@@ -108,6 +109,14 @@ public class MavLinkService
                 var sys = (MAVLink.mavlink_sys_status_t)msg.data;
                 if (sys.battery_remaining >= 0)
                     Telemetry.BatteryPct = sys.battery_remaining;
+                break;
+
+            case (uint)MAVLink.MAVLINK_MSG_ID.COMMAND_ACK:
+                var ack = (MAVLink.mavlink_command_ack_t)msg.data;
+                var cmdName = ((MAVLink.MAV_CMD)ack.command).ToString().Replace("MAV_CMD_","");
+                var success = ack.result == (byte)MAVLink.MAV_RESULT.ACCEPTED;
+                CommandAck?.Invoke(cmdName, success);
+                Console.WriteLine($"[ACK] {cmdName}: {(MAVLink.MAV_RESULT)ack.result}");
                 break;
 
             case (uint)MAVLink.MAVLINK_MSG_ID.ATTITUDE:

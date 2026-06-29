@@ -214,6 +214,32 @@ public partial class FlightView : UserControl
     {
         _mav = mav;
         _mav.TelemetryUpdated += OnTelemetry;
+        _mav.CommandAck += OnCommandAck;
+    }
+
+    private void OnCommandAck(string command, bool success)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            var color = success ? "#0d9e75" : "#ef4444";
+            var icon = success ? "✓" : "✗";
+            var msg = $"{icon} {command}: {(success ? "ACCEPTED" : "REJECTED")}";
+
+            // Show feedback in HUD mode field temporarily
+            var prev = HudMode.Text;
+            HudMode.Text = msg;
+            HudMode.Foreground = new Avalonia.Media.SolidColorBrush(
+                Avalonia.Media.Color.Parse(color));
+
+            // Reset after 3 seconds
+            System.Threading.Tasks.Task.Delay(3000).ContinueWith(_ =>
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    HudMode.Text = _mav?.Telemetry.FlightMode ?? "—";
+                    HudMode.Foreground = new Avalonia.Media.SolidColorBrush(
+                        Avalonia.Media.Color.Parse("#0d9e75"));
+                }));
+        });
     }
 
     private void OnTelemetry(TelemetryData t)
