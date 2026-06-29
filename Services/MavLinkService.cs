@@ -119,6 +119,13 @@ public class MavLinkService
                 }
                 break;
 
+            case (uint)MAVLink.MAVLINK_MSG_ID.FENCE_STATUS:
+                var fence = (MAVLink.mavlink_fence_status_t)msg.data;
+                if (fence.breach_status != 0)
+                    SafetyAlert?.Invoke("GEOFENCE BREACH",
+                        $"Drone has breached the geofence! Breach type: {fence.breach_type}. RTL recommended.");
+                break;
+
             case (uint)MAVLink.MAVLINK_MSG_ID.COMMAND_ACK:
                 var ack = (MAVLink.mavlink_command_ack_t)msg.data;
                 var cmdName = ((MAVLink.MAV_CMD)ack.command).ToString().Replace("MAV_CMD_","");
