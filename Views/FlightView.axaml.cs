@@ -6,6 +6,9 @@ using Mapsui;
 using Mapsui.Layers;
 using Mapsui.Projections;
 using Mapsui.Styles;
+using MBrush = Mapsui.Styles.Brush;
+using MColor = Mapsui.Styles.Color;
+using MPen = Mapsui.Styles.Pen;
 using Mapsui.Tiling;
 using Mapsui.Tiling.Layers;
 using Mapsui.Nts.Extensions;
@@ -184,6 +187,29 @@ public partial class FlightView : UserControl
         return geom;
     }
 
+    private void UpdateDroneMarker(double lat, double lon, double heading)
+    {
+        if (_droneLayer == null || _mapControl == null) return;
+        var (x, y) = SphericalMercator.FromLonLat(lon, lat);
+        var f = new PointFeature(new MPoint(x, y));
+        f.Styles.Add(new SymbolStyle
+        {
+            Fill = new MBrush(new MColor(13, 158, 117)),
+            Outline = new MPen(MColor.White, 2.5f),
+            SymbolScale = 0.8,
+            SymbolRotation = heading
+        });
+        _droneLayer.Features = new System.Collections.Generic.List<IFeature> { f };
+        _mapControl.Map.Refresh();
+    }
+
+    private void HideDroneMarker()
+    {
+        if (_droneLayer == null) return;
+        _droneLayer.Features = new System.Collections.Generic.List<IFeature>();
+        _mapControl?.Map.Refresh();
+    }
+
     public void SetMavLink(MavLinkService mav)
     {
         _mav = mav;
@@ -201,6 +227,10 @@ public partial class FlightView : UserControl
             HudMode.Text = t.Connected ? t.FlightMode : "—";
             HudGps.Text = t.Connected ? $"{t.GpsSats} sat" : "—";
             HudPos.Text = t.Connected && t.Lat != 0 ? $"{t.Lat:F5}, {t.Lon:F5}" : "—";
+            if (t.Connected && t.Lat != 0 && t.Lon != 0 && t.GpsFix >= 3)
+                UpdateDroneMarker(t.Lat, t.Lon, t.Heading);
+            else
+                HideDroneMarker();
         });
     }
 
