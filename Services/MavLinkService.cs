@@ -34,6 +34,7 @@ public class MavLinkService
     public TelemetryData Telemetry { get; private set; } = new TelemetryData();
     public event Action<TelemetryData>? TelemetryUpdated;
     public event Action<string, bool>? CommandAck; // command name, success
+    public event Action<string, string>? SafetyAlert; // title, message
 
     private static readonly Dictionary<int, string> FlightModes = new()
     {
@@ -108,7 +109,14 @@ public class MavLinkService
             case (uint)MAVLink.MAVLINK_MSG_ID.SYS_STATUS:
                 var sys = (MAVLink.mavlink_sys_status_t)msg.data;
                 if (sys.battery_remaining >= 0)
+                {
+                    var prev = Telemetry.BatteryPct;
                     Telemetry.BatteryPct = sys.battery_remaining;
+                    if (sys.battery_remaining <= 20 && prev > 20)
+                        SafetyAlert?.Invoke("LOW BATTERY", $"Battery at {sys.battery_remaining}% — consider RTL");
+                    if (sys.battery_remaining <= 10 && prev > 10)
+                        SafetyAlert?.Invoke("CRITICAL BATTERY", $"Battery at {sys.battery_remaining}% — LAND IMMEDIATELY");
+                }
                 break;
 
             case (uint)MAVLink.MAVLINK_MSG_ID.COMMAND_ACK:

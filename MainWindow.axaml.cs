@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _mav.TelemetryUpdated += OnTelemetry;
+        _mav.SafetyAlert += OnSafetyAlert;
     }
 
     private void OnTelemetry(TelemetryData t)
@@ -35,6 +36,58 @@ public partial class MainWindow : Window
     }
 
     private FlightView? _flightView;
+    private void OnSafetyAlert(string title, string message)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+        {
+            var ackBtn = new Avalonia.Controls.Button
+            {
+                Content = "Acknowledge",
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444")),
+                Foreground = Avalonia.Media.Brushes.White,
+                Padding = new Avalonia.Thickness(12,6),
+            };
+            var dialog = new Avalonia.Controls.Window
+            {
+                Title = $"⚠ {title}",
+                Width = 400, Height = 180,
+                Background = Avalonia.Media.Brushes.Transparent,
+                WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
+                Content = new Avalonia.Controls.Border
+                {
+                    Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3d1515")),
+                    BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444")),
+                    BorderThickness = new Avalonia.Thickness(2),
+                    CornerRadius = new Avalonia.CornerRadius(8),
+                    Child = new Avalonia.Controls.StackPanel
+                    {
+                        Margin = new Avalonia.Thickness(20),
+                        Spacing = 12,
+                        Children =
+                        {
+                            new Avalonia.Controls.TextBlock
+                            {
+                                Text = $"⚠ {title}",
+                                FontSize = 16, FontWeight = Avalonia.Media.FontWeight.Bold,
+                                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444"))
+                            },
+                            new Avalonia.Controls.TextBlock
+                            {
+                                Text = message, FontSize = 12,
+                                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#e2e8f0")),
+                                TextWrapping = Avalonia.Media.TextWrapping.Wrap
+                            },
+                            ackBtn
+                        }
+                    }
+                }
+            };
+            ackBtn.Click += (_, _) => dialog.Close();
+            await dialog.ShowDialog(this);
+        });
+    }
+
     private void OnFlightView(object? sender, RoutedEventArgs e)
     {
         if (_flightView == null)
