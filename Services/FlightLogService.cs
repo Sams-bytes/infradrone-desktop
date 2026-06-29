@@ -62,7 +62,8 @@ public class FlightLogService
                 var tsBuf = new byte[8];
                 if (stream.Read(tsBuf, 0, 8) < 8) break;
                 var tsUs = BitConverter.ToInt64(tsBuf, 0);
-                var time = DateTimeOffset.FromUnixTimeMilliseconds(tsUs / 1000).UtcDateTime;
+                DateTime time;
+                try { time = DateTimeOffset.FromUnixTimeSeconds(tsUs / 1000000).UtcDateTime; } catch { time = DateTime.UtcNow; }
 
                 var msg = parser.ReadPacket(stream);
                 if (msg == null) continue;
@@ -148,7 +149,7 @@ public class FlightLogService
                     double.TryParse(cols[5], NumberStyles.Float, CultureInfo.InvariantCulture, out var spd);
                     points.Add(new FlightLogPoint
                     {
-                        Time = DateTimeOffset.FromUnixTimeMilliseconds((long)(ts * 1000)).UtcDateTime,
+                        Time = DateTimeOffset.FromUnixTimeSeconds((long)ts).UtcDateTime,
                         Lat = lat, Lon = lon, AltRel = alt, Heading = hdg,
                         Speed = spd, Mode = cols[6], Armed = cols[7].Trim() == "True"
                     });
@@ -166,7 +167,8 @@ public class FlightLogService
                     session.TotalDistKm += Haversine(points[i-1].Lat, points[i-1].Lon, points[i].Lat, points[i].Lon);
                 return session;
             }
-            catch (Exception ex) { Console.WriteLine("[FlightLog CSV] " + ex.Message); return null; }
+            catch (Exception ex) { Console.WriteLine("[FlightLog CSV] ERROR: " + ex.Message + " " + ex.StackTrace); return null; }
+            finally { Console.WriteLine("[FlightLog CSV] Parse complete"); }
         });
     }
 
