@@ -37,7 +37,7 @@ public class Waypoint
 
 public partial class MissionView : UserControl
 {
-    private readonly List<Waypoint> _waypoints = new();
+    internal readonly List<Waypoint> _waypoints = new();
     private Mapsui.UI.Avalonia.MapControl? _mapControl;
     private MemoryLayer? _wpLayer;
     private MemoryLayer? _routeLayer;

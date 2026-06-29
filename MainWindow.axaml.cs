@@ -5,6 +5,7 @@ using InfraDroneDesktop.Services;
 using InfraDroneDesktop.Views;
 using InfraDroneDesktop.Services;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace InfraDroneDesktop;
 
@@ -69,6 +70,16 @@ public partial class MainWindow : Window
         if (_notamView == null) _notamView = new NotamView();
         ContentArea.Child = _notamView;
     }
+    private TerrainView? _terrainView;
+    private void OnTerrainView(object? sender, RoutedEventArgs e)
+    {
+        if (_terrainView == null) _terrainView = new TerrainView();
+        // Load waypoints from mission planner if available
+        if (_missionView != null && _missionView._waypoints.Count > 0)
+            _terrainView.LoadWaypoints(_missionView._waypoints.Select(w => (w.Lat, w.Lon, w.AltM)).ToList());
+        ContentArea.Child = _terrainView;
+    }
+
     private void OnParamsView(object? sender, RoutedEventArgs e) { }
     private FlightLogView? _flightLogView;
     private void OnAuditView(object? sender, RoutedEventArgs e)

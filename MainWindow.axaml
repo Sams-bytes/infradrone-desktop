@@ -2,28 +2,28 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="InfraDroneDesktop.MainWindow"
         Title="InfraDrone GCS — DAMbv"
-        Width="2300" Height="1300"
-        MinWidth="1200" MinHeight="700"
+        Width="1600" Height="960"
+        MinWidth="1000" MinHeight="600"
         WindowStartupLocation="CenterScreen"
-        WindowState="Maximized"
         Background="#0f1923">
 
-  <Grid ColumnDefinitions="220,*">
+  <Grid ColumnDefinitions="180,*">
 
     <!-- Sidebar -->
     <Border Grid.Column="0" Background="#1a2637"
             BorderBrush="#2d3f52" BorderThickness="0,0,1,0">
+      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <StackPanel>
 
         <!-- Brand -->
-        <StackPanel Margin="16,20,16,16">
-          <TextBlock Text="✈ InfraDrone" FontSize="16" FontWeight="Bold"
+        <StackPanel Margin="10,10,10,8">
+          <TextBlock Text="✈ InfraDrone" FontSize="14" FontWeight="Bold"
                      Foreground="#e2e8f0"/>
           <TextBlock Text="DAMbv GCS" FontSize="11" Foreground="#64748b"/>
         </StackPanel>
 
         <!-- Status Panel -->
-        <Border Margin="8" Background="#0f1923" CornerRadius="8" Padding="10">
+        <Border Margin="6" Background="#0f1923" CornerRadius="6" Padding="8">
           <StackPanel>
             <TextBlock Text="AIRCRAFT STATUS" FontSize="9" FontWeight="Bold"
                        Foreground="#4a5568" LetterSpacing="1" Margin="0,0,0,6"/>
@@ -53,22 +53,24 @@
 
         <!-- Nav -->
         <TextBlock Text="FLIGHT OPS" FontSize="9" FontWeight="Bold"
-                   Foreground="#4a5568" Margin="16,12,16,4" LetterSpacing="1"/>
+                   Foreground="#4a5568" Margin="10,8,10,2" LetterSpacing="1"/>
         <Button Content="✈  Flight view" Classes="nav" Click="OnFlightView"/>
         <Button Content="🗺  Mission planner" Classes="nav" Click="OnMissionView"/>
         <Button Content="☑  Pre-flight check" Classes="nav" Click="OnPreflightView"/>
         <Button Content="🌤  Weather" Classes="nav" Click="OnWeatherView"/>
 
         <TextBlock Text="AIRCRAFT" FontSize="9" FontWeight="Bold"
-                   Foreground="#4a5568" Margin="16,12,16,4" LetterSpacing="1"/>
+                   Foreground="#4a5568" Margin="10,8,10,2" LetterSpacing="1"/>
+        <Button Content="🏔  Terrain" Classes="nav" Click="OnTerrainView"/>
         <Button Content="⚙  Parameters" Classes="nav" Click="OnParamsView"/>
         <Button Content="📋  Audit log" Classes="nav" Click="OnAuditView"/>
 
         <TextBlock Text="CONNECTION" FontSize="9" FontWeight="Bold"
-                   Foreground="#4a5568" Margin="16,12,16,4" LetterSpacing="1"/>
+                   Foreground="#4a5568" Margin="10,8,10,2" LetterSpacing="1"/>
         <Button Content="🔌  Connect" Classes="nav-connect" Click="OnConnect"/>
 
       </StackPanel>
+      </ScrollViewer>
     </Border>
 
     <!-- Main content -->
