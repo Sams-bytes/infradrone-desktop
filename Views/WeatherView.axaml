@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.WeatherView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- Header -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock Text="Weather &amp; Flight Safety" FontSize="14" FontWeight="Bold"
+                     Foreground="#e2e8f0"/>
+          <TextBlock Name="LocationText" Text="Groningen, NL · 53.22°N 6.57°E · Open-Meteo / KNMI"
+                     FontSize="10" Foreground="#64748b"/>
+          <TextBlock Name="UpdatedText" Text="" FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Border Name="GoBadge" Background="#0d3d2e" BorderBrush="#0d9e75"
+                  BorderThickness="1.5" CornerRadius="6" Padding="12,6">
+            <TextBlock Name="GoText" Text="—" FontSize="16" FontWeight="Bold"
+                       Foreground="#0d9e75"/>
+          </Border>
+          <Button Name="BtnRefresh" Content="⟳ Refresh" Click="OnRefresh"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Content -->
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Name="ContentPanel" Margin="16,12" Spacing="12"/>
+    </ScrollViewer>
+
+  </Grid>
+</UserControl>

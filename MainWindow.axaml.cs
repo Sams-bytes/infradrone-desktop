@@ -128,10 +128,11 @@ public partial class MainWindow : Window
         ContentArea.Child = _preflightView;
     }
     private NotamView? _notamView;
+    private WeatherView? _weatherView;
     private void OnWeatherView(object? sender, RoutedEventArgs e)
     {
-        if (_notamView == null) _notamView = new NotamView();
-        ContentArea.Child = _notamView;
+        if (_weatherView == null) _weatherView = new WeatherView();
+        ContentArea.Child = _weatherView;
     }
     private TerrainView? _terrainView;
     private void OnTerrainView(object? sender, RoutedEventArgs e)
