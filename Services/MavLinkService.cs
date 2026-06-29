@@ -29,6 +29,7 @@ public class MavLinkService
     private UdpClient? _udp;
     private CancellationTokenSource? _cts;
     private readonly MAVLink.MavlinkParse _parser = new MAVLink.MavlinkParse();
+    private readonly EncryptionService _enc = new EncryptionService();
 
     public TelemetryData Telemetry { get; private set; } = new TelemetryData();
     public event Action<TelemetryData>? TelemetryUpdated;
@@ -130,7 +131,8 @@ public class MavLinkService
             param1=p1,param2=p2,param3=p3,param4=p4,param5=p5,param6=p6,param7=p7
         };
         var packet = _parser.GenerateMAVLinkPacket20(MAVLink.MAVLINK_MSG_ID.COMMAND_LONG, msg);
+        var toSend = _enc.IsEncryptionEnabled ? _enc.Encrypt(packet) : packet;
         using var udp = new UdpClient();
-        await udp.SendAsync(packet, packet.Length, host, port);
+        await udp.SendAsync(toSend, toSend.Length, host, port);
     }
 }
