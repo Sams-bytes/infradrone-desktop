@@ -158,6 +158,12 @@ public partial class MainWindow : Window
     }
 
     private LicenseView? _licenseView;
+    private DjiView? _djiView;
+    private void OnDjiView(object? sender, RoutedEventArgs e)
+    {
+        if (_djiView == null) _djiView = new DjiView();
+        ContentArea.Child = _djiView;
+    }
     private void OnParamsViewLicense(object? sender, RoutedEventArgs e)
     {
         if (_licenseView == null) _licenseView = new LicenseView();

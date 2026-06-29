@@ -1,0 +1,106 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.DjiView"
+             Background="#0f1923">
+  <ScrollViewer>
+    <StackPanel Margin="20" Spacing="16" MaxWidth="800">
+
+      <!-- Header -->
+      <StackPanel Spacing="4">
+        <TextBlock Text="🚁 DJI Integration Tools" FontSize="18" FontWeight="Bold"
+                   Foreground="#e2e8f0"/>
+        <TextBlock Text="Import DJI flight logs · Export missions for DJI drones · Generate reports"
+                   FontSize="11" Foreground="#64748b"/>
+      </StackPanel>
+
+      <!-- Mission Export -->
+      <Border Background="#1a2637" CornerRadius="8" Padding="16"
+              BorderBrush="#1e3a5f" BorderThickness="0.5">
+        <StackPanel Spacing="10">
+          <TextBlock Text="MISSION EXPORT FOR DJI" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" LetterSpacing="1"/>
+          <TextBlock Text="Export missions planned in InfraDrone GCS as DJI WPML files. Compatible with DJI Pilot 2 app on Matrice 300, 350, 30, and Mini 4 Pro."
+                     FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+          <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0,4">
+            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+              <TextBlock Text="Supported DJI drones" FontSize="10" FontWeight="Bold"
+                         Foreground="#e2e8f0" Margin="0,0,0,4"/>
+              <TextBlock Text="• Matrice 300 RTK" FontSize="10" Foreground="#64748b"/>
+              <TextBlock Text="• Matrice 350 RTK" FontSize="10" Foreground="#64748b"/>
+              <TextBlock Text="• Matrice 30/30T" FontSize="10" Foreground="#64748b"/>
+              <TextBlock Text="• Mini 4 Pro (limited)" FontSize="10" Foreground="#64748b"/>
+              <TextBlock Text="• Mavic 3 Enterprise" FontSize="10" Foreground="#64748b"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1">
+              <TextBlock Text="Export format" FontSize="10" FontWeight="Bold"
+                         Foreground="#e2e8f0" Margin="0,0,0,4"/>
+              <TextBlock Text="• DJI WPML v1.0.6" FontSize="10" Foreground="#64748b"/>
+              <TextBlock Text="• WGS84 coordinates" FontSize="10" Foreground="#64748b"/>
+              <TextBlock Text="• Relative altitude" FontSize="10" Foreground="#64748b"/>
+              <TextBlock Text="• Auto speed 10 m/s" FontSize="10" Foreground="#64748b"/>
+              <TextBlock Text="• RTH on completion" FontSize="10" Foreground="#64748b"/>
+            </StackPanel>
+          </Grid>
+          <TextBlock Text="ℹ Plan your mission in Mission Planner, then use the 🚁 Export DJI WPML button in the toolbar."
+                     FontSize="10" Foreground="#0d9e75" FontStyle="Italic"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Log Import -->
+      <Border Background="#1a2637" CornerRadius="8" Padding="16"
+              BorderBrush="#1e3a5f" BorderThickness="0.5">
+        <StackPanel Spacing="10">
+          <TextBlock Text="DJI FLIGHT LOG IMPORT" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" LetterSpacing="1"/>
+          <TextBlock Text="Import DJI flight logs exported from DJI Assistant 2 or DJI Flight Hub. Displays flight path on PDOK aerial map and generates professional PDF reports."
+                     FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+          <Button Name="BtnImportLog" Content="📂 Import DJI CSV flight log" Click="OnImportLog"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="12,6" CornerRadius="6" HorizontalAlignment="Left"/>
+          <TextBlock Name="ImportStatus" Text="" FontSize="11" Foreground="#64748b"/>
+
+          <TextBlock Text="How to export from DJI:" FontSize="10" FontWeight="Bold"
+                     Foreground="#e2e8f0" Margin="0,8,0,4"/>
+          <TextBlock Text="1. Open DJI Assistant 2 → Flight Records" FontSize="10" Foreground="#64748b"/>
+          <TextBlock Text="2. Select your flight → Export → CSV format" FontSize="10" Foreground="#64748b"/>
+          <TextBlock Text="3. Import the CSV file here" FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Report generation -->
+      <Border Background="#1a2637" CornerRadius="8" Padding="16"
+              BorderBrush="#1e3a5f" BorderThickness="0.5">
+        <StackPanel Spacing="10">
+          <TextBlock Text="FLIGHT REPORT GENERATION" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" LetterSpacing="1"/>
+          <TextBlock Text="Generate professional DAMbv-branded PDF reports from DJI flight logs. Include flight path map, statistics, regulatory compliance, and pilot sign-off."
+                     FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+          <Button Name="BtnGenerateReport" Content="📄 Generate report from last import" Click="OnGenerateReport"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="12,6" CornerRadius="6" HorizontalAlignment="Left"
+                  IsEnabled="False"/>
+          <TextBlock Name="ReportStatus" Text="" FontSize="11" Foreground="#0d9e75"/>
+        </StackPanel>
+      </Border>
+
+      <!-- DJI dataset info -->
+      <Border Background="#131f2e" CornerRadius="8" Padding="16"
+              BorderBrush="#1e3a5f" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <TextBlock Text="TEST WITH SAMPLE DJI DATA" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" LetterSpacing="1"/>
+          <TextBlock Text="Download a sample DJI CSV log to test the import feature:"
+                     FontSize="11" Foreground="#64748b"/>
+          <Button Name="BtnDownloadSample" Content="⬇ Download sample DJI CSV" Click="OnDownloadSample"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="12,6" CornerRadius="6" HorizontalAlignment="Left"/>
+          <TextBlock Name="SampleStatus" Text="" FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
