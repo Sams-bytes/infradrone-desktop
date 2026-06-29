@@ -93,6 +93,13 @@ public partial class MainWindow : Window
         ContentArea.Child = _flightLogView;
     }
 
+    private LicenseView? _licenseView;
+    private void OnParamsViewLicense(object? sender, RoutedEventArgs e)
+    {
+        if (_licenseView == null) _licenseView = new LicenseView();
+        ContentArea.Child = _licenseView;
+    }
+
     private void OnConnect(object? sender, RoutedEventArgs e)
     {
         if (!_mavRunning)
