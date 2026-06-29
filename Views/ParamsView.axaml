@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.ParamsView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,Auto,*">
+
+    <!-- Toolbar -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+        <TextBlock Text="Flight Parameters" FontSize="14" FontWeight="Bold"
+                   Foreground="#e2e8f0" VerticalAlignment="Center"/>
+        <Button Grid.Column="1" Name="BtnRefresh" Content="⟳ Refresh" Click="OnRefresh"
+                Background="#0d3d2e" Foreground="#0d9e75"
+                BorderBrush="#0d9e75" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6" Margin="4,0"/>
+        <Button Grid.Column="2" Name="BtnSave" Content="💾 Save" Click="OnSave"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6" Margin="4,0"/>
+        <TextBlock Grid.Column="3" Name="StatusText" Text="Loading..."
+                   FontSize="11" Foreground="#64748b"
+                   VerticalAlignment="Center" Margin="8,0"/>
+      </Grid>
+    </Border>
+
+    <!-- Search -->
+    <Border Grid.Row="1" Background="#131f2e" Padding="12,6"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBox Name="SearchBox" Watermark="Search parameters (name or description)..."
+                 Background="#1a2637" Foreground="#e2e8f0"
+                 BorderBrush="#2d3f52" BorderThickness="0.5"
+                 Padding="8,4" CornerRadius="6"
+                 TextChanged="OnSearch"/>
+        <TextBlock Grid.Column="1" Name="CountText" Text=""
+                   FontSize="11" Foreground="#64748b"
+                   VerticalAlignment="Center" Margin="12,0"/>
+      </Grid>
+    </Border>
+
+    <!-- Parameter list -->
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+      <StackPanel Name="ParamList" Spacing="0"/>
+    </ScrollViewer>
+
+  </Grid>
+</UserControl>

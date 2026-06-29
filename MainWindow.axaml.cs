@@ -80,7 +80,12 @@ public partial class MainWindow : Window
         ContentArea.Child = _terrainView;
     }
 
-    private void OnParamsView(object? sender, RoutedEventArgs e) { }
+    private ParamsView? _paramsView;
+    private void OnParamsView(object? sender, RoutedEventArgs e)
+    {
+        if (_paramsView == null) _paramsView = new ParamsView();
+        ContentArea.Child = _paramsView;
+    }
     private FlightLogView? _flightLogView;
     private void OnAuditView(object? sender, RoutedEventArgs e)
     {
