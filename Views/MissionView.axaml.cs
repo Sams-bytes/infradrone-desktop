@@ -347,6 +347,55 @@ public partial class MissionView : UserControl
         }
     }
 
+    private async void OnExportDji(object? s, RoutedEventArgs e)
+    {
+        if (_waypoints.Count == 0) { StatusText.Text = "No waypoints to export."; return; }
+        var file = await GetSaveFile("mission.wpml", new[] { new FilePickerFileType("DJI WPML") { Patterns = new[] { "*.wpml" } } });
+        if (file == null) return;
+        var wpml = BuildDjiWpml();
+        await File.WriteAllTextAsync(file, wpml);
+        StatusText.Text = $"Exported DJI WPML: {file}";
+    }
+
+    private string BuildDjiWpml()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+        sb.AppendLine("<kml xmlns=\"http://www.opengis.net/kml/2.2\" xmlns:wpml=\"http://www.dji.com/wpmz/1.0.6\">");
+        sb.AppendLine("<Document>");
+        sb.AppendLine("  <wpml:author>InfraDrone GCS — DAMbv BV</wpml:author>");
+        sb.AppendLine($"  <wpml:createTime>{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}</wpml:createTime>");
+        sb.AppendLine("  <wpml:missionConfig>");
+        sb.AppendLine("    <wpml:flyToWaylineMode>safely</wpml:flyToWaylineMode>");
+        sb.AppendLine("    <wpml:finishAction>goHome</wpml:finishAction>");
+        sb.AppendLine("    <wpml:exitOnRCLost>goBack</wpml:exitOnRCLost>");
+        sb.AppendLine("    <wpml:executeRCLostAction>goBack</wpml:executeRCLostAction>");
+        sb.AppendLine("    <wpml:globalTransitionalSpeed>10</wpml:globalTransitionalSpeed>");
+        sb.AppendLine("    <wpml:droneInfo><wpml:droneEnumValue>60</wpml:droneEnumValue></wpml:droneInfo>");
+        sb.AppendLine("  </wpml:missionConfig>");
+        sb.AppendLine("  <Folder>");
+        sb.AppendLine("    <wpml:templateType>waypoint</wpml:templateType>");
+        sb.AppendLine("    <wpml:waylineCoordinateSysParam>");
+        sb.AppendLine("      <wpml:coordinateMode>WGS84</wpml:coordinateMode>");
+        sb.AppendLine("      <wpml:heightMode>relativeToStartPoint</wpml:heightMode>");
+        sb.AppendLine("    </wpml:waylineCoordinateSysParam>");
+        sb.AppendLine("    <wpml:autoFlightSpeed>10</wpml:autoFlightSpeed>");
+        foreach (var wp in _waypoints)
+        {
+            sb.AppendLine("    <Placemark>");
+            sb.AppendLine($"      <Point><coordinates>{wp.Lon.ToString(System.Globalization.CultureInfo.InvariantCulture)},{wp.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture)}</coordinates></Point>");
+            sb.AppendLine($"      <wpml:index>{wp.Number - 1}</wpml:index>");
+            sb.AppendLine($"      <wpml:executeHeight>{wp.AltM}</wpml:executeHeight>");
+            sb.AppendLine("      <wpml:waypointSpeed>10</wpml:waypointSpeed>");
+            sb.AppendLine("      <wpml:waypointHeadingParam><wpml:waypointHeadingMode>followWayline</wpml:waypointHeadingMode></wpml:waypointHeadingParam>");
+            sb.AppendLine("      <wpml:waypointTurnParam><wpml:waypointTurnMode>toPointAndStopWithDiscontinuityCurvature</wpml:waypointTurnMode></wpml:waypointTurnParam>");
+            sb.AppendLine("    </Placemark>");
+        }
+        sb.AppendLine("  </Folder>");
+        sb.AppendLine("</Document></kml>");
+        return sb.ToString();
+    }
+
     private void ImportGpx(string path)
     {
         var doc = XDocument.Load(path);

@@ -27,6 +27,10 @@
                 Background="#1a2637" Foreground="#94a3b8"
                 BorderBrush="#2d3f52" BorderThickness="0.5"
                 Padding="10,5" CornerRadius="6"/>
+        <Button Name="BtnExportDji" Content="🚁 Export DJI WPML" Click="OnExportDji"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
         <Button Name="BtnImportKml" Content="📂 Import KML/GPX" Click="OnImport"
                 Background="#1a2637" Foreground="#94a3b8"
                 BorderBrush="#2d3f52" BorderThickness="0.5"

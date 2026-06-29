@@ -125,9 +125,15 @@ public partial class FlightLogView : UserControl
         var path = files[0].Path.LocalPath;
         StatusText.Text = "Parsing log...";
         var svc = new FlightLogService();
-        _session = path.EndsWith(".csv")
-            ? await svc.ParseCsvAsync(path)
-            : await svc.ParseTlogAsync(path);
+        // Try DJI CSV first (has lat/lon headers), then ArduPilot CSV, then tlog
+        if (path.EndsWith(".csv"))
+        {
+            _session = await svc.ParseDjiCsvAsync(path);
+            if (_session == null || _session.Points.Count == 0)
+                _session = await svc.ParseCsvAsync(path);
+        }
+        else
+            _session = await svc.ParseTlogAsync(path);
         if (_session == null || _session.Points.Count == 0)
         {
             StatusText.Text = "No GPS data found in log.";

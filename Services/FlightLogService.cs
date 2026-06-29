@@ -172,6 +172,80 @@ public class FlightLogService
         });
     }
 
+    public async Task<FlightLogSession?> ParseDjiCsvAsync(string path)
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var lines = File.ReadAllLines(path);
+                if (lines.Length < 2) return null;
+                var header = lines[0].Split(',');
+
+                // Find column indices
+                int timeIdx = -1, latIdx = -1, lonIdx = -1, altIdx = -1, spdIdx = -1;
+                for (int i = 0; i < header.Length; i++)
+                {
+                    var h = header[i].Trim().ToLower();
+                    if (h.Contains("time")) timeIdx = i;
+                    else if (h.Contains("latitude") || h == "lat") latIdx = i;
+                    else if (h.Contains("longitude") || h == "lon") lonIdx = i;
+                    else if (h.Contains("height") || h.Contains("altitude") || h.Contains("alt")) altIdx = i;
+                    else if (h.Contains("speed")) spdIdx = i;
+                }
+
+                if (latIdx < 0 || lonIdx < 0) return null;
+
+                var session = new FlightLogSession { FileName = System.IO.Path.GetFileName(path) };
+                var points = new List<FlightLogPoint>();
+                double baseTime = 0;
+
+                foreach (var line in lines.Skip(1))
+                {
+                    var cols = line.Split(',');
+                    if (cols.Length <= Math.Max(latIdx, lonIdx)) continue;
+                    if (!double.TryParse(cols[latIdx], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var lat)) continue;
+                    if (!double.TryParse(cols[lonIdx], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var lon)) continue;
+                    if (lat == 0 && lon == 0) continue;
+
+                    double timeMs = 0;
+                    if (timeIdx >= 0) double.TryParse(cols[timeIdx], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out timeMs);
+                    if (baseTime == 0) baseTime = timeMs;
+
+                    double alt = 0, spd = 0;
+                    if (altIdx >= 0) double.TryParse(cols[altIdx], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out alt);
+                    if (spdIdx >= 0) double.TryParse(cols[spdIdx], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out spd);
+
+                    points.Add(new FlightLogPoint
+                    {
+                        Time = DateTime.UtcNow.AddMilliseconds(timeMs - baseTime),
+                        Lat = lat, Lon = lon, AltRel = alt, Speed = spd, Mode = "DJI"
+                    });
+                }
+
+                if (points.Count == 0) return null;
+                session.Points = points;
+                session.Start = points[0].Time;
+                session.End = points[^1].Time;
+                foreach (var p in points)
+                {
+                    if (p.AltRel > session.MaxAlt) session.MaxAlt = p.AltRel;
+                    if (p.Speed > session.MaxSpeed) session.MaxSpeed = p.Speed;
+                }
+                for (int i = 1; i < points.Count; i++)
+                    session.TotalDistKm += Haversine(points[i-1].Lat, points[i-1].Lon,
+                                                      points[i].Lat, points[i].Lon);
+                return session;
+            }
+            catch (Exception ex) { Console.WriteLine("[DJI CSV] " + ex.Message); return null; }
+        });
+    }
+
     private static double Haversine(double lat1, double lon1, double lat2, double lon2)
     {
         const double R = 6371;
