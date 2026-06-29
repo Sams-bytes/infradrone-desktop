@@ -7,8 +7,8 @@
     <Style Selector="Button.nav">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Foreground" Value="#94a3b8"/>
-      <Setter Property="FontSize" Value="12"/>
-      <Setter Property="Padding" Value="14,7"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Padding" Value="8,4"/>
       <Setter Property="HorizontalAlignment" Value="Stretch"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="CornerRadius" Value="6"/>
@@ -21,8 +21,8 @@
     <Style Selector="Button.nav-connect">
       <Setter Property="Background" Value="#0d3d2e"/>
       <Setter Property="Foreground" Value="#0d9e75"/>
-      <Setter Property="FontSize" Value="12"/>
-      <Setter Property="Padding" Value="14,7"/>
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Padding" Value="8,4"/>
       <Setter Property="HorizontalAlignment" Value="Stretch"/>
       <Setter Property="HorizontalContentAlignment" Value="Left"/>
       <Setter Property="CornerRadius" Value="6"/>

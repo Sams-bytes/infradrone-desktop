@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.TerrainView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- Toolbar -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <TextBlock Text="Terrain Following" FontSize="14" FontWeight="Bold"
+                     Foreground="#e2e8f0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+          <TextBlock Text="Clearance:" FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
+          <NumericUpDown Name="ClearanceInput" Value="30" Minimum="10" Maximum="500"
+                         Width="80" FormatString="0" Increment="5"/>
+          <TextBlock Text="m AGL" FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
+          <Button Name="BtnFetch" Content="⬇ Fetch terrain" Click="OnFetch"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6"/>
+          <Button Name="BtnApply" Content="✓ Apply to mission" Click="OnApply"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6" IsEnabled="False"/>
+          <TextBlock Name="StatusText" Text="Load waypoints from Mission Planner first"
+                     FontSize="11" Foreground="#64748b" VerticalAlignment="Center" Margin="8,0"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Elevation profile chart -->
+    <Border Grid.Row="1" Background="#0f1923" Padding="16">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Grid.Row="0" Text="ELEVATION PROFILE" FontSize="9" FontWeight="Bold"
+                   Foreground="#4a5568" LetterSpacing="1" Margin="0,0,0,8"/>
+        <Canvas Grid.Row="1" Name="ProfileCanvas" Background="#131f2e"/>
+      </Grid>
+    </Border>
+
+    <!-- Waypoint table -->
+    <Border Grid.Row="2" Background="#1a2637" MaxHeight="200"
+            BorderBrush="#1e3a5f" BorderThickness="0,1,0,0">
+      <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="*,*,*,*,*"
+              Background="#131f2e" Margin="0,0,0,1">
+          <TextBlock Grid.Column="0" Text="WP" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" Margin="12,6"/>
+          <TextBlock Grid.Column="1" Text="LAT" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" Margin="12,6"/>
+          <TextBlock Grid.Column="2" Text="LON" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" Margin="12,6"/>
+          <TextBlock Grid.Column="3" Text="GROUND ELEV" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" Margin="12,6"/>
+          <TextBlock Grid.Column="4" Text="MISSION ALT (AGL+TERRAIN)" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" Margin="12,6"/>
+        </Grid>
+        <ScrollViewer Grid.Row="1">
+          <ItemsControl Name="WpTable"/>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+  </Grid>
+</UserControl>
