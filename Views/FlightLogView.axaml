@@ -16,7 +16,11 @@
                   Background="#1a2637" Foreground="#94a3b8"
                   BorderBrush="#2d3f52" BorderThickness="0.5"
                   Padding="10,5" CornerRadius="6"/>
-          <TextBlock Name="StatusText" Text="No log loaded"
+          <Button Name="BtnReport" Content="📄 Generate Report" Click="OnReport"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6" IsEnabled="False"/>
+        <TextBlock Name="StatusText" Text="No log loaded"
                      FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
         </StackPanel>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" Margin="0,0,8,0">

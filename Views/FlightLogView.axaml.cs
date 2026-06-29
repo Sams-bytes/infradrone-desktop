@@ -75,42 +75,45 @@ public partial class FlightLogView : UserControl
         var groningen = SphericalMercator.FromLonLat(6.5665, 53.2194);
         map.Home = n => n.CenterOnAndZoomTo(new MPoint(groningen.x, groningen.y), 5);
         _mapControl!.Map = map;
-        // Auto-load last CSV if exists
-        var defaultCsv = System.IO.Path.Combine(
-            System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile),
-            "infradrone-desktop", "mav_track.csv");
-        if (System.IO.File.Exists(defaultCsv))
-            Dispatcher.UIThread.Post(async () => { await Task.Delay(500); await LoadCsvAsync(defaultCsv); });
+
     }
 
     private async Task LoadCsvAsync(string path)
     {
-        StatusText.Text = "Loading default log...";
+        StatusText.Text = "Loading...";
         var svc = new FlightLogService();
         _session = await svc.ParseCsvAsync(path);
         if (_session == null || _session.Points.Count == 0)
-        { StatusText.Text = "No GPS data found."; return; }
-        Dispatcher.UIThread.Post(() =>
         {
-            StatusText.Text = $"{System.IO.Path.GetFileName(path)} — {_session.Points.Count} points";
-            MaxAlt.Text = $"{_session.MaxAlt:F1}m";
-            MaxSpeed.Text = $"{_session.MaxSpeed:F1}m/s";
-            TotalDist.Text = $"{_session.TotalDistKm:F2}km";
-            Duration.Text = _session.Duration.ToString(@"hh\:mm\:ss");
-            Timeline.Maximum = _session.Points.Count - 1;
-            Timeline.Value = 0;
-            Timeline.IsEnabled = true;
-            BtnPlay.IsEnabled = true;
-            BtnPause.IsEnabled = true;
-            BtnReset.IsEnabled = true;
-            DrawFullTrack();
-            SeekTo(0);
-            CenterOnTrack();
-        });
+            StatusText.Text = "No GPS data found.";
+            return;
+        }
+        StatusText.Text = $"{System.IO.Path.GetFileName(path)} — {_session.Points.Count} points";
+        MaxAlt.Text = $"{_session.MaxAlt:F1}m";
+        MaxSpeed.Text = $"{_session.MaxSpeed:F1}m/s";
+        TotalDist.Text = $"{_session.TotalDistKm:F2}km";
+        Duration.Text = _session.Duration.ToString("hh\\:mm\\:ss");
+        Timeline.Maximum = _session.Points.Count - 1;
+        Timeline.Value = 0;
+        Timeline.IsEnabled = true;
+        BtnPlay.IsEnabled = true;
+        BtnPause.IsEnabled = true;
+        BtnReset.IsEnabled = true;
+        BtnReport.IsEnabled = true;
+        DrawFullTrack();
+        SeekTo(0);
+        CenterOnTrack();
     }
 
     private async void OnOpen(object? s, RoutedEventArgs e)
     {
+        // Auto-load default CSV if exists
+        var defaultCsv = "/home/sam/infradrone-desktop/mav_track.csv";
+        if (System.IO.File.Exists(defaultCsv))
+        {
+            await LoadCsvAsync(defaultCsv);
+            return;
+        }
         var top = TopLevel.GetTopLevel(this);
         if (top == null) return;
         var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
@@ -219,5 +222,32 @@ public partial class FlightLogView : UserControl
         _playing = false;
         _timer?.Stop();
         SeekTo(0);
+    }
+
+    private void OnReport(object? s, RoutedEventArgs e)
+    {
+        if (_session == null) return;
+        var csvPath = System.IO.Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile),
+            "infradrone-desktop", "mav_track.csv");
+        GenerateReport(csvPath);
+    }
+
+    public void GenerateReport(string csvPath)
+    {
+        var outPath = System.IO.Path.ChangeExtension(csvPath, ".pdf");
+        var script = System.IO.Path.Combine(
+            System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile),
+            "infradrone-desktop", "generate_report.py");
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "/home/sam/agridrone_env/bin/python3",
+            Arguments = $"{script} {csvPath} {outPath}",
+            UseShellExecute = false,
+            RedirectStandardOutput = true
+        };
+        var proc = System.Diagnostics.Process.Start(psi);
+        proc?.WaitForExit();
+        StatusText.Text = $"Report saved: {outPath}";
     }
 }
