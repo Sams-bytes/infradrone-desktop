@@ -1,0 +1,102 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:maps="clr-namespace:Mapsui.UI.Avalonia;assembly=Mapsui.UI.Avalonia"
+             x:Class="InfraDroneDesktop.Views.SurveyGridView"
+             Background="#0f1923">
+  <Grid ColumnDefinitions="320,*">
+
+    <!-- Side panel -->
+    <Border Grid.Column="0" Background="#1a2637" BorderBrush="#1e3a5f"
+            BorderThickness="0,0,1,0">
+      <ScrollViewer>
+        <StackPanel Margin="16" Spacing="14">
+
+          <StackPanel Spacing="2">
+            <TextBlock Text="📐 Survey Grid Generator" FontSize="14" FontWeight="Bold"
+                       Foreground="#e2e8f0"/>
+            <TextBlock Text="Draw an area, set parameters, generate a lawnmower pattern"
+                       FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+          </StackPanel>
+
+          <Button Name="BtnDrawArea" Content="✏ Draw survey area" Click="OnDrawArea"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="10,6" CornerRadius="6" HorizontalAlignment="Stretch"/>
+          <TextBlock Name="AreaStatus" Text="No area defined" FontSize="10" Foreground="#64748b"/>
+
+          <!-- Camera selection -->
+          <StackPanel Spacing="4">
+            <TextBlock Text="CAMERA" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"/>
+            <ComboBox Name="CameraSelect" HorizontalAlignment="Stretch" SelectedIndex="0">
+              <ComboBoxItem Content="DJI Mavic 3 Enterprise"/>
+              <ComboBoxItem Content="Parrot Sequoia (multispectral)"/>
+              <ComboBoxItem Content="Generic 20MP"/>
+            </ComboBox>
+          </StackPanel>
+
+          <!-- Altitude -->
+          <StackPanel Spacing="4">
+            <TextBlock Text="ALTITUDE (m AGL)" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"/>
+            <NumericUpDown Name="AltitudeInput" Value="60" Minimum="10" Maximum="120" Increment="5"/>
+          </StackPanel>
+
+          <!-- Overlap -->
+          <StackPanel Spacing="4">
+            <TextBlock Text="FRONT OVERLAP (%)" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"/>
+            <NumericUpDown Name="FrontOverlapInput" Value="80" Minimum="50" Maximum="95" Increment="5"/>
+          </StackPanel>
+          <StackPanel Spacing="4">
+            <TextBlock Text="SIDE OVERLAP (%)" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"/>
+            <NumericUpDown Name="SideOverlapInput" Value="70" Minimum="40" Maximum="90" Increment="5"/>
+          </StackPanel>
+
+          <!-- Speed -->
+          <StackPanel Spacing="4">
+            <TextBlock Text="FLIGHT SPEED (m/s)" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"/>
+            <NumericUpDown Name="SpeedInput" Value="8" Minimum="2" Maximum="20" Increment="1"/>
+          </StackPanel>
+
+          <Button Name="BtnGenerate" Content="⚡ Generate grid" Click="OnGenerate"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="10,6" CornerRadius="6" HorizontalAlignment="Stretch"
+                  IsEnabled="False"/>
+
+          <!-- Results -->
+          <Border Name="ResultsCard" Background="#131f2e" CornerRadius="8" Padding="12"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5" IsVisible="False">
+            <StackPanel Spacing="6">
+              <TextBlock Text="MISSION ESTIMATE" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+              <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="GSD" FontSize="10" Foreground="#64748b"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Name="GsdText" Text="—" FontSize="10" Foreground="#e2e8f0" FontFamily="Consolas"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Photo footprint" FontSize="10" Foreground="#64748b"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" Name="FootprintText" Text="—" FontSize="10" Foreground="#e2e8f0" FontFamily="Consolas"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Line spacing" FontSize="10" Foreground="#64748b"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Name="LineSpacingText" Text="—" FontSize="10" Foreground="#e2e8f0" FontFamily="Consolas"/>
+                <TextBlock Grid.Row="3" Grid.Column="0" Text="Est. photos" FontSize="10" Foreground="#64748b"/>
+                <TextBlock Grid.Row="3" Grid.Column="1" Name="PhotosText" Text="—" FontSize="10" Foreground="#0d9e75" FontFamily="Consolas"/>
+                <TextBlock Grid.Row="4" Grid.Column="0" Text="Flight time" FontSize="10" Foreground="#64748b"/>
+                <TextBlock Grid.Row="4" Grid.Column="1" Name="FlightTimeText" Text="—" FontSize="10" Foreground="#0d9e75" FontFamily="Consolas"/>
+                <TextBlock Grid.Row="5" Grid.Column="0" Text="Area" FontSize="10" Foreground="#64748b"/>
+                <TextBlock Grid.Row="5" Grid.Column="1" Name="AreaText" Text="—" FontSize="10" Foreground="#e2e8f0" FontFamily="Consolas"/>
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <Button Name="BtnSendToMission" Content="→ Send to Mission Planner" Click="OnSendToMission"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,6" CornerRadius="6" HorizontalAlignment="Stretch"
+                  IsEnabled="False"/>
+
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <!-- Map -->
+    <maps:MapControl Grid.Column="1" Name="MapControl"/>
+
+  </Grid>
+</UserControl>

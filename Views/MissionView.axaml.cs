@@ -209,6 +209,11 @@ public partial class MissionView : UserControl
         return R * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1-a));
     }
 
+    private void OnSurveyMode(object? s, RoutedEventArgs e)
+    {
+        StatusText.Text = "Use the Survey Grid view in the sidebar to generate a grid mission.";
+    }
+
     private void OnClear(object? s, RoutedEventArgs e)
     {
         _waypoints.Clear();
