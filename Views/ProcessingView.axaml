@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.ProcessingView"
+             Background="#0f1923">
+  <ScrollViewer>
+    <StackPanel Margin="20" Spacing="16" MaxWidth="800">
+
+      <StackPanel Spacing="4">
+        <TextBlock Text="🗺 Photogrammetry Processing" FontSize="18" FontWeight="Bold"
+                   Foreground="#e2e8f0"/>
+        <TextBlock Text="OpenDroneMap (WebODM) — orthomosaics, 3D models, NDVI maps"
+                   FontSize="11" Foreground="#64748b"/>
+      </StackPanel>
+
+      <!-- Connection -->
+      <Border Background="#1a2637" CornerRadius="8" Padding="16"
+              BorderBrush="#1e3a5f" BorderThickness="0.5">
+        <StackPanel Spacing="10">
+          <TextBlock Text="WEBODM CONNECTION" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" LetterSpacing="1"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Ellipse Name="ConnDot" Width="10" Height="10" Fill="#ef4444"/>
+            <TextBlock Name="ConnStatus" Text="Not connected" FontSize="12"
+                       Foreground="#94a3b8" VerticalAlignment="Center"/>
+          </StackPanel>
+          <Grid ColumnDefinitions="100,*,100,*" RowDefinitions="Auto">
+            <TextBlock Grid.Column="0" Text="Username" FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center"/>
+            <TextBox Grid.Column="1" Name="UsernameInput" Text="admin" Margin="4,0"
+                     Background="#0f1923" Foreground="#e2e8f0" BorderBrush="#2d3f52"
+                     BorderThickness="0.5" Padding="6,4" CornerRadius="4"/>
+            <TextBlock Grid.Column="2" Text="Password" FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center" Margin="8,0,0,0"/>
+            <TextBox Grid.Column="3" Name="PasswordInput" PasswordChar="•" Margin="4,0"
+                     Background="#0f1923" Foreground="#e2e8f0" BorderBrush="#2d3f52"
+                     BorderThickness="0.5" Padding="6,4" CornerRadius="4"/>
+          </Grid>
+          <Button Name="BtnConnect" Content="🔌 Connect to WebODM" Click="OnConnect"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="12,6" CornerRadius="6" HorizontalAlignment="Left"/>
+        </StackPanel>
+      </Border>
+
+      <!-- New processing job -->
+      <Border Background="#1a2637" CornerRadius="8" Padding="16"
+              BorderBrush="#1e3a5f" BorderThickness="0.5">
+        <StackPanel Spacing="10">
+          <TextBlock Text="NEW PROCESSING JOB" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" LetterSpacing="1"/>
+          <TextBlock Text="Upload images from a drone survey to generate an orthomosaic, 3D model, or NDVI map."
+                     FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+          <Grid ColumnDefinitions="100,*">
+            <TextBlock Grid.Column="0" Text="Project name" FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center"/>
+            <TextBox Grid.Column="1" Name="ProjectNameInput" Watermark="e.g. Groningen Bridge Inspection"
+                     Margin="4,0" Background="#0f1923" Foreground="#e2e8f0"
+                     BorderBrush="#2d3f52" BorderThickness="0.5" Padding="6,4" CornerRadius="4"/>
+          </Grid>
+          <Button Name="BtnSelectImages" Content="📁 Select image folder" Click="OnSelectImages"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="12,6" CornerRadius="6" HorizontalAlignment="Left"
+                  IsEnabled="False"/>
+          <TextBlock Name="ImageCountText" Text="" FontSize="11" Foreground="#64748b"/>
+          <Button Name="BtnStartProcessing" Content="▶ Start processing" Click="OnStartProcessing"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="12,6" CornerRadius="6" HorizontalAlignment="Left"
+                  IsEnabled="False"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Progress -->
+      <Border Name="ProgressCard" Background="#1a2637" CornerRadius="8" Padding="16"
+              BorderBrush="#1e3a5f" BorderThickness="0.5" IsVisible="False">
+        <StackPanel Spacing="10">
+          <TextBlock Text="PROCESSING STATUS" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" LetterSpacing="1"/>
+          <TextBlock Name="ProgressLabel" Text="" FontSize="13" Foreground="#e2e8f0"/>
+          <ProgressBar Name="ProgressBar" Minimum="0" Maximum="100" Value="0" Height="8"/>
+          <TextBlock Name="ProgressDetail" Text="" FontSize="11" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Results -->
+      <Border Name="ResultsCard" Background="#0d3d2e" CornerRadius="8" Padding="16"
+              BorderBrush="#0d9e75" BorderThickness="0.5" IsVisible="False">
+        <StackPanel Spacing="10">
+          <TextBlock Text="✓ PROCESSING COMPLETE" FontSize="11" FontWeight="Bold"
+                     Foreground="#0d9e75"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Name="BtnDownloadOrtho" Content="⬇ Download orthomosaic" Click="OnDownloadOrtho"
+                    Background="#1a2637" Foreground="#94a3b8"
+                    BorderBrush="#2d3f52" BorderThickness="0.5"
+                    Padding="10,5" CornerRadius="6"/>
+            <Button Name="BtnDownloadReport" Content="📄 Download ODM report" Click="OnDownloadReport"
+                    Background="#1a2637" Foreground="#94a3b8"
+                    BorderBrush="#2d3f52" BorderThickness="0.5"
+                    Padding="10,5" CornerRadius="6"/>
+            <Button Name="BtnOpenWebodm" Content="🌐 Open in WebODM" Click="OnOpenWebodm"
+                    Background="#1a2637" Foreground="#94a3b8"
+                    BorderBrush="#2d3f52" BorderThickness="0.5"
+                    Padding="10,5" CornerRadius="6"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
