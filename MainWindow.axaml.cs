@@ -159,6 +159,12 @@ public partial class MainWindow : Window
 
     private LicenseView? _licenseView;
     private DjiView? _djiView;
+    private ProcessingView? _processingView;
+    private void OnProcessingView(object? sender, RoutedEventArgs e)
+    {
+        if (_processingView == null) _processingView = new ProcessingView();
+        ContentArea.Child = _processingView;
+    }
     private void OnDjiView(object? sender, RoutedEventArgs e)
     {
         if (_djiView == null) _djiView = new DjiView();
