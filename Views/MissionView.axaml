@@ -11,6 +11,10 @@
       <StackPanel Orientation="Horizontal" Spacing="6">
         <TextBlock Text="Mission Planner" FontSize="14" FontWeight="Bold"
                    Foreground="#e2e8f0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+        <Button Name="BtnSurveyMode" Content="📐 Survey Grid" Click="OnSurveyMode"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
         <Button Name="BtnClear" Content="🗑 Clear" Click="OnClear"
                 Background="#3d1515" Foreground="#ef4444"
                 BorderBrush="#ef4444" BorderThickness="0.5"

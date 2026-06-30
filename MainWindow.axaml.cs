@@ -160,6 +160,27 @@ public partial class MainWindow : Window
     private LicenseView? _licenseView;
     private DjiView? _djiView;
     private ProcessingView? _processingView;
+    private SurveyGridView? _surveyGridView;
+    private void OnSurveyGridView(object? sender, RoutedEventArgs e)
+    {
+        if (_surveyGridView == null)
+        {
+            _surveyGridView = new SurveyGridView();
+            _surveyGridView.SendToMissionRequested += () =>
+            {
+                var wps = _surveyGridView.GetGeneratedWaypoints();
+                if (wps != null && _missionView != null)
+                {
+                    _missionView._waypoints.Clear();
+                    int n = 1;
+                    foreach (var (lat, lon, alt) in wps)
+                        _missionView._waypoints.Add(new Waypoint { Number = n++, Lat = lat, Lon = lon, AltM = alt });
+                }
+                OnMissionView(this, new RoutedEventArgs());
+            };
+        }
+        ContentArea.Child = _surveyGridView;
+    }
     private void OnProcessingView(object? sender, RoutedEventArgs e)
     {
         if (_processingView == null) _processingView = new ProcessingView();
