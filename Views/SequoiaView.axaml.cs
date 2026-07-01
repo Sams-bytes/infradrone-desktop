@@ -338,6 +338,30 @@ public partial class SequoiaView : UserControl
     private void OnTabSessions(object? s, RoutedEventArgs e) => SetTab("sessions");
 
     // ── Feature 5: Band preview ───────────────────────────────────────────────
+    private async void OnLoadLocalFolder(object? s, RoutedEventArgs e)
+    {
+        var top = TopLevel.GetTopLevel(this);
+        if (top == null) return;
+        var folders = await top.StorageProvider.OpenFolderPickerAsync(
+            new FolderPickerOpenOptions { Title = "Select folder with Sequoia images" });
+        if (folders.Count == 0) return;
+        var folderPath = folders[0].Path.LocalPath;
+        var localFiles = Directory.GetFiles(folderPath, "*.TIF", SearchOption.AllDirectories)
+            .Concat(Directory.GetFiles(folderPath, "*.tif", SearchOption.AllDirectories))
+            .Concat(Directory.GetFiles(folderPath, "*.JPG", SearchOption.AllDirectories))
+            .ToList();
+        if (localFiles.Count == 0)
+        {
+            BandCaptureInfo.Text = "No TIF or JPG images found in selected folder.";
+            return;
+        }
+        BandCaptureInfo.Text = $"Loading {localFiles.Count} images from {System.IO.Path.GetFileName(folderPath)}...";
+        ShowBandPreview(localFiles);
+        GroupIntoSessions(localFiles);
+        RightPanelTitle.Text = $"{localFiles.Count} images loaded from local folder";
+        StatusText.Text = $"Loaded {localFiles.Count} local images for preview.";
+    }
+
     private void ShowBandPreview(List<string> localFiles)
     {
         BandGrid.Children.Clear();
@@ -382,13 +406,38 @@ public partial class SequoiaView : UserControl
             {
                 try
                 {
-                    using var stream = File.OpenRead(imgPath);
-                    var bmp = new Avalonia.Media.Imaging.Bitmap(stream);
-                    sp.Children.Add(new Avalonia.Controls.Image
+                    // Convert 16-bit TIF to 8-bit PNG for Avalonia preview
+                    var previewPath = imgPath.Replace(".TIF", "_preview.png")
+                                            .Replace(".tif", "_preview.png");
+                    if (!File.Exists(previewPath))
                     {
-                        Source = bmp, Height = 120,
-                        Stretch = Avalonia.Media.Stretch.UniformToFill
-                    });
+                        var psi = new System.Diagnostics.ProcessStartInfo
+                        {
+                            FileName = "/home/sam/agridrone_env/bin/python3",
+                            Arguments = $"/home/sam/infradrone-desktop/convert_tif_preview.py \"{imgPath}\" \"{previewPath}\"",
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true
+                        };
+                        var proc = System.Diagnostics.Process.Start(psi);
+                        proc?.WaitForExit();
+                    }
+                    if (File.Exists(previewPath))
+                    {
+                        using var stream = File.OpenRead(previewPath);
+                        var bmp = new Avalonia.Media.Imaging.Bitmap(stream);
+                        sp.Children.Add(new Avalonia.Controls.Image
+                        {
+                            Source = bmp, Height = 120,
+                            Stretch = Avalonia.Media.Stretch.UniformToFill
+                        });
+                    }
+                    else
+                    {
+                        sp.Children.Add(new TextBlock { Text = "Preview unavailable",
+                            FontSize = 9, Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#64748b")),
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center });
+                    }
                 }
                 catch
                 {
