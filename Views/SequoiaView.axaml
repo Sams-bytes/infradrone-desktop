@@ -70,6 +70,10 @@
                       BorderBrush="#2d3f52" BorderThickness="0.5"
                       Padding="8,4" CornerRadius="6" HorizontalAlignment="Stretch"
                       IsEnabled="False"/>
+              <TextBlock Name="AutoSyncText" Text="" FontSize="10"
+                         Foreground="#0d9e75" TextWrapping="Wrap"/>
+              <TextBlock Name="StorageWarning" Text="" FontSize="10"
+                         Foreground="#ef4444" TextWrapping="Wrap"/>
             </StackPanel>
           </Border>
 
@@ -137,6 +141,59 @@
 
               <Button Name="BtnApplyConfig" Content="✓ Apply configuration"
                       Click="OnApplyConfig"
+                      Background="#0d3d2e" Foreground="#0d9e75"
+                      BorderBrush="#0d9e75" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"
+                      IsEnabled="False"/>
+            </StackPanel>
+          </Border>
+
+          <!-- WiFi SSID -->
+          <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="6">
+              <TextBlock Text="WIFI NETWORK NAME" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+              <TextBox Name="SsidBox" Watermark="e.g. Sequoia-DAMbv-01"
+                       Background="#1a2637" Foreground="#e2e8f0"
+                       BorderBrush="#2d3f52" BorderThickness="0.5"
+                       Padding="8,4" CornerRadius="6" IsEnabled="False"/>
+              <Button Name="BtnRenameSsid" Content="✎ Rename WiFi network"
+                      Click="OnRenameSsid"
+                      Background="#1a2637" Foreground="#94a3b8"
+                      BorderBrush="#2d3f52" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"
+                      IsEnabled="False"/>
+            </StackPanel>
+          </Border>
+
+          <!-- Sensors mask -->
+          <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="6">
+              <TextBlock Text="ACTIVE BANDS" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+              <TextBlock Text="Select which bands to capture"
+                         FontSize="10" Foreground="#64748b"/>
+              <CheckBox Name="BandGreen" Content="🟢 Green (550nm)"
+                        Foreground="#e2e8f0" FontSize="11" IsChecked="True"
+                        IsEnabled="False"/>
+              <CheckBox Name="BandRed" Content="🔴 Red (660nm)"
+                        Foreground="#e2e8f0" FontSize="11" IsChecked="True"
+                        IsEnabled="False"/>
+              <CheckBox Name="BandRedEdge" Content="🟠 Red Edge (735nm)"
+                        Foreground="#e2e8f0" FontSize="11" IsChecked="True"
+                        IsEnabled="False"/>
+              <CheckBox Name="BandNir" Content="⬜ NIR (790nm)"
+                        Foreground="#e2e8f0" FontSize="11" IsChecked="True"
+                        IsEnabled="False"/>
+              <CheckBox Name="BandRgb" Content="🔵 RGB main camera"
+                        Foreground="#e2e8f0" FontSize="11" IsChecked="True"
+                        IsEnabled="False"/>
+              <TextBlock Name="MaskHint" Text="All 5 bands active (mask=31)"
+                         FontSize="10" Foreground="#64748b"/>
+              <Button Name="BtnApplyBands" Content="✓ Apply band selection"
+                      Click="OnApplyBands"
                       Background="#0d3d2e" Foreground="#0d9e75"
                       BorderBrush="#0d9e75" BorderThickness="0.5"
                       Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"

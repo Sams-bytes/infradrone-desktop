@@ -53,6 +53,7 @@ public partial class SequoiaView : UserControl
             StatusText.Text = "Connected. Loading status...";
             await RefreshStatus();
             await LoadConfig();
+            await AutoSyncCheck();
         }
         catch (Exception ex)
         {
@@ -78,6 +79,15 @@ public partial class SequoiaView : UserControl
         ResolutionRgb.IsEnabled = en;
         BitDepth.IsEnabled = en;
         StorageTarget.IsEnabled = en;
+        BtnMassStorage.IsEnabled = en;
+        BtnRenameSsid.IsEnabled = en;
+        SsidBox.IsEnabled = en;
+        BtnApplyBands.IsEnabled = en;
+        BandGreen.IsEnabled = en;
+        BandRed.IsEnabled = en;
+        BandRedEdge.IsEnabled = en;
+        BandNir.IsEnabled = en;
+        BandRgb.IsEnabled = en;
     }
 
     private async void OnRefreshStatus(object? s, RoutedEventArgs e) => await RefreshStatus();
@@ -147,6 +157,16 @@ public partial class SequoiaView : UserControl
                 BitDepth.SelectedIndex = bd.GetInt32() == 10 ? 0 : 1;
             if (doc.RootElement.TryGetProperty("storage_selected", out var ss))
                 StorageTarget.SelectedIndex = ss.GetString() == "internal" ? 0 : 1;
+            if (doc.RootElement.TryGetProperty("sensors_mask", out var sm))
+            {
+                var mask = sm.GetInt32();
+                BandGreen.IsChecked   = (mask & 1)  != 0;
+                BandRed.IsChecked     = (mask & 2)  != 0;
+                BandRedEdge.IsChecked = (mask & 4)  != 0;
+                BandNir.IsChecked     = (mask & 8)  != 0;
+                BandRgb.IsChecked     = (mask & 16) != 0;
+                UpdateMaskHint();
+            }
 
             StatusText.Text = "Configuration loaded.";
         }
@@ -279,5 +299,109 @@ public partial class SequoiaView : UserControl
     private void OnSendToWebOdm(object? s, RoutedEventArgs e)
     {
         StatusText.Text = "Open the Processing view and upload the download folder to WebODM.";
+    }
+
+    // ── Feature 1: WiFi SSID rename ──────────────────────────────────────────
+    private async void OnRenameSsid(object? s, RoutedEventArgs e)
+    {
+        var newSsid = SsidBox.Text?.Trim();
+        if (string.IsNullOrEmpty(newSsid)) { StatusText.Text = "Enter a new network name first."; return; }
+        try
+        {
+            StatusText.Text = "Renaming WiFi network...";
+            var payload = System.Text.Json.JsonSerializer.Serialize(new { ssid = newSsid });
+            var content2 = new System.Net.Http.StringContent(payload, System.Text.Encoding.UTF8, "application/json");
+            var resp = await _http.PostAsync($"{_baseUrl}/wifi", content2);
+            StatusText.Text = resp.IsSuccessStatusCode
+                ? $"✓ WiFi renamed to '{newSsid}' — takes effect on next camera boot."
+                : $"✗ Rename failed: {resp.StatusCode}";
+        }
+        catch (Exception ex) { StatusText.Text = $"SSID error: {ex.Message}"; }
+    }
+
+    // ── Feature 2: Sensors mask from checkboxes ───────────────────────────────
+    private int ComputeMask()
+    {
+        int mask = 0;
+        if (BandGreen.IsChecked == true)   mask |= 1;
+        if (BandRed.IsChecked == true)     mask |= 2;
+        if (BandRedEdge.IsChecked == true) mask |= 4;
+        if (BandNir.IsChecked == true)     mask |= 8;
+        if (BandRgb.IsChecked == true)     mask |= 16;
+        return mask;
+    }
+
+    private void UpdateMaskHint()
+    {
+        var mask = ComputeMask();
+        var bands = new System.Collections.Generic.List<string>();
+        if ((mask & 1)  != 0) bands.Add("Green");
+        if ((mask & 2)  != 0) bands.Add("Red");
+        if ((mask & 4)  != 0) bands.Add("RedEdge");
+        if ((mask & 8)  != 0) bands.Add("NIR");
+        if ((mask & 16) != 0) bands.Add("RGB");
+        MaskHint.Text = $"{bands.Count} band(s) active (mask={mask}): {string.Join(", ", bands)}";
+    }
+
+    private async void OnApplyBands(object? s, RoutedEventArgs e)
+    {
+        var mask = ComputeMask();
+        if (mask == 0) { StatusText.Text = "Select at least one band."; return; }
+        UpdateMaskHint();
+        try
+        {
+            StatusText.Text = $"Applying band mask {mask}...";
+            var payload = System.Text.Json.JsonSerializer.Serialize(new { sensors_mask = mask });
+            var content2 = new System.Net.Http.StringContent(payload, System.Text.Encoding.UTF8, "application/json");
+            var resp = await _http.PostAsync($"{_baseUrl}/config", content2);
+            StatusText.Text = resp.IsSuccessStatusCode
+                ? $"✓ Band mask {mask} applied — {32 - mask} band(s) disabled."
+                : $"✗ Band apply failed: {resp.StatusCode}";
+        }
+        catch (Exception ex) { StatusText.Text = $"Band mask error: {ex.Message}"; }
+    }
+
+    // ── Feature 3: Auto-sync on connect ──────────────────────────────────────
+    private int _lastKnownImageCount = -1;
+
+    private async Task AutoSyncCheck()
+    {
+        try
+        {
+            var output = await Task.Run(() =>
+                RunAdb("shell find /data/medias/DCIM/ -type f -name '*.TIF' -o -type f -name '*.JPG'"));
+            var files = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var count = files.Length;
+            if (_lastKnownImageCount < 0)
+            {
+                _lastKnownImageCount = count;
+                AutoSyncText.Text = count > 0
+                    ? $"📷 {count} image(s) on camera from previous flights."
+                    : "No images on camera yet.";
+            }
+            else if (count > _lastKnownImageCount)
+            {
+                var newCount = count - _lastKnownImageCount;
+                AutoSyncText.Text = $"🆕 {newCount} new image(s) detected — click Download to save.";
+                _lastKnownImageCount = count;
+            }
+            else
+            {
+                AutoSyncText.Text = $"📷 {count} image(s) on camera — no new images.";
+            }
+
+            // Feature 4: Storage warning for pre-flight check
+            var stor = await _http.GetStringAsync($"{_baseUrl}/storage");
+            var storDoc = System.Text.Json.JsonDocument.Parse(stor);
+            if (storDoc.RootElement.TryGetProperty("internal", out var intern))
+            {
+                var free = intern.GetProperty("free").GetDouble();
+                var freeMb = free / 1024.0;
+                StorageWarning.Text = freeMb < 500
+                    ? $"⚠ Only {freeMb:F0} MB free — consider downloading before flight."
+                    : "";
+            }
+        }
+        catch { AutoSyncText.Text = "Could not check image count."; }
     }
 }
