@@ -258,14 +258,84 @@
       </ScrollViewer>
     </Border>
 
-    <!-- Right panel — image list -->
-    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
-      <StackPanel Margin="16" Spacing="8">
-        <TextBlock Name="RightPanelTitle" Text="Connect to Sequoia to view images"
-                   FontSize="13" Foreground="#64748b" Margin="0,8"/>
-        <ItemsControl Name="ImageList"/>
-      </StackPanel>
-    </ScrollViewer>
+    <!-- Right panel — tabbed views -->
+    <Grid Grid.Column="1" RowDefinitions="Auto,*">
+
+      <!-- Tab switcher -->
+      <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+              BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Name="TabBtnImages" Content="📋 Images" Click="OnTabImages"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6"/>
+          <Button Name="TabBtnBands" Content="🎨 Band preview" Click="OnTabBands"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6"/>
+          <Button Name="TabBtnMap" Content="🗺 GPS track" Click="OnTabMap"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6"/>
+          <Button Name="TabBtnSessions" Content="📅 Sessions" Click="OnTabSessions"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6"/>
+          <Button Name="BtnDeleteAll" Content="🗑 Delete all" Click="OnDeleteAll"
+                  Background="#3d0d0d" Foreground="#ef4444"
+                  BorderBrush="#ef4444" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6" IsEnabled="False"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Tab content -->
+      <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="16" Spacing="8">
+
+          <TextBlock Name="RightPanelTitle" Text="Connect to Sequoia to view images"
+                     FontSize="13" Foreground="#64748b" Margin="0,8"/>
+
+          <!-- Tab: Images -->
+          <StackPanel Name="TabImages" Spacing="4">
+            <ItemsControl Name="ImageList"/>
+          </StackPanel>
+
+          <!-- Tab: Band preview -->
+          <StackPanel Name="TabBands" Spacing="8" IsVisible="False">
+            <TextBlock Text="Most recent capture — all 5 bands"
+                       FontSize="11" Foreground="#64748b"/>
+            <TextBlock Name="BandCaptureInfo" Text="No captures yet."
+                       FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+            <WrapPanel Name="BandGrid" Orientation="Horizontal"/>
+          </StackPanel>
+
+          <!-- Tab: GPS track map -->
+          <StackPanel Name="TabMap" Spacing="8" IsVisible="False">
+            <TextBlock Text="Flight path from Sequoia GPS log"
+                       FontSize="11" Foreground="#64748b"/>
+            <TextBlock Name="NmeaStatus" Text="No GPS track downloaded yet."
+                       FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+            <Button Name="BtnDownloadNmea" Content="⬇ Download GPS track"
+                    Click="OnDownloadNmea"
+                    Background="#0d3d2e" Foreground="#0d9e75"
+                    BorderBrush="#0d9e75" BorderThickness="0.5"
+                    Padding="8,5" CornerRadius="6" IsEnabled="False"/>
+            <Border Name="MapContainer" Height="400" CornerRadius="8"
+                    Background="#131f2e" BorderBrush="#1e3a5f" BorderThickness="0.5"/>
+          </StackPanel>
+
+          <!-- Tab: Sessions -->
+          <StackPanel Name="TabSessions" Spacing="8" IsVisible="False">
+            <TextBlock Text="Flight sessions detected from image timestamps"
+                       FontSize="11" Foreground="#64748b"/>
+            <TextBlock Name="SessionInfo" Text="Download images first to detect sessions."
+                       FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+            <ItemsControl Name="SessionList"/>
+          </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
 
   </Grid>
 </UserControl>

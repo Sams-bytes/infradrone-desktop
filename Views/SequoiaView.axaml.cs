@@ -8,7 +8,14 @@ using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Linq;
 using System.Threading.Tasks;
+using Mapsui;
+using Mapsui.Layers;
+using Mapsui.Projections;
+using Mapsui.Styles;
+using Mapsui.Tiling;
+using NetTopologySuite.Geometries;
 
 namespace InfraDroneDesktop.Views;
 
@@ -18,6 +25,8 @@ public partial class SequoiaView : UserControl
     private string _baseUrl = "http://10.1.1.2";
     private bool _connected = false;
     private List<string> _imageFiles = new();
+    private List<(DateTime dt, string path)> _sessionFiles = new();
+    private Mapsui.Map? _nmeaMap;
 
     public SequoiaView()
     {
@@ -46,7 +55,7 @@ public partial class SequoiaView : UserControl
             var ver = doc.RootElement.GetProperty("version").GetString();
             var sn = doc.RootElement.GetProperty("serial_number").GetString();
             _connected = true;
-            ConnDot.Fill = new SolidColorBrush(Color.Parse("#0d9e75"));
+            ConnDot.Fill = new SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75"));
             ConnStatus.Text = $"Connected ({(_baseUrl.Contains("10.1") ? "USB" : "WiFi")})";
             FwText.Text = $"FW: {ver} · S/N: {sn}";
             SetControlsEnabled(true);
@@ -58,7 +67,7 @@ public partial class SequoiaView : UserControl
         catch (Exception ex)
         {
             _connected = false;
-            ConnDot.Fill = new SolidColorBrush(Color.Parse("#ef4444"));
+            ConnDot.Fill = new SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444"));
             ConnStatus.Text = "Connection failed";
             StatusText.Text = $"Error: {ex.Message}";
         }
@@ -88,6 +97,8 @@ public partial class SequoiaView : UserControl
         BandRedEdge.IsEnabled = en;
         BandNir.IsEnabled = en;
         BandRgb.IsEnabled = en;
+        BtnDeleteAll.IsEnabled = en;
+        BtnDownloadNmea.IsEnabled = en;
     }
 
     private async void OnRefreshStatus(object? s, RoutedEventArgs e) => await RefreshStatus();
@@ -102,7 +113,7 @@ public partial class SequoiaView : UserControl
             var calStatus = calDoc.RootElement.TryGetProperty("calibration_status",
                 out var cs) ? cs.GetString() : "unknown";
             CalibStatus.Text = $"Calibration: {calStatus}";
-            CalibStatus.Foreground = new SolidColorBrush(Color.Parse(
+            CalibStatus.Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse(
                 calStatus == "calibrated" ? "#0d9e75" : "#ef4444"));
 
             // Storage
@@ -262,14 +273,14 @@ public partial class SequoiaView : UserControl
                 count++;
                 ImageList.Items.Add(new Border
                 {
-                    Background = new SolidColorBrush(Color.Parse("#131f2e")),
+                    Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#131f2e")),
                     CornerRadius = new Avalonia.CornerRadius(4),
                     Padding = new Avalonia.Thickness(8, 4),
                     Margin = new Avalonia.Thickness(0, 1),
                     Child = new TextBlock
                     {
                         Text = System.IO.Path.GetFileName(f), FontSize = 10,
-                        Foreground = new SolidColorBrush(Color.Parse("#94a3b8"))
+                        Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#94a3b8"))
                     }
                 });
             }
@@ -299,6 +310,312 @@ public partial class SequoiaView : UserControl
     private void OnSendToWebOdm(object? s, RoutedEventArgs e)
     {
         StatusText.Text = "Open the Processing view and upload the download folder to WebODM.";
+    }
+
+    // ── Tab switching ─────────────────────────────────────────────────────────
+    private void SetTab(string tab)
+    {
+        TabImages.IsVisible   = tab == "images";
+        TabBands.IsVisible    = tab == "bands";
+        TabMap.IsVisible      = tab == "map";
+        TabSessions.IsVisible = tab == "sessions";
+        var active   = new SolidColorBrush(Avalonia.Media.Color.Parse("#0d3d2e"));
+        var inactive = new SolidColorBrush(Avalonia.Media.Color.Parse("#1a2637"));
+        var activeFg   = new SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75"));
+        var inactiveFg = new SolidColorBrush(Avalonia.Media.Color.Parse("#94a3b8"));
+        TabBtnImages.Background   = tab == "images"   ? active : inactive;
+        TabBtnBands.Background    = tab == "bands"    ? active : inactive;
+        TabBtnMap.Background      = tab == "map"      ? active : inactive;
+        TabBtnSessions.Background = tab == "sessions" ? active : inactive;
+        TabBtnImages.Foreground   = tab == "images"   ? activeFg : inactiveFg;
+        TabBtnBands.Foreground    = tab == "bands"    ? activeFg : inactiveFg;
+        TabBtnMap.Foreground      = tab == "map"      ? activeFg : inactiveFg;
+        TabBtnSessions.Foreground = tab == "sessions" ? activeFg : inactiveFg;
+    }
+    private void OnTabImages(object? s, RoutedEventArgs e)   => SetTab("images");
+    private void OnTabBands(object? s, RoutedEventArgs e)    => SetTab("bands");
+    private void OnTabMap(object? s, RoutedEventArgs e)      => SetTab("map");
+    private void OnTabSessions(object? s, RoutedEventArgs e) => SetTab("sessions");
+
+    // ── Feature 5: Band preview ───────────────────────────────────────────────
+    private void ShowBandPreview(List<string> localFiles)
+    {
+        BandGrid.Children.Clear();
+        var bands = new[] { "GRE", "RED", "REG", "NIR", "RGB" };
+        var colors = new[] { "#22c55e", "#ef4444", "#f97316", "#a855f7", "#378add" };
+        var latestByBand = new System.Collections.Generic.Dictionary<string, string>();
+        foreach (var band in bands)
+        {
+            var match = localFiles
+                .Where(f => Path.GetFileName(f).Contains($"_{band}."))
+                .OrderByDescending(f => f)
+                .FirstOrDefault();
+            if (match != null) latestByBand[band] = match;
+        }
+        if (latestByBand.Count == 0)
+        {
+            BandCaptureInfo.Text = "No band images found in downloaded folder.";
+            return;
+        }
+        BandCaptureInfo.Text = $"Showing latest capture — {latestByBand.Count}/5 bands found.";
+        for (int i = 0; i < bands.Length; i++)
+        {
+            var band = bands[i];
+            var color = colors[i];
+            var card = new Border
+            {
+                Width = 180, Margin = new Avalonia.Thickness(4),
+                Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#131f2e")),
+                CornerRadius = new Avalonia.CornerRadius(8),
+                BorderBrush = new SolidColorBrush(Avalonia.Media.Color.Parse(color)),
+                BorderThickness = new Avalonia.Thickness(1),
+                Padding = new Avalonia.Thickness(8)
+            };
+            var sp = new StackPanel { Spacing = 4 };
+            sp.Children.Add(new TextBlock
+            {
+                Text = band, FontSize = 11, FontWeight = Avalonia.Media.FontWeight.Bold,
+                Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse(color)),
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+            });
+            if (latestByBand.TryGetValue(band, out var imgPath) && File.Exists(imgPath))
+            {
+                try
+                {
+                    using var stream = File.OpenRead(imgPath);
+                    var bmp = new Avalonia.Media.Imaging.Bitmap(stream);
+                    sp.Children.Add(new Avalonia.Controls.Image
+                    {
+                        Source = bmp, Height = 120,
+                        Stretch = Avalonia.Media.Stretch.UniformToFill
+                    });
+                }
+                catch
+                {
+                    sp.Children.Add(new TextBlock { Text = "Preview unavailable",
+                        FontSize = 9, Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#64748b")),
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center });
+                }
+            }
+            else
+            {
+                sp.Children.Add(new TextBlock { Text = "Not captured",
+                    FontSize = 9, Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#64748b")),
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center });
+            }
+            card.Child = sp;
+            BandGrid.Children.Add(card);
+        }
+    }
+
+    // ── Feature 6: Delete all images ─────────────────────────────────────────
+    private async void OnDeleteAll(object? s, RoutedEventArgs e)
+    {
+        var dlg = new Avalonia.Controls.Window
+        {
+            Title = "Confirm delete",
+            Width = 360, Height = 160,
+            WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
+            Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#1a2637")),
+            Content = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(20), Spacing = 12,
+                Children =
+                {
+                    new TextBlock { Text = "Delete ALL images from Sequoia internal storage?",
+                        Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#e2e8f0")),
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap, FontSize = 12 },
+                    new TextBlock { Text = "This cannot be undone. Make sure you have downloaded first.",
+                        Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444")),
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap, FontSize = 11 },
+                    new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal,
+                        Spacing = 8,
+                        Children =
+                        {
+                            new Button { Content = "Yes, delete all",
+                                Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#3d0d0d")),
+                                Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444")),
+                                Padding = new Avalonia.Thickness(12,6),
+                                [!Button.TagProperty] = new Avalonia.Data.Binding { Source = "confirm" }
+                            },
+                            new Button { Content = "Cancel",
+                                Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#1a2637")),
+                                Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#94a3b8")),
+                                Padding = new Avalonia.Thickness(12,6) }
+                        }
+                    }
+                }
+            }
+        };
+        var topWin = TopLevel.GetTopLevel(this) as Avalonia.Controls.Window;
+        if (topWin == null) return;
+
+        bool confirmed = false;
+        var sp2 = (dlg.Content as StackPanel)!;
+        var btnPanel = (sp2.Children[2] as StackPanel)!;
+        var confirmBtn = (btnPanel.Children[0] as Button)!;
+        var cancelBtn  = (btnPanel.Children[1] as Button)!;
+        confirmBtn.Click += (_, _) => { confirmed = true; dlg.Close(); };
+        cancelBtn.Click  += (_, _) => dlg.Close();
+        await dlg.ShowDialog(topWin);
+
+        if (!confirmed) return;
+        StatusText.Text = "Deleting all images...";
+        await Task.Run(() => RunAdb("shell rm -rf /data/medias/DCIM/external/"));
+        _imageFiles.Clear();
+        _sessionFiles.Clear();
+        ImageList.Items.Clear();
+        SessionList.Items.Clear();
+        ImageCountText.Text = "0 images";
+        AutoSyncText.Text = "All images deleted from camera.";
+        _lastKnownImageCount = 0;
+        StatusText.Text = "✓ All images deleted from Sequoia.";
+    }
+
+    // ── Feature 7: NMEA GPS track ─────────────────────────────────────────────
+    private async void OnDownloadNmea(object? s, RoutedEventArgs e)
+    {
+        NmeaStatus.Text = "Downloading GPS track...";
+        var nmea = await Task.Run(() => RunAdb("shell cat /data/medias/generated_nmea.txt"));
+        if (string.IsNullOrWhiteSpace(nmea))
+        {
+            NmeaStatus.Text = "No GPS track found — fly a mission first.";
+            return;
+        }
+        var points = ParseNmea(nmea);
+        if (points.Count == 0)
+        {
+            NmeaStatus.Text = "GPS track found but no valid fix points parsed.";
+            return;
+        }
+        NmeaStatus.Text = $"GPS track: {points.Count} points — drawing map...";
+        DrawNmeaMap(points);
+    }
+
+    private List<(double lat, double lon)> ParseNmea(string nmea)
+    {
+        var points = new List<(double, double)>();
+        foreach (var line in nmea.Split('\n'))
+        {
+            if (!line.StartsWith("$GNGGA") && !line.StartsWith("$GPGGA")) continue;
+            var parts = line.Split(',');
+            if (parts.Length < 6) continue;
+            if (parts[2] == "" || parts[4] == "") continue;
+            try
+            {
+                var latRaw = double.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture);
+                var lonRaw = double.Parse(parts[4], System.Globalization.CultureInfo.InvariantCulture);
+                var latDeg = Math.Floor(latRaw / 100) + (latRaw % 100) / 60.0;
+                var lonDeg = Math.Floor(lonRaw / 100) + (lonRaw % 100) / 60.0;
+                if (parts[3] == "S") latDeg = -latDeg;
+                if (parts[5] == "W") lonDeg = -lonDeg;
+                points.Add((latDeg, lonDeg));
+            }
+            catch { }
+        }
+        return points;
+    }
+
+    private void DrawNmeaMap(List<(double lat, double lon)> points)
+    {
+        var map = new Mapsui.Map();
+        map.Layers.Add(Mapsui.Tiling.OpenStreetMap.CreateTileLayer());
+        var lineLayer = new Mapsui.Layers.MemoryLayer { Name = "Track" };
+        var coords = points.Select(p => {
+            var xy = Mapsui.Projections.SphericalMercator.FromLonLat(p.lon, p.lat);
+            return new NetTopologySuite.Geometries.Coordinate(xy.x, xy.y);
+        }).ToArray();
+        if (coords.Length > 1)
+        {
+            var line = new NetTopologySuite.Geometries.LineString(coords);
+            var feature = new Mapsui.Nts.GeometryFeature(line);
+            feature.Styles.Add(new Mapsui.Styles.VectorStyle
+            {
+                Line = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(13, 158, 117), 3)
+            });
+            lineLayer.Features = new List<Mapsui.IFeature> { feature };
+            map.Layers.Add(lineLayer);
+            var avgLon = points.Average(p => p.lon);
+            var avgLat = points.Average(p => p.lat);
+            var center = Mapsui.Projections.SphericalMercator.FromLonLat(avgLon, avgLat);
+            map.Navigator.CenterOnAndZoomTo(
+                new Mapsui.MPoint(center.x, center.y), map.Navigator.Resolutions[14]);
+        }
+        var mapControl = new Mapsui.UI.Avalonia.MapControl { Map = map };
+        MapContainer.Child = mapControl;
+        _nmeaMap = map;
+        NmeaStatus.Text = $"Flight path drawn — {points.Count} GPS points.";
+    }
+
+    // ── Feature 8: Session grouping ───────────────────────────────────────────
+    private void GroupIntoSessions(List<string> localFiles)
+    {
+        SessionList.Items.Clear();
+        _sessionFiles.Clear();
+        var dated = new List<(DateTime dt, string path)>();
+        foreach (var f in localFiles)
+        {
+            var name = Path.GetFileNameWithoutExtension(f);
+            var parts2 = name.Split('_');
+            if (parts2.Length >= 3)
+            {
+                if (DateTime.TryParseExact(parts2[1] + parts2[2], "yyMMddHHmmss",
+                    null, System.Globalization.DateTimeStyles.None, out var dt))
+                    dated.Add((dt, f));
+            }
+        }
+        if (dated.Count == 0)
+        {
+            SessionInfo.Text = "Could not parse timestamps from filenames.";
+            return;
+        }
+        dated.Sort((a, b) => a.dt.CompareTo(b.dt));
+        var sessions = new List<List<(DateTime dt, string path)>>();
+        var current = new List<(DateTime, string)> { dated[0] };
+        for (int i = 1; i < dated.Count; i++)
+        {
+            if ((dated[i].dt - dated[i - 1].dt).TotalMinutes > 30)
+            {
+                sessions.Add(current);
+                current = new List<(DateTime, string)>();
+            }
+            current.Add(dated[i]);
+        }
+        sessions.Add(current);
+        SessionInfo.Text = $"{sessions.Count} flight session(s) detected from {localFiles.Count} images.";
+        for (int i = 0; i < sessions.Count; i++)
+        {
+            var sess = sessions[i];
+            var first = sess.First().dt;
+            var last  = sess.Last().dt;
+            var duration = (last - first).TotalMinutes;
+            var imageCount = sess.Select(x => Path.GetFileName(x.path))
+                .Select(n => n.Split('_').Take(3).Aggregate((a,b) => a+"_"+b))
+                .Distinct().Count();
+            var card = new Border
+            {
+                Background = new SolidColorBrush(Avalonia.Media.Color.Parse("#131f2e")),
+                CornerRadius = new Avalonia.CornerRadius(8),
+                Padding = new Avalonia.Thickness(12, 8),
+                Margin = new Avalonia.Thickness(0, 4),
+                BorderBrush = new SolidColorBrush(Avalonia.Media.Color.Parse("#1e3a5f")),
+                BorderThickness = new Avalonia.Thickness(0.5)
+            };
+            var sp3 = new StackPanel { Spacing = 4 };
+            sp3.Children.Add(new TextBlock
+            {
+                Text = $"Flight {i + 1} — {first:dd MMM yyyy HH:mm}",
+                FontSize = 12, FontWeight = Avalonia.Media.FontWeight.Bold,
+                Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#e2e8f0"))
+            });
+            sp3.Children.Add(new TextBlock
+            {
+                Text = $"{imageCount} capture set(s) · {duration:F0} min · {sess.Count} band files",
+                FontSize = 10, Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#64748b"))
+            });
+            card.Child = sp3;
+            SessionList.Items.Add(card);
+        }
     }
 
     // ── Feature 1: WiFi SSID rename ──────────────────────────────────────────
