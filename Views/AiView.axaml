@@ -1,0 +1,101 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.AiView"
+             Background="#0f1923">
+  <Grid ColumnDefinitions="300,*">
+
+    <!-- Side panel -->
+    <Border Grid.Column="0" Background="#1a2637" BorderBrush="#1e3a5f"
+            BorderThickness="0,0,1,0">
+      <ScrollViewer>
+        <StackPanel Margin="16" Spacing="14">
+
+          <StackPanel Spacing="2">
+            <TextBlock Text="🤖 AI Defect Detection" FontSize="14" FontWeight="Bold"
+                       Foreground="#e2e8f0"/>
+            <TextBlock Text="Automated inspection analysis using computer vision"
+                       FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+          </StackPanel>
+
+          <!-- Model status -->
+          <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="6">
+              <TextBlock Text="MODEL" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"/>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Ellipse Name="ModelDot" Width="8" Height="8" Fill="#ef4444"/>
+                <TextBlock Name="ModelStatus" Text="No model loaded" FontSize="11" Foreground="#94a3b8"/>
+              </StackPanel>
+              <Button Name="BtnLoadModel" Content="📦 Load model" Click="OnLoadModel"
+                      Background="#0d3d2e" Foreground="#0d9e75"
+                      BorderBrush="#0d9e75" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+          </Border>
+
+          <Button Name="BtnSelectImage" Content="🖼 Select image to analyze" Click="OnSelectImage"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,6" CornerRadius="6" HorizontalAlignment="Stretch"
+                  IsEnabled="False"/>
+
+          <Button Name="BtnSelectFolder" Content="📁 Batch: select folder" Click="OnSelectFolder"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,6" CornerRadius="6" HorizontalAlignment="Stretch"
+                  IsEnabled="False"/>
+
+          <Button Name="BtnRunDetection" Content="▶ Run detection" Click="OnRunDetection"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="10,6" CornerRadius="6" HorizontalAlignment="Stretch"
+                  IsEnabled="False"/>
+
+          <TextBlock Name="StatusText" Text="" FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+
+          <!-- Batch summary (hidden until batch run) -->
+          <Border Name="BatchSummaryBox" Background="#131f2e" CornerRadius="8" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5" IsVisible="False">
+            <StackPanel Spacing="8">
+              <TextBlock Text="BATCH SUMMARY" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"/>
+              <TextBlock Name="BatchSummaryText" Text="" FontSize="11" Foreground="#e2e8f0" TextWrapping="Wrap"/>
+              <Button Name="BtnGenerateAiReport" Content="📄 Generate PDF report" Click="OnGenerateAiReport"
+                      Background="#0d3d2e" Foreground="#0d9e75"
+                      BorderBrush="#0d9e75" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"/>
+            </StackPanel>
+          </Border>
+
+          <!-- Batch image list (hidden until batch run) -->
+          <StackPanel Name="BatchListPanel" Spacing="4" IsVisible="False">
+            <TextBlock Text="IMAGES" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"/>
+            <ItemsControl Name="BatchList"/>
+          </StackPanel>
+
+          <!-- Results list -->
+          <StackPanel Spacing="4">
+            <TextBlock Text="DETECTIONS" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"/>
+            <ItemsControl Name="ResultsList"/>
+          </StackPanel>
+
+          <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="4">
+              <TextBlock Text="ℹ ABOUT THIS MODEL" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+              <TextBlock Text="Currently using a general-purpose YOLOv8 model trained on common objects (COCO dataset) — a working demonstration of the pipeline. A custom model trained on infrastructure defects (cracks, corrosion, spalling) is the next step for production inspection use."
+                         FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <!-- Image display -->
+    <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+      <Image Name="ImageDisplay" Stretch="Uniform" Margin="16"/>
+    </ScrollViewer>
+
+  </Grid>
+</UserControl>

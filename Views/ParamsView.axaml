@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="InfraDroneDesktop.Views.ParamsView"
              Background="#0f1923">
-  <Grid RowDefinitions="Auto,Auto,*">
+  <Grid RowDefinitions="Auto,Auto,Auto,*">
 
     <!-- Toolbar -->
     <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
@@ -39,8 +39,25 @@
       </Grid>
     </Border>
 
+    <!-- Battery health -->
+    <Border Grid.Row="2" Background="#131f2e" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="6">
+        <Button Name="BtnToggleBattery" Content="🔋 Battery health (tap to expand)"
+                Click="OnToggleBattery"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"/>
+        <StackPanel Name="BatteryPanel" IsVisible="False" Spacing="4">
+          <TextBlock Name="BatterySummaryText" Text="" FontSize="11"
+                     Foreground="#94a3b8" TextWrapping="Wrap"/>
+          <ItemsControl Name="BatteryHistoryList"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
     <!-- Parameter list -->
-    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
       <StackPanel Name="ParamList" Spacing="0"/>
     </ScrollViewer>
 

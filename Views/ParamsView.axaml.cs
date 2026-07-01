@@ -20,6 +20,8 @@ public partial class ParamsView : UserControl
 {
     private List<ParamItem> _allParams = new();
     private string _search = "";
+    private readonly InfraDroneDesktop.Services.BatteryHealthService _batteryHealth = new();
+    private bool _batteryExpanded = false;
 
     private static readonly Dictionary<string, string> Descriptions = new()
     {
@@ -200,4 +202,61 @@ public partial class ParamsView : UserControl
     private void OnRefresh(object? s, RoutedEventArgs e) => LoadParams();
     private void OnSave(object? s, RoutedEventArgs e) =>
         StatusText.Text = "Parameter upload via command server — coming soon";
+
+    private void OnToggleBattery(object? s, RoutedEventArgs e)
+    {
+        _batteryExpanded = !_batteryExpanded;
+        BatteryPanel.IsVisible = _batteryExpanded;
+        BtnToggleBattery.Content = _batteryExpanded
+            ? "🔋 Battery health (tap to collapse)"
+            : "🔋 Battery health (tap to expand)";
+        if (_batteryExpanded) LoadBatteryHistory();
+    }
+
+    private void LoadBatteryHistory()
+    {
+        var history = _batteryHealth.LoadHistory();
+        BatteryHistoryList.Items.Clear();
+        if (history.Count == 0)
+        {
+            BatterySummaryText.Text = "No logged flights yet.";
+            return;
+        }
+        var minVoltages = history.Select(h => h.MinVoltage).Where(v => v > 0).ToList();
+        var avgMin = minVoltages.Count > 0 ? minVoltages.Average() : 0;
+        BatterySummaryText.Text = $"{history.Count} flight(s) logged — avg min voltage {avgMin:F2}V";
+
+        foreach (var r in history.AsEnumerable().Reverse())
+        {
+            var dt = DateTime.Parse(r.Timestamp).ToLocalTime();
+            BatteryHistoryList.Items.Add(new Border
+            {
+                Background = new SolidColorBrush(Color.Parse("#1a2637")),
+                CornerRadius = new Avalonia.CornerRadius(6),
+                Padding = new Avalonia.Thickness(8, 6),
+                Margin = new Avalonia.Thickness(0, 2),
+                Child = new Grid
+                {
+                    ColumnDefinitions = new ColumnDefinitions("Auto,Auto,Auto,*"),
+                    Children =
+                    {
+                        new TextBlock { Text = dt.ToString("dd MMM HH:mm"), FontSize = 10,
+                            Foreground = new SolidColorBrush(Color.Parse("#94a3b8")),
+                            Margin = new Avalonia.Thickness(0,0,12,0), [Grid.ColumnProperty] = 0 },
+                        new TextBlock { Text = $"{r.DurationMinutes:F0}min", FontSize = 10,
+                            Foreground = new SolidColorBrush(Color.Parse("#64748b")),
+                            Margin = new Avalonia.Thickness(0,0,12,0), [Grid.ColumnProperty] = 1 },
+                        new TextBlock { Text = $"{r.MinVoltage:F2}V–{r.MaxVoltage:F2}V", FontSize = 10,
+                            FontFamily = new FontFamily("Consolas"),
+                            Foreground = new SolidColorBrush(Color.Parse("#0d9e75")),
+                            Margin = new Avalonia.Thickness(0,0,12,0), [Grid.ColumnProperty] = 2 },
+                        new TextBlock { Text = $"{r.StartBatteryPct}%→{r.EndBatteryPct}%", FontSize = 10,
+                            Foreground = new SolidColorBrush(Color.Parse("#e2e8f0")),
+                            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+                            [Grid.ColumnProperty] = 3 }
+                    }
+                }
+            });
+        }
+    }
 }

@@ -21,7 +21,9 @@
     <PackageReference Include="Mapsui.Rendering.Skia" Version="4.1.9" />
     <PackageReference Include="Mapsui.Tiling" Version="4.1.9" />
     <PackageReference Include="MavLink" Version="0.1.0" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.27.0" />
     <PackageReference Include="NetTopologySuite.IO.GeoJSON" Version="4.0.0" />
     <PackageReference Include="ProjNet" Version="2.1.0" />
+    <PackageReference Include="SkiaSharp" Version="2.88.9" />
   </ItemGroup>
 </Project>

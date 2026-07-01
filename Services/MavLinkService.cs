@@ -22,6 +22,7 @@ public class TelemetryData
     public int GpsSats { get; set; }
     public int GpsFix { get; set; }
     public int BatteryPct { get; set; }
+    public float BatteryVoltage { get; set; }
 }
 
 public class MavLinkService
@@ -112,6 +113,7 @@ public class MavLinkService
                 {
                     var prev = Telemetry.BatteryPct;
                     Telemetry.BatteryPct = sys.battery_remaining;
+                    Telemetry.BatteryVoltage = sys.voltage_battery / 1000.0f;
                     if (sys.battery_remaining <= 20 && prev > 20)
                         SafetyAlert?.Invoke("LOW BATTERY", $"Battery at {sys.battery_remaining}% — consider RTL");
                     if (sys.battery_remaining <= 10 && prev > 10)
