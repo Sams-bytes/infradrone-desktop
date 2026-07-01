@@ -68,8 +68,10 @@
 
         <TextBlock Text="CONNECTION" FontSize="9" FontWeight="Bold"
                    Foreground="#4a5568" Margin="10,8,10,2" LetterSpacing="1"/>
+        <Button Content="🤖  AI" Classes="nav" Click="OnAiView"/>
         <Button Content="📐  Survey Grid" Classes="nav" Click="OnSurveyGridView"/>
         <Button Content="🗺  Processing" Classes="nav" Click="OnProcessingView"/>
+        <Button Content="🌿  Sequoia" Classes="nav" Click="OnSequoiaView"/>
         <Button Content="🚁  DJI Tools" Classes="nav" Click="OnDjiView"/>
         <Button Content="🔑  License" Classes="nav" Click="OnParamsViewLicense"/>
         <Button Content="🔌  Connect" Classes="nav-connect" Click="OnConnect"/>

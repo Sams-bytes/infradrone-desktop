@@ -1,0 +1,214 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.SequoiaView"
+             Background="#0f1923">
+  <Grid ColumnDefinitions="300,*">
+
+    <!-- Side panel -->
+    <Border Grid.Column="0" Background="#1a2637" BorderBrush="#1e3a5f"
+            BorderThickness="0,0,1,0">
+      <ScrollViewer>
+        <StackPanel Margin="16" Spacing="14">
+
+          <StackPanel Spacing="2">
+            <TextBlock Text="🌿 Sequoia Multispectral" FontSize="14" FontWeight="Bold"
+                       Foreground="#e2e8f0"/>
+            <TextBlock Text="Parrot Sequoia camera control and configuration"
+                       FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+          </StackPanel>
+
+          <!-- Connection -->
+          <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="6">
+              <TextBlock Text="CONNECTION" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Ellipse Name="ConnDot" Width="8" Height="8" Fill="#ef4444"/>
+                <TextBlock Name="ConnStatus" Text="Not connected"
+                           FontSize="11" Foreground="#94a3b8"/>
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Name="BtnConnectUsb" Content="🔌 USB (10.1.1.2)"
+                        Click="OnConnectUsb"
+                        Background="#0d3d2e" Foreground="#0d9e75"
+                        BorderBrush="#0d9e75" BorderThickness="0.5"
+                        Padding="8,5" CornerRadius="6"/>
+                <Button Name="BtnConnectWifi" Content="📶 WiFi"
+                        Click="OnConnectWifi"
+                        Background="#1a2637" Foreground="#94a3b8"
+                        BorderBrush="#2d3f52" BorderThickness="0.5"
+                        Padding="8,5" CornerRadius="6"/>
+              </StackPanel>
+              <TextBlock Name="FwText" Text="" FontSize="10" Foreground="#64748b"/>
+            </StackPanel>
+          </Border>
+
+          <!-- Status -->
+          <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="6">
+              <TextBlock Text="STATUS" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+              <TextBlock Name="CalibStatus" Text="Calibration: —"
+                         FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+              <TextBlock Text="Internal storage" FontSize="10" Foreground="#64748b"/>
+              <ProgressBar Name="StorageInternal" Minimum="0" Maximum="100" Value="0"
+                           Height="6" CornerRadius="3"
+                           Foreground="#0d9e75" Background="#1e3a5f"/>
+              <TextBlock Name="StorageInternalText" Text="— MB free"
+                         FontSize="10" Foreground="#64748b"/>
+              <TextBlock Text="SD card" FontSize="10" Foreground="#64748b"/>
+              <ProgressBar Name="StorageSd" Minimum="0" Maximum="100" Value="0"
+                           Height="6" CornerRadius="3"
+                           Foreground="#378add" Background="#1e3a5f"/>
+              <TextBlock Name="StorageSdText" Text="— MB free"
+                         FontSize="10" Foreground="#64748b"/>
+              <Button Name="BtnRefreshStatus" Content="⟳ Refresh status"
+                      Click="OnRefreshStatus"
+                      Background="#1a2637" Foreground="#94a3b8"
+                      BorderBrush="#2d3f52" BorderThickness="0.5"
+                      Padding="8,4" CornerRadius="6" HorizontalAlignment="Stretch"
+                      IsEnabled="False"/>
+            </StackPanel>
+          </Border>
+
+          <!-- Configuration -->
+          <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="8">
+              <TextBlock Text="CONFIGURATION" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+
+              <TextBlock Text="Capture mode" FontSize="10" Foreground="#64748b"/>
+              <ComboBox Name="CaptureMode" HorizontalAlignment="Stretch"
+                        Background="#1a2637" Foreground="#e2e8f0"
+                        BorderBrush="#2d3f52" BorderThickness="0.5"
+                        IsEnabled="False">
+                <ComboBoxItem Content="GPS interval" Tag="gps"/>
+                <ComboBoxItem Content="Timelapse" Tag="timelapse"/>
+                <ComboBoxItem Content="Single shot" Tag="single"/>
+              </ComboBox>
+
+              <TextBlock Text="GPS interval (metres)" FontSize="10" Foreground="#64748b"/>
+              <TextBox Name="GpsInterval" Text="25" IsEnabled="False"
+                       Background="#1a2637" Foreground="#e2e8f0"
+                       BorderBrush="#2d3f52" BorderThickness="0.5"
+                       Padding="8,4" CornerRadius="6"/>
+
+              <TextBlock Text="Overlap %" FontSize="10" Foreground="#64748b"/>
+              <TextBox Name="Overlap" Text="80" IsEnabled="False"
+                       Background="#1a2637" Foreground="#e2e8f0"
+                       BorderBrush="#2d3f52" BorderThickness="0.5"
+                       Padding="8,4" CornerRadius="6"/>
+
+              <TextBlock Text="Timelapse interval (seconds)" FontSize="10" Foreground="#64748b"/>
+              <TextBox Name="TilapseInterval" Text="1.5" IsEnabled="False"
+                       Background="#1a2637" Foreground="#e2e8f0"
+                       BorderBrush="#2d3f52" BorderThickness="0.5"
+                       Padding="8,4" CornerRadius="6"/>
+
+              <TextBlock Text="RGB resolution" FontSize="10" Foreground="#64748b"/>
+              <ComboBox Name="ResolutionRgb" HorizontalAlignment="Stretch"
+                        Background="#1a2637" Foreground="#e2e8f0"
+                        BorderBrush="#2d3f52" BorderThickness="0.5"
+                        IsEnabled="False">
+                <ComboBoxItem Content="16 MP (max)"/>
+                <ComboBoxItem Content="12 MP"/>
+              </ComboBox>
+
+              <TextBlock Text="Bit depth" FontSize="10" Foreground="#64748b"/>
+              <ComboBox Name="BitDepth" HorizontalAlignment="Stretch"
+                        Background="#1a2637" Foreground="#e2e8f0"
+                        BorderBrush="#2d3f52" BorderThickness="0.5"
+                        IsEnabled="False">
+                <ComboBoxItem Content="10 bit (recommended)"/>
+                <ComboBoxItem Content="8 bit"/>
+              </ComboBox>
+
+              <TextBlock Text="Storage target" FontSize="10" Foreground="#64748b"/>
+              <ComboBox Name="StorageTarget" HorizontalAlignment="Stretch"
+                        Background="#1a2637" Foreground="#e2e8f0"
+                        BorderBrush="#2d3f52" BorderThickness="0.5"
+                        IsEnabled="False">
+                <ComboBoxItem Content="Internal"/>
+                <ComboBoxItem Content="SD card"/>
+              </ComboBox>
+
+              <Button Name="BtnApplyConfig" Content="✓ Apply configuration"
+                      Click="OnApplyConfig"
+                      Background="#0d3d2e" Foreground="#0d9e75"
+                      BorderBrush="#0d9e75" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"
+                      IsEnabled="False"/>
+            </StackPanel>
+          </Border>
+
+          <!-- Capture -->
+          <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="6">
+              <TextBlock Text="CAPTURE" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+              <Button Name="BtnCapture" Content="📷 Trigger capture"
+                      Click="OnCapture"
+                      Background="#0d3d2e" Foreground="#0d9e75"
+                      BorderBrush="#0d9e75" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"
+                      IsEnabled="False"/>
+            </StackPanel>
+          </Border>
+
+          <!-- Image management -->
+          <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="6">
+              <TextBlock Text="IMAGE MANAGEMENT" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+              <TextBlock Name="ImageCountText" Text="No images listed"
+                         FontSize="11" Foreground="#94a3b8"/>
+              <Button Name="BtnListImages" Content="📋 List images on camera"
+                      Click="OnListImages"
+                      Background="#1a2637" Foreground="#94a3b8"
+                      BorderBrush="#2d3f52" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"
+                      IsEnabled="False"/>
+              <Button Name="BtnMassStorage" Content="💾 Switch to mass storage mode"
+                      Click="OnMassStorage"
+                      Background="#1a2637" Foreground="#94a3b8"
+                      BorderBrush="#2d3f52" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"
+                      IsEnabled="False"/>
+              <Button Name="BtnDownload" Content="⬇ Download all to local folder"
+                      Click="OnDownload"
+                      Background="#0d3d2e" Foreground="#0d9e75"
+                      BorderBrush="#0d9e75" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"
+                      IsEnabled="False"/>
+              <Button Name="BtnSendToWebOdm" Content="🗺 Send to WebODM"
+                      Click="OnSendToWebOdm"
+                      Background="#1a2637" Foreground="#378add"
+                      BorderBrush="#378add" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"
+                      IsEnabled="False"/>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Name="StatusText" Text="" FontSize="10"
+                     Foreground="#64748b" TextWrapping="Wrap"/>
+
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <!-- Right panel — image list -->
+    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="16" Spacing="8">
+        <TextBlock Name="RightPanelTitle" Text="Connect to Sequoia to view images"
+                   FontSize="13" Foreground="#64748b" Margin="0,8"/>
+        <ItemsControl Name="ImageList"/>
+      </StackPanel>
+    </ScrollViewer>
+
+  </Grid>
+</UserControl>

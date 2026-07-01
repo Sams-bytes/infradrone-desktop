@@ -12,12 +12,14 @@ namespace InfraDroneDesktop;
 public partial class MainWindow : Window
 {
     private readonly MavLinkService _mav = new MavLinkService();
+    private readonly BatteryHealthService _batteryHealth = new BatteryHealthService();
     private bool _mavRunning = false;
 
     public MainWindow()
     {
         InitializeComponent();
         _mav.TelemetryUpdated += OnTelemetry;
+        _mav.TelemetryUpdated += (t) => _batteryHealth.OnTelemetryUpdate(t);
         _mav.SafetyAlert += OnSafetyAlert;
     }
 
@@ -159,7 +161,15 @@ public partial class MainWindow : Window
 
     private LicenseView? _licenseView;
     private DjiView? _djiView;
+    private SequoiaView? _sequoiaView;
     private ProcessingView? _processingView;
+    private AiView? _aiView;
+    private void OnAiView(object? sender, RoutedEventArgs e)
+    {
+        if (_aiView == null) _aiView = new AiView();
+        ContentArea.Child = _aiView;
+    }
+
     private SurveyGridView? _surveyGridView;
     private void OnSurveyGridView(object? sender, RoutedEventArgs e)
     {
@@ -185,6 +195,11 @@ public partial class MainWindow : Window
     {
         if (_processingView == null) _processingView = new ProcessingView();
         ContentArea.Child = _processingView;
+    }
+    private void OnSequoiaView(object? sender, RoutedEventArgs e)
+    {
+        if (_sequoiaView == null) _sequoiaView = new SequoiaView();
+        ContentArea.Child = _sequoiaView;
     }
     private void OnDjiView(object? sender, RoutedEventArgs e)
     {
