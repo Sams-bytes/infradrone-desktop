@@ -304,6 +304,11 @@
           <StackPanel Name="TabBands" Spacing="8" IsVisible="False">
             <TextBlock Text="Most recent capture — all 5 bands"
                        FontSize="11" Foreground="#64748b"/>
+            <Button Name="BtnLoadLocalFolder" Content="📂 Load local image folder"
+                    Click="OnLoadLocalFolder"
+                    Background="#0d3d2e" Foreground="#0d9e75"
+                    BorderBrush="#0d9e75" BorderThickness="0.5"
+                    Padding="8,5" CornerRadius="6" HorizontalAlignment="Left"/>
             <TextBlock Name="BandCaptureInfo" Text="No captures yet."
                        FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
             <WrapPanel Name="BandGrid" Orientation="Horizontal"/>
