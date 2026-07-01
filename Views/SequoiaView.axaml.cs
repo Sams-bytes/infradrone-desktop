@@ -485,7 +485,7 @@ public partial class SequoiaView : UserControl
         var points = ParseNmea(nmea);
         if (points.Count == 0)
         {
-            NmeaStatus.Text = "GPS track found but no valid fix points parsed.";
+            NmeaStatus.Text = "GPS track file found but no valid fix points — camera had no GPS lock during this session. Fly outdoors and try again.";
             return;
         }
         NmeaStatus.Text = $"GPS track: {points.Count} points — drawing map...";
@@ -497,18 +497,28 @@ public partial class SequoiaView : UserControl
         var points = new List<(double, double)>();
         foreach (var line in nmea.Split('\n'))
         {
-            if (!line.StartsWith("$GNGGA") && !line.StartsWith("$GPGGA")) continue;
+            var isGga = line.StartsWith("$GNGGA") || line.StartsWith("$GPGGA");
+            var isRmc = line.StartsWith("$GNRMC") || line.StartsWith("$GPRMC");
+            if (!isGga && !isRmc) continue;
             var parts = line.Split(',');
-            if (parts.Length < 6) continue;
-            if (parts[2] == "" || parts[4] == "") continue;
+            // GGA: lat=parts[2], latDir=parts[3], lon=parts[4], lonDir=parts[5], fix=parts[6]
+            // RMC: status=parts[2], lat=parts[3], latDir=parts[4], lon=parts[5], lonDir=parts[6]
+            int latIdx = isGga ? 2 : 3;
+            int lonIdx = isGga ? 4 : 5;
+            int latDirIdx = isGga ? 3 : 4;
+            int lonDirIdx = isGga ? 5 : 6;
+            if (parts.Length < lonDirIdx + 1) continue;
+            if (parts[latIdx] == "" || parts[lonIdx] == "") continue;
+            if (isRmc && parts[2] != "A") continue; // RMC: A=active fix only
+            if (isGga && parts[6] == "0") continue;  // GGA: fix quality 0 = no fix
             try
             {
-                var latRaw = double.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture);
-                var lonRaw = double.Parse(parts[4], System.Globalization.CultureInfo.InvariantCulture);
+                var latRaw = double.Parse(parts[latIdx], System.Globalization.CultureInfo.InvariantCulture);
+                var lonRaw = double.Parse(parts[lonIdx], System.Globalization.CultureInfo.InvariantCulture);
                 var latDeg = Math.Floor(latRaw / 100) + (latRaw % 100) / 60.0;
                 var lonDeg = Math.Floor(lonRaw / 100) + (lonRaw % 100) / 60.0;
-                if (parts[3] == "S") latDeg = -latDeg;
-                if (parts[5] == "W") lonDeg = -lonDeg;
+                if (parts[latDirIdx] == "S") latDeg = -latDeg;
+                if (parts[lonDirIdx] == "W") lonDeg = -lonDeg;
                 points.Add((latDeg, lonDeg));
             }
             catch { }
