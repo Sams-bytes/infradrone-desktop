@@ -320,6 +320,7 @@ public partial class SequoiaView : UserControl
         TabBands.IsVisible    = tab == "bands";
         TabMap.IsVisible      = tab == "map";
         TabSessions.IsVisible = tab == "sessions";
+        TabResults.IsVisible  = tab == "results";
         var active   = new SolidColorBrush(Avalonia.Media.Color.Parse("#0d3d2e"));
         var inactive = new SolidColorBrush(Avalonia.Media.Color.Parse("#1a2637"));
         var activeFg   = new SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75"));
@@ -328,12 +329,15 @@ public partial class SequoiaView : UserControl
         TabBtnBands.Background    = tab == "bands"    ? active : inactive;
         TabBtnMap.Background      = tab == "map"      ? active : inactive;
         TabBtnSessions.Background = tab == "sessions" ? active : inactive;
+        TabBtnResults.Background  = tab == "results"  ? active : inactive;
         TabBtnImages.Foreground   = tab == "images"   ? activeFg : inactiveFg;
         TabBtnBands.Foreground    = tab == "bands"    ? activeFg : inactiveFg;
         TabBtnMap.Foreground      = tab == "map"      ? activeFg : inactiveFg;
         TabBtnSessions.Foreground = tab == "sessions" ? activeFg : inactiveFg;
+        TabBtnResults.Foreground  = tab == "results"  ? activeFg : inactiveFg;
     }
     private void OnTabImages(object? s, RoutedEventArgs e)   => SetTab("images");
+    private void OnTabResults(object? s, RoutedEventArgs e)  => SetTab("results");
     private void OnTabBands(object? s, RoutedEventArgs e)    => SetTab("bands");
     private void OnTabMap(object? s, RoutedEventArgs e)      => SetTab("map");
     private void OnTabSessions(object? s, RoutedEventArgs e) => SetTab("sessions");
@@ -789,7 +793,7 @@ public partial class SequoiaView : UserControl
     private string _histogramPath = "";
     private string _dashboardPath = "";
 
-    private void PopulateResultsTab(string scriptOutput, string dashboardPath)
+    private async Task PopulateResultsTab(string scriptOutput, string dashboardPath)
     {
         _dashboardPath = dashboardPath;
         var dir = System.IO.Path.GetDirectoryName(dashboardPath) ?? "";
@@ -799,25 +803,13 @@ public partial class SequoiaView : UserControl
         foreach (var line in lines)
         {
             if (line.Contains("NDVI mean"))
-            {
-                var val = line.Split(':').LastOrDefault()?.Trim() ?? "—";
-                MetricNdvi.Text = val;
-            }
+                MetricNdvi.Text = line.Split(':').LastOrDefault()?.Trim() ?? "—";
             if (line.Contains("Healthy veg"))
-            {
-                var val = line.Split(':').LastOrDefault()?.Trim() ?? "—";
-                MetricHealthy.Text = val;
-            }
+                MetricHealthy.Text = line.Split(':').LastOrDefault()?.Trim() ?? "—";
             if (line.Contains("Stressed veg"))
-            {
-                var val = line.Split(':').LastOrDefault()?.Trim() ?? "—";
-                MetricStressed.Text = val;
-            }
+                MetricStressed.Text = line.Split(':').LastOrDefault()?.Trim() ?? "—";
             if (line.Contains("Bare soil"))
-            {
-                var val = line.Split(':').LastOrDefault()?.Trim() ?? "—";
-                MetricBare.Text = val;
-            }
+                MetricBare.Text = line.Split(':').LastOrDefault()?.Trim() ?? "—";
         }
 
         // Generate individual map PNGs from the analysis script
@@ -825,7 +817,7 @@ public partial class SequoiaView : UserControl
         var ndrePath   = System.IO.Path.Combine(dir, "ndre_map.png");
         var histPath   = System.IO.Path.Combine(dir, "ndvi_histogram.png");
 
-        GenerateSeparateMaps(dir, ndviPath, ndrePath, histPath);
+        await Task.Run(() => GenerateSeparateMaps(_lastLoadedFolder, ndviPath, ndrePath, histPath));
 
         _ndviMapPath = ndviPath;
         _ndreMapPath = ndrePath;
@@ -838,70 +830,23 @@ public partial class SequoiaView : UserControl
 
     private void GenerateSeparateMaps(string folder, string ndviOut, string ndreOut, string histOut)
     {
-        var script = $@"
-import glob, numpy as np
-from PIL import Image
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
-
-def load(band):
-    files = sorted(glob.glob(r'{folder}' + '/*_' + band + '.TIF'))
-    if not files: return None
-    arr = np.array(Image.open(files[len(files)//2])).astype(float)
-    return np.clip(arr / 65535.0, 0, 1)
-
-nir=load('NIR'); red=load('RED'); reg=load('REG'); gre=load('GRE')
-if nir is None or red is None: exit()
-
-ndvi = np.clip((nir-red)/(nir+red+1e-9),-1,1)
-ndre = np.clip((nir-reg)/(nir+reg+1e-9),-1,1) if reg is not None else ndvi
-
-ndvi_cm = LinearSegmentedColormap.from_list('n',['#8B4513','#F4A460','#FFFF00','#9ACD32','#006400'])
-ndre_cm = LinearSegmentedColormap.from_list('r',['#8B0000','#FFA500','#FFFF00','#00FF00','#006400'])
-
-fig,ax=plt.subplots(figsize=(10,8),facecolor='#0f1923')
-im=ax.imshow(ndvi,cmap=ndvi_cm,vmin=-0.2,vmax=0.8)
-plt.colorbar(im,ax=ax,label='NDVI')
-ax.set_title('NDVI Map — Vegetation Health',color='white',fontsize=14,fontweight='bold')
-ax.axis('off'); fig.patch.set_facecolor('#0f1923')
-plt.savefig(r'{ndviOut}',dpi=150,bbox_inches='tight',facecolor='#0f1923'); plt.close()
-
-fig,ax=plt.subplots(figsize=(10,8),facecolor='#0f1923')
-im=ax.imshow(ndre,cmap=ndre_cm,vmin=-0.2,vmax=0.6)
-plt.colorbar(im,ax=ax,label='NDRE')
-ax.set_title('NDRE Map — Chlorophyll / Stress',color='white',fontsize=14,fontweight='bold')
-ax.axis('off'); fig.patch.set_facecolor('#0f1923')
-plt.savefig(r'{ndreOut}',dpi=150,bbox_inches='tight',facecolor='#0f1923'); plt.close()
-
-fig,ax=plt.subplots(figsize=(10,6),facecolor='#0f1923')
-ax.set_facecolor('#1a2637')
-flat=ndvi.flatten(); flat=flat[~np.isnan(flat)]
-n,bins,patches=ax.hist(flat,bins=80,color='#22c55e',edgecolor='none')
-for p,l in zip(patches,bins[:-1]):
-    p.set_facecolor('#ef4444' if l<0 else '#f97316' if l<0.2 else '#FFFF00' if l<0.4 else '#22c55e')
-ax.axvline(flat.mean(),color='white',linestyle='--',linewidth=1.5,label=f'Mean: {{flat.mean():.3f}}')
-ax.set_title('NDVI Distribution',color='white',fontsize=14,fontweight='bold')
-ax.set_xlabel('NDVI',color='white'); ax.set_ylabel('Pixels',color='white')
-ax.tick_params(colors='white'); ax.spines[:].set_color('#2d3f52')
-ax.legend(facecolor='#1a2637',labelcolor='white')
-fig.patch.set_facecolor('#0f1923')
-plt.savefig(r'{histOut}',dpi=150,bbox_inches='tight',facecolor='#0f1923'); plt.close()
-print('done')
-";
-        var tmpScript = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gen_maps.py");
-        File.WriteAllText(tmpScript, script);
+        var dir = System.IO.Path.GetDirectoryName(ndviOut) ?? "";
         var psi = new System.Diagnostics.ProcessStartInfo
         {
             FileName = "/home/sam/agridrone_env/bin/python3",
-            Arguments = tmpScript,
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
-        var proc = System.Diagnostics.Process.Start(psi);
+        psi.ArgumentList.Add("/home/sam/sequoia_test/generate_maps.py");
+        psi.ArgumentList.Add(folder);
+        psi.ArgumentList.Add(dir);
+                var proc = System.Diagnostics.Process.Start(psi);
+        var stdout = proc?.StandardOutput.ReadToEnd() ?? "";
+        var stderr = proc?.StandardError.ReadToEnd() ?? "";
         proc?.WaitForExit();
+        Console.WriteLine("generate_maps stdout: " + stdout);
+        Console.WriteLine("generate_maps stderr: " + stderr);
     }
 
     private void LoadImageIntoControl(string path, Avalonia.Controls.Image imgControl,
@@ -987,26 +932,14 @@ print('done')
 
         if (File.Exists(outPath))
         {
-            // Parse stats from output
-            var lines = output.Split('\n');
-            var stats = new System.Text.StringBuilder();
-            stats.AppendLine("🌿 NDVI Analysis complete:");
-            foreach (var line in lines)
-            {
-                if (line.Contains("NDVI mean") || line.Contains("Healthy") ||
-                    line.Contains("Stressed") || line.Contains("Bare") ||
-                    line.Contains("NDRE") || line.Contains("GNDVI"))
-                    stats.AppendLine(line.Trim());
-            }
-
-            // Display output image
-            using var stream = File.OpenRead(outPath);
-            StatusText.Text = "✓ NDVI analysis complete.";
-            RightPanelTitle.Text = "NDVI Analysis — " + System.IO.Path.GetFileName(_lastLoadedFolder);
+            SetTab("results");
+            await PopulateResultsTab(output, outPath);
+            StatusText.Text = "NDVI analysis complete - see Results tab.";
+            RightPanelTitle.Text = "NDVI Analysis - " + System.IO.Path.GetFileName(_lastLoadedFolder);
         }
         else
         {
-            StatusText.Text = "Analysis failed. Check Python output.";
+            StatusText.Text = "Analysis failed - check terminal for errors.";
         }
     }
 }
