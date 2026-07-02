@@ -25,6 +25,7 @@ public partial class SequoiaView : UserControl
     private string _baseUrl = "http://10.1.1.2";
     private bool _connected = false;
     private List<string> _imageFiles = new();
+    private string _lastLoadedFolder = "";
     private List<(DateTime dt, string path)> _sessionFiles = new();
     private Mapsui.Map? _nmeaMap;
 
@@ -358,6 +359,7 @@ public partial class SequoiaView : UserControl
         BandCaptureInfo.Text = $"Loading {localFiles.Count} images from {System.IO.Path.GetFileName(folderPath)}...";
         ShowBandPreview(localFiles);
         GroupIntoSessions(localFiles);
+        _lastLoadedFolder = folderPath;
         RightPanelTitle.Text = $"{localFiles.Count} images loaded from local folder";
         StatusText.Text = $"Loaded {localFiles.Count} local images for preview.";
     }
@@ -382,6 +384,7 @@ public partial class SequoiaView : UserControl
             return;
         }
         BandCaptureInfo.Text = $"Showing latest capture — {latestByBand.Count}/5 bands found.";
+        BtnNdviAnalysis.IsVisible = latestByBand.Count > 0;
         for (int i = 0; i < bands.Length; i++)
         {
             var band = bands[i];
@@ -779,5 +782,231 @@ public partial class SequoiaView : UserControl
             }
         }
         catch { AutoSyncText.Text = "Could not check image count."; }
+    }
+
+    private string _ndviMapPath = "";
+    private string _ndreMapPath = "";
+    private string _histogramPath = "";
+    private string _dashboardPath = "";
+
+    private void PopulateResultsTab(string scriptOutput, string dashboardPath)
+    {
+        _dashboardPath = dashboardPath;
+        var dir = System.IO.Path.GetDirectoryName(dashboardPath) ?? "";
+
+        // Parse stats from output
+        var lines = scriptOutput.Split('\n');
+        foreach (var line in lines)
+        {
+            if (line.Contains("NDVI mean"))
+            {
+                var val = line.Split(':').LastOrDefault()?.Trim() ?? "—";
+                MetricNdvi.Text = val;
+            }
+            if (line.Contains("Healthy veg"))
+            {
+                var val = line.Split(':').LastOrDefault()?.Trim() ?? "—";
+                MetricHealthy.Text = val;
+            }
+            if (line.Contains("Stressed veg"))
+            {
+                var val = line.Split(':').LastOrDefault()?.Trim() ?? "—";
+                MetricStressed.Text = val;
+            }
+            if (line.Contains("Bare soil"))
+            {
+                var val = line.Split(':').LastOrDefault()?.Trim() ?? "—";
+                MetricBare.Text = val;
+            }
+        }
+
+        // Generate individual map PNGs from the analysis script
+        var ndviPath   = System.IO.Path.Combine(dir, "ndvi_map.png");
+        var ndrePath   = System.IO.Path.Combine(dir, "ndre_map.png");
+        var histPath   = System.IO.Path.Combine(dir, "ndvi_histogram.png");
+
+        GenerateSeparateMaps(dir, ndviPath, ndrePath, histPath);
+
+        _ndviMapPath = ndviPath;
+        _ndreMapPath = ndrePath;
+        _histogramPath = histPath;
+
+        LoadImageIntoControl(ndviPath, NdviMapImage, NdviMapStatus, "NDVI map");
+        LoadImageIntoControl(ndrePath, NdreMapImage, NdreMapStatus, "NDRE map");
+        LoadImageIntoControl(histPath, HistogramImage, HistogramStatus, "Histogram");
+    }
+
+    private void GenerateSeparateMaps(string folder, string ndviOut, string ndreOut, string histOut)
+    {
+        var script = $@"
+import glob, numpy as np
+from PIL import Image
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
+
+def load(band):
+    files = sorted(glob.glob(r'{folder}' + '/*_' + band + '.TIF'))
+    if not files: return None
+    arr = np.array(Image.open(files[len(files)//2])).astype(float)
+    return np.clip(arr / 65535.0, 0, 1)
+
+nir=load('NIR'); red=load('RED'); reg=load('REG'); gre=load('GRE')
+if nir is None or red is None: exit()
+
+ndvi = np.clip((nir-red)/(nir+red+1e-9),-1,1)
+ndre = np.clip((nir-reg)/(nir+reg+1e-9),-1,1) if reg is not None else ndvi
+
+ndvi_cm = LinearSegmentedColormap.from_list('n',['#8B4513','#F4A460','#FFFF00','#9ACD32','#006400'])
+ndre_cm = LinearSegmentedColormap.from_list('r',['#8B0000','#FFA500','#FFFF00','#00FF00','#006400'])
+
+fig,ax=plt.subplots(figsize=(10,8),facecolor='#0f1923')
+im=ax.imshow(ndvi,cmap=ndvi_cm,vmin=-0.2,vmax=0.8)
+plt.colorbar(im,ax=ax,label='NDVI')
+ax.set_title('NDVI Map — Vegetation Health',color='white',fontsize=14,fontweight='bold')
+ax.axis('off'); fig.patch.set_facecolor('#0f1923')
+plt.savefig(r'{ndviOut}',dpi=150,bbox_inches='tight',facecolor='#0f1923'); plt.close()
+
+fig,ax=plt.subplots(figsize=(10,8),facecolor='#0f1923')
+im=ax.imshow(ndre,cmap=ndre_cm,vmin=-0.2,vmax=0.6)
+plt.colorbar(im,ax=ax,label='NDRE')
+ax.set_title('NDRE Map — Chlorophyll / Stress',color='white',fontsize=14,fontweight='bold')
+ax.axis('off'); fig.patch.set_facecolor('#0f1923')
+plt.savefig(r'{ndreOut}',dpi=150,bbox_inches='tight',facecolor='#0f1923'); plt.close()
+
+fig,ax=plt.subplots(figsize=(10,6),facecolor='#0f1923')
+ax.set_facecolor('#1a2637')
+flat=ndvi.flatten(); flat=flat[~np.isnan(flat)]
+n,bins,patches=ax.hist(flat,bins=80,color='#22c55e',edgecolor='none')
+for p,l in zip(patches,bins[:-1]):
+    p.set_facecolor('#ef4444' if l<0 else '#f97316' if l<0.2 else '#FFFF00' if l<0.4 else '#22c55e')
+ax.axvline(flat.mean(),color='white',linestyle='--',linewidth=1.5,label=f'Mean: {{flat.mean():.3f}}')
+ax.set_title('NDVI Distribution',color='white',fontsize=14,fontweight='bold')
+ax.set_xlabel('NDVI',color='white'); ax.set_ylabel('Pixels',color='white')
+ax.tick_params(colors='white'); ax.spines[:].set_color('#2d3f52')
+ax.legend(facecolor='#1a2637',labelcolor='white')
+fig.patch.set_facecolor('#0f1923')
+plt.savefig(r'{histOut}',dpi=150,bbox_inches='tight',facecolor='#0f1923'); plt.close()
+print('done')
+";
+        var tmpScript = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gen_maps.py");
+        File.WriteAllText(tmpScript, script);
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "/home/sam/agridrone_env/bin/python3",
+            Arguments = tmpScript,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        var proc = System.Diagnostics.Process.Start(psi);
+        proc?.WaitForExit();
+    }
+
+    private void LoadImageIntoControl(string path, Avalonia.Controls.Image imgControl,
+        TextBlock statusBlock, string label)
+    {
+        if (File.Exists(path))
+        {
+            try
+            {
+                using var stream = File.OpenRead(path);
+                imgControl.Source = new Avalonia.Media.Imaging.Bitmap(stream);
+                imgControl.IsVisible = true;
+                statusBlock.IsVisible = false;
+            }
+            catch { statusBlock.Text = $"{label} failed to load."; }
+        }
+        else
+        {
+            statusBlock.Text = $"{label} not generated.";
+        }
+    }
+
+    private void OpenInSystemViewer(string path)
+    {
+        if (!File.Exists(path)) { StatusText.Text = "File not found — run analysis first."; return; }
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "xdg-open", Arguments = path,
+            UseShellExecute = true
+        });
+    }
+
+    private void OnOpenNdviMap(object? s, RoutedEventArgs e)      => OpenInSystemViewer(_ndviMapPath);
+    private void OnOpenNdreMap(object? s, RoutedEventArgs e)      => OpenInSystemViewer(_ndreMapPath);
+    private void OnOpenHistogram(object? s, RoutedEventArgs e)    => OpenInSystemViewer(_histogramPath);
+    private void OnOpenFullDashboard(object? s, RoutedEventArgs e)=> OpenInSystemViewer(_dashboardPath);
+
+    private async void OnNdviAnalysis(object? s, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_lastLoadedFolder))
+        {
+            StatusText.Text = "Load a folder of images first.";
+            return;
+        }
+        StatusText.Text = "Running NDVI analysis... please wait.";
+        BtnNdviAnalysis.IsEnabled = false;
+
+        var scriptPath = "/home/sam/sequoia_test/analyze_sequoia.py";
+        var outPath = System.IO.Path.Combine(
+            System.IO.Path.GetDirectoryName(_lastLoadedFolder) ?? _lastLoadedFolder,
+            "sequoia_analysis.png");
+
+        // Write a temp script that uses the selected folder
+        var tempScript = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(), "analyze_sequoia_temp.py");
+        var scriptContent = File.ReadAllText(scriptPath)
+            .Replace(
+                "folder = os.path.expanduser(\"~/sequoia_test/parrot_sequoia\")",
+                $"folder = \"{_lastLoadedFolder}\"")
+            .Replace(
+                "out_path = os.path.expanduser(\"~/sequoia_test/sequoia_analysis.png\")",
+                $"out_path = \"{outPath}\"");
+        File.WriteAllText(tempScript, scriptContent);
+
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "/home/sam/agridrone_env/bin/python3",
+            Arguments = tempScript,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+
+        string output = "";
+        await Task.Run(() =>
+        {
+            var proc = System.Diagnostics.Process.Start(psi);
+            output = proc?.StandardOutput.ReadToEnd() ?? "";
+            proc?.WaitForExit();
+        });
+
+        BtnNdviAnalysis.IsEnabled = true;
+
+        if (File.Exists(outPath))
+        {
+            // Parse stats from output
+            var lines = output.Split('\n');
+            var stats = new System.Text.StringBuilder();
+            stats.AppendLine("🌿 NDVI Analysis complete:");
+            foreach (var line in lines)
+            {
+                if (line.Contains("NDVI mean") || line.Contains("Healthy") ||
+                    line.Contains("Stressed") || line.Contains("Bare") ||
+                    line.Contains("NDRE") || line.Contains("GNDVI"))
+                    stats.AppendLine(line.Trim());
+            }
+
+            // Display output image
+            using var stream = File.OpenRead(outPath);
+            StatusText.Text = "✓ NDVI analysis complete.";
+            RightPanelTitle.Text = "NDVI Analysis — " + System.IO.Path.GetFileName(_lastLoadedFolder);
+        }
+        else
+        {
+            StatusText.Text = "Analysis failed. Check Python output.";
+        }
     }
 }
