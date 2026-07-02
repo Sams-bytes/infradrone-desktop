@@ -281,6 +281,10 @@
                   Background="#1a2637" Foreground="#94a3b8"
                   BorderBrush="#2d3f52" BorderThickness="0.5"
                   Padding="10,5" CornerRadius="6"/>
+          <Button Name="TabBtnResults" Content="🌿 NDVI results" Click="OnTabResults"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6"/>
           <Button Name="BtnDeleteAll" Content="🗑 Delete all" Click="OnDeleteAll"
                   Background="#3d0d0d" Foreground="#ef4444"
                   BorderBrush="#ef4444" BorderThickness="0.5"
@@ -312,6 +316,12 @@
             <TextBlock Name="BandCaptureInfo" Text="No captures yet."
                        FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
             <WrapPanel Name="BandGrid" Orientation="Horizontal"/>
+            <Button Name="BtnNdviAnalysis" Content="🌿 Generate NDVI analysis"
+                    Click="OnNdviAnalysis"
+                    Background="#0d3d2e" Foreground="#0d9e75"
+                    BorderBrush="#0d9e75" BorderThickness="0.5"
+                    Padding="8,5" CornerRadius="6" HorizontalAlignment="Left"
+                    IsVisible="False"/>
           </StackPanel>
 
           <!-- Tab: GPS track map -->
@@ -327,6 +337,115 @@
                     Padding="8,5" CornerRadius="6" IsEnabled="False"/>
             <Border Name="MapContainer" Height="400" CornerRadius="8"
                     Background="#131f2e" BorderBrush="#1e3a5f" BorderThickness="0.5"/>
+          </StackPanel>
+
+          <!-- Tab: NDVI Results -->
+          <StackPanel Name="TabResults" Spacing="12" IsVisible="False">
+            <TextBlock Text="NDVI analysis results" FontSize="11" Foreground="#64748b"/>
+
+            <!-- Metric cards -->
+            <Grid ColumnDefinitions="*,*,*,*" HorizontalAlignment="Stretch">
+              <Border Grid.Column="0" Background="#131f2e" CornerRadius="8" Padding="10"
+                      Margin="0,0,4,0" BorderBrush="#1e3a5f" BorderThickness="0.5">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="NDVI MEAN" FontSize="8" Foreground="#4a5568" LetterSpacing="1"/>
+                  <TextBlock Name="MetricNdvi" Text="—" FontSize="18" FontWeight="Bold"
+                             Foreground="#0d9e75"/>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="1" Background="#131f2e" CornerRadius="8" Padding="10"
+                      Margin="4,0,4,0" BorderBrush="#1e3a5f" BorderThickness="0.5">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="HEALTHY VEG" FontSize="8" Foreground="#4a5568" LetterSpacing="1"/>
+                  <TextBlock Name="MetricHealthy" Text="—" FontSize="18" FontWeight="Bold"
+                             Foreground="#22c55e"/>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="2" Background="#131f2e" CornerRadius="8" Padding="10"
+                      Margin="4,0,4,0" BorderBrush="#1e3a5f" BorderThickness="0.5">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="STRESSED" FontSize="8" Foreground="#4a5568" LetterSpacing="1"/>
+                  <TextBlock Name="MetricStressed" Text="—" FontSize="18" FontWeight="Bold"
+                             Foreground="#f59e0b"/>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="3" Background="#131f2e" CornerRadius="8" Padding="10"
+                      Margin="4,0,0,0" BorderBrush="#1e3a5f" BorderThickness="0.5">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="BARE SOIL" FontSize="8" Foreground="#4a5568" LetterSpacing="1"/>
+                  <TextBlock Name="MetricBare" Text="—" FontSize="18" FontWeight="Bold"
+                             Foreground="#94a3b8"/>
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <!-- NDVI map card -->
+            <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                    BorderBrush="#22c55e" BorderThickness="0.5">
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="🌿 NDVI map — vegetation health"
+                             FontSize="11" FontWeight="Bold" Foreground="#22c55e"/>
+                  <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenNdviMap"
+                          Background="#0d3d2e" Foreground="#0d9e75"
+                          BorderBrush="#0d9e75" BorderThickness="0.5"
+                          Padding="6,3" CornerRadius="4" FontSize="10"/>
+                </Grid>
+                <Image Name="NdviMapImage" Stretch="Uniform" MaxHeight="300" IsVisible="False"/>
+                <TextBlock Name="NdviMapStatus" Text="Run analysis to generate NDVI map"
+                           FontSize="10" Foreground="#64748b"/>
+              </StackPanel>
+            </Border>
+
+            <!-- NDRE map card -->
+            <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                    BorderBrush="#f97316" BorderThickness="0.5">
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="🔴 NDRE map — chlorophyll / stress"
+                             FontSize="11" FontWeight="Bold" Foreground="#f97316"/>
+                  <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenNdreMap"
+                          Background="#3d1a0d" Foreground="#f97316"
+                          BorderBrush="#f97316" BorderThickness="0.5"
+                          Padding="6,3" CornerRadius="4" FontSize="10"/>
+                </Grid>
+                <Image Name="NdreMapImage" Stretch="Uniform" MaxHeight="300" IsVisible="False"/>
+                <TextBlock Name="NdreMapStatus" Text="Run analysis to generate NDRE map"
+                           FontSize="10" Foreground="#64748b"/>
+              </StackPanel>
+            </Border>
+
+            <!-- Histogram card -->
+            <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                    BorderBrush="#378add" BorderThickness="0.5">
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Text="📊 NDVI distribution histogram"
+                             FontSize="11" FontWeight="Bold" Foreground="#378add"/>
+                  <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenHistogram"
+                          Background="#0d1a3d" Foreground="#378add"
+                          BorderBrush="#378add" BorderThickness="0.5"
+                          Padding="6,3" CornerRadius="4" FontSize="10"/>
+                </Grid>
+                <Image Name="HistogramImage" Stretch="Uniform" MaxHeight="300" IsVisible="False"/>
+                <TextBlock Name="HistogramStatus" Text="Run analysis to generate histogram"
+                           FontSize="10" Foreground="#64748b"/>
+              </StackPanel>
+            </Border>
+
+            <!-- Full dashboard card -->
+            <Border Background="#131f2e" CornerRadius="8" Padding="10"
+                    BorderBrush="#1e3a5f" BorderThickness="0.5">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="🖼 Full analysis dashboard (all panels combined)"
+                           FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenFullDashboard"
+                        Background="#1a2637" Foreground="#94a3b8"
+                        BorderBrush="#2d3f52" BorderThickness="0.5"
+                        Padding="6,3" CornerRadius="4" FontSize="10"/>
+              </Grid>
+            </Border>
+
           </StackPanel>
 
           <!-- Tab: Sessions -->
