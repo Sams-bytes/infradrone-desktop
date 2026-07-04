@@ -98,6 +98,7 @@ public partial class SurveyGridView : UserControl
         {
             _drawing = false;
             CorridorStatus.Text = $"Centreline: {_corridorPoints.Count} points, {_corridorPoints.Count - 1} segments";
+            BtnGenerate.IsEnabled = true;
             return;
         }
         if (e.ClickCount == 2 && _areaPoints.Count >= 3)
@@ -113,7 +114,7 @@ public partial class SurveyGridView : UserControl
         {
             _corridorPoints.Add((lat, lon));
             CorridorStatus.Text = $"{_corridorPoints.Count} points — double-click to finish";
-            DrawGrid(_corridorPoints);
+            if (_corridorPoints.Count >= 2) DrawGrid(_corridorPoints);
         }
         else
         {
@@ -188,27 +189,74 @@ public partial class SurveyGridView : UserControl
         };
     }
 
+    private void OnModeArea(object? s, RoutedEventArgs e)
+    {
+        _corridorMode = false;
+        AreaModePanel.IsVisible = true;
+        CorridorModePanel.IsVisible = false;
+        BtnModeArea.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d3d2e"));
+        BtnModeArea.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75"));
+        BtnModeCorridor.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1a2637"));
+        BtnModeCorridor.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#94a3b8"));
+    }
+
+    private void OnModeCorridor(object? s, RoutedEventArgs e)
+    {
+        _corridorMode = true;
+        AreaModePanel.IsVisible = false;
+        CorridorModePanel.IsVisible = true;
+        BtnModeCorridor.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d3d2e"));
+        BtnModeCorridor.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75"));
+        BtnModeArea.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1a2637"));
+        BtnModeArea.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#94a3b8"));
+    }
+
+    private void OnDrawCorridor(object? s, RoutedEventArgs e)
+    {
+        _drawing = true;
+        _corridorPoints.Clear();
+        CorridorStatus.Text = "Click to place centreline points — double-click to finish";
+    }
+
     private void OnGenerate(object? s, RoutedEventArgs e)
     {
-        if (_areaPoints.Count < 3) return;
         var camera = GetSelectedCamera();
         var altitude = (double)(AltitudeInput.Value ?? 60);
         var frontOverlap = (double)(FrontOverlapInput.Value ?? 80);
         var sideOverlap = (double)(SideOverlapInput.Value ?? 70);
         var speed = (double)(SpeedInput.Value ?? 8);
 
-        _result = SurveyGridService.GenerateGrid(_areaPoints, altitude, camera, frontOverlap, sideOverlap, speed);
-
-        GsdText.Text = $"{_result.GsdCm:F1} cm/px";
-        FootprintText.Text = $"{_result.FootprintWidthM:F0} x {_result.FootprintHeightM:F0} m";
-        LineSpacingText.Text = $"{_result.LineSpacingM:F0} m";
-        PhotosText.Text = $"~{_result.EstimatedPhotos} photos";
-        FlightTimeText.Text = $"~{_result.EstimatedFlightTimeMin:F1} min";
-        AreaText.Text = $"{_result.AreaHa:F2} ha";
-        ResultsCard.IsVisible = true;
-        BtnSendToMission.IsEnabled = true;
-
-        DrawGrid(_result.Waypoints);
+        if (_corridorMode)
+        {
+            if (_corridorPoints.Count < 2) { CorridorStatus.Text = "Draw a centreline first."; return; }
+            double.TryParse(CorridorWidth.Text, out var corridorW);
+            if (corridorW <= 0) corridorW = 100;
+            _corridorResult = SurveyGridService.GenerateCorridor(
+                _corridorPoints, corridorW, altitude, camera, frontOverlap, sideOverlap, speed);
+            GsdText.Text = $"{_corridorResult.GsdCm:F1} cm/px";
+            FootprintText.Text = $"{_corridorResult.NumSwaths} swath(s)";
+            LineSpacingText.Text = $"{_corridorResult.LineSpacingM:F0} m";
+            PhotosText.Text = $"~{_corridorResult.EstimatedPhotos} photos";
+            FlightTimeText.Text = $"~{_corridorResult.EstimatedFlightTimeMin:F1} min";
+            AreaText.Text = $"{_corridorResult.CorridorLengthKm:F2} km corridor";
+            ResultsCard.IsVisible = true;
+            BtnSendToMission.IsEnabled = true;
+            DrawGrid(_corridorResult.Waypoints);
+        }
+        else
+        {
+            if (_areaPoints.Count < 3) return;
+            _result = SurveyGridService.GenerateGrid(_areaPoints, altitude, camera, frontOverlap, sideOverlap, speed);
+            GsdText.Text = $"{_result.GsdCm:F1} cm/px";
+            FootprintText.Text = $"{_result.FootprintWidthM:F0} x {_result.FootprintHeightM:F0} m";
+            LineSpacingText.Text = $"{_result.LineSpacingM:F0} m";
+            PhotosText.Text = $"~{_result.EstimatedPhotos} photos";
+            FlightTimeText.Text = $"~{_result.EstimatedFlightTimeMin:F1} min";
+            AreaText.Text = $"{_result.AreaHa:F2} ha";
+            ResultsCard.IsVisible = true;
+            BtnSendToMission.IsEnabled = true;
+            DrawGrid(_result.Waypoints);
+        }
     }
 
     public List<(double Lat, double Lon, double AltM)>? GetGeneratedWaypoints()
