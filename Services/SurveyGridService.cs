@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace InfraDroneDesktop.Services;
 
@@ -42,8 +43,115 @@ public class SurveyGridResult
     public double AreaHa { get; set; }
 }
 
+public class CorridorScanResult
+{
+    public List<(double Lat, double Lon)> Waypoints { get; set; } = new();
+    public double GsdCm { get; set; }
+    public double LineSpacingM { get; set; }
+    public double ShotIntervalM { get; set; }
+    public int EstimatedPhotos { get; set; }
+    public double EstimatedFlightTimeMin { get; set; }
+    public double CorridorLengthKm { get; set; }
+    public int NumSwaths { get; set; }
+}
+
 public class SurveyGridService
 {
+    // Generate a corridor scan pattern along a centreline path
+    public static CorridorScanResult GenerateCorridor(
+        List<(double Lat, double Lon)> centreline,
+        double corridorWidthM,
+        double altitudeM,
+        CameraProfile camera,
+        double frontOverlapPct = 80,
+        double sideOverlapPct = 70,
+        double speedMs = 8)
+    {
+        var result = new CorridorScanResult();
+        if (centreline.Count < 2) return result;
+
+        var centerLat = centreline.Sum(p => p.Lat) / centreline.Count;
+        var metersPerDegLat = 111320.0;
+        var metersPerDegLon = 111320.0 * Math.Cos(centerLat * Math.PI / 180.0);
+
+        // GSD and footprint
+        var gsdCm = (camera.SensorWidthMm * altitudeM * 100) / (camera.FocalLengthMm * camera.ImageWidthPx);
+        result.GsdCm = gsdCm;
+        var footprintW = (camera.ImageWidthPx * gsdCm) / 100.0;
+        var footprintH = (camera.ImageHeightPx * gsdCm) / 100.0;
+        var lineSpacing = footprintW * (1 - sideOverlapPct / 100.0);
+        var shotInterval = footprintH * (1 - frontOverlapPct / 100.0);
+        result.LineSpacingM = lineSpacing;
+        result.ShotIntervalM = shotInterval;
+
+        // Number of parallel swaths needed to cover the corridor width
+        int numSwaths = Math.Max(1, (int)Math.Ceiling(corridorWidthM / lineSpacing));
+        result.NumSwaths = numSwaths;
+
+        // Calculate total centreline length
+        double totalLength = 0;
+        for (int i = 1; i < centreline.Count; i++)
+        {
+            var dLat = (centreline[i].Lat - centreline[i-1].Lat) * metersPerDegLat;
+            var dLon = (centreline[i].Lon - centreline[i-1].Lon) * metersPerDegLon;
+            totalLength += Math.Sqrt(dLat*dLat + dLon*dLon);
+        }
+        result.CorridorLengthKm = totalLength / 1000.0;
+
+        // Generate parallel swath lines offset from centreline
+        var waypoints = new List<(double Lat, double Lon)>();
+        double halfWidth = corridorWidthM / 2.0;
+        bool goingForward = true;
+
+        for (int s = 0; s < numSwaths; s++)
+        {
+            // Offset from centre: distribute swaths evenly across corridor width
+            double offset = -halfWidth + (s + 0.5) * lineSpacing;
+
+            var swathPoints = new List<(double Lat, double Lon)>();
+            for (int pi = 0; pi < centreline.Count; pi++)
+            {
+                var (lat, lon) = centreline[pi];
+                // Calculate perpendicular offset for each centreline point
+                int idx = pi;
+                double bearingRad = 0;
+                if (pi < centreline.Count - 1)
+                {
+                    var dLat = (centreline[pi+1].Lat - lat) * metersPerDegLat;
+                    var dLon = (centreline[pi+1].Lon - lon) * metersPerDegLon;
+                    bearingRad = Math.Atan2(dLon, dLat);
+                }
+                else if (pi > 0)
+                {
+                    var dLat = (lat - centreline[pi-1].Lat) * metersPerDegLat;
+                    var dLon = (lon - centreline[pi-1].Lon) * metersPerDegLon;
+                    bearingRad = Math.Atan2(dLon, dLat);
+                }
+                // Perpendicular bearing
+                var perpBearing = bearingRad + Math.PI / 2;
+                var offsetLat = lat + (offset * Math.Cos(perpBearing)) / metersPerDegLat;
+                var offsetLon = lon + (offset * Math.Sin(perpBearing)) / metersPerDegLon;
+                swathPoints.Add((offsetLat, offsetLon));
+            }
+
+            if (goingForward)
+                waypoints.AddRange(swathPoints);
+            else
+            {
+                swathPoints.Reverse();
+                waypoints.AddRange(swathPoints);
+            }
+            goingForward = !goingForward;
+        }
+
+        result.Waypoints = waypoints;
+        result.EstimatedPhotos = (int)(totalLength * numSwaths / shotInterval);
+        var totalDist = totalLength * numSwaths + (numSwaths * lineSpacing);
+        result.EstimatedFlightTimeMin = (totalDist / speedMs) / 60.0;
+
+        return result;
+    }
+
     // Generate a lawnmower grid pattern over a polygon area
     public static SurveyGridResult GenerateGrid(
         List<(double Lat, double Lon)> polygon,

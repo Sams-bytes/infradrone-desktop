@@ -18,11 +18,47 @@
                        FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
           </StackPanel>
 
-          <Button Name="BtnDrawArea" Content="✏ Draw survey area" Click="OnDrawArea"
-                  Background="#0d3d2e" Foreground="#0d9e75"
-                  BorderBrush="#0d9e75" BorderThickness="0.5"
-                  Padding="10,6" CornerRadius="6" HorizontalAlignment="Stretch"/>
-          <TextBlock Name="AreaStatus" Text="No area defined" FontSize="10" Foreground="#64748b"/>
+          <!-- Mode toggle -->
+          <Border Background="#131f2e" CornerRadius="8" Padding="8"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="6">
+              <TextBlock Text="SCAN MODE" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Name="BtnModeArea" Content="⬜ Area survey" Click="OnModeArea"
+                        Background="#0d3d2e" Foreground="#0d9e75"
+                        BorderBrush="#0d9e75" BorderThickness="0.5"
+                        Padding="8,4" CornerRadius="6"/>
+                <Button Name="BtnModeCorridor" Content="〰 Corridor scan" Click="OnModeCorridor"
+                        Background="#1a2637" Foreground="#94a3b8"
+                        BorderBrush="#2d3f52" BorderThickness="0.5"
+                        Padding="8,4" CornerRadius="6"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- Area mode controls -->
+          <StackPanel Name="AreaModePanel" Spacing="4">
+            <Button Name="BtnDrawArea" Content="✏ Draw survey area" Click="OnDrawArea"
+                    Background="#0d3d2e" Foreground="#0d9e75"
+                    BorderBrush="#0d9e75" BorderThickness="0.5"
+                    Padding="10,6" CornerRadius="6" HorizontalAlignment="Stretch"/>
+            <TextBlock Name="AreaStatus" Text="No area defined" FontSize="10" Foreground="#64748b"/>
+          </StackPanel>
+
+          <!-- Corridor mode controls -->
+          <StackPanel Name="CorridorModePanel" Spacing="4" IsVisible="False">
+            <Button Name="BtnDrawCorridor" Content="✏ Draw corridor centreline" Click="OnDrawCorridor"
+                    Background="#0d3d2e" Foreground="#0d9e75"
+                    BorderBrush="#0d9e75" BorderThickness="0.5"
+                    Padding="10,6" CornerRadius="6" HorizontalAlignment="Stretch"/>
+            <TextBlock Name="CorridorStatus" Text="No centreline defined" FontSize="10" Foreground="#64748b"/>
+            <TextBlock Text="Corridor width (m)" FontSize="10" Foreground="#64748b"/>
+            <TextBox Name="CorridorWidth" Text="100"
+                     Background="#1a2637" Foreground="#e2e8f0"
+                     BorderBrush="#2d3f52" BorderThickness="0.5"
+                     Padding="8,4" CornerRadius="6"/>
+          </StackPanel>
 
           <!-- Camera selection -->
           <StackPanel Spacing="4">

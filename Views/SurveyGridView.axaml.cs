@@ -28,7 +28,10 @@ public partial class SurveyGridView : UserControl
     private MemoryLayer? _gridLayer;
     private readonly List<(double Lat, double Lon)> _areaPoints = new();
     private bool _drawing = false;
+    private bool _corridorMode = false;
+    private readonly List<(double Lat, double Lon)> _corridorPoints = new();
     private SurveyGridResult? _result;
+    private CorridorScanResult? _corridorResult;
 
     public SurveyGridView()
     {
@@ -91,6 +94,12 @@ public partial class SurveyGridView : UserControl
         var worldY = vp.CenterY - (pos.Y - vp.Height / 2) * vp.Resolution;
         var (lon, lat) = SphericalMercator.ToLonLat(worldX, worldY);
 
+        if (e.ClickCount == 2 && _corridorMode && _corridorPoints.Count >= 2)
+        {
+            _drawing = false;
+            CorridorStatus.Text = $"Centreline: {_corridorPoints.Count} points, {_corridorPoints.Count - 1} segments";
+            return;
+        }
         if (e.ClickCount == 2 && _areaPoints.Count >= 3)
         {
             _drawing = false;
@@ -100,8 +109,17 @@ public partial class SurveyGridView : UserControl
             return;
         }
 
-        _areaPoints.Add((lat, lon));
-        AreaStatus.Text = $"{_areaPoints.Count} points — double-click to close";
+        if (_corridorMode)
+        {
+            _corridorPoints.Add((lat, lon));
+            CorridorStatus.Text = $"{_corridorPoints.Count} points — double-click to finish";
+            DrawGrid(_corridorPoints);
+        }
+        else
+        {
+            _areaPoints.Add((lat, lon));
+            AreaStatus.Text = $"{_areaPoints.Count} points — double-click to close";
+        }
         RefreshMap();
     }
 
@@ -195,8 +213,10 @@ public partial class SurveyGridView : UserControl
 
     public List<(double Lat, double Lon, double AltM)>? GetGeneratedWaypoints()
     {
-        if (_result == null) return null;
         var alt = (double)(AltitudeInput.Value ?? 60);
+        if (_corridorMode && _corridorResult != null)
+            return _corridorResult.Waypoints.Select(p => (p.Lat, p.Lon, alt)).ToList();
+        if (_result == null) return null;
         return _result.Waypoints.Select(p => (p.Lat, p.Lon, alt)).ToList();
     }
 
