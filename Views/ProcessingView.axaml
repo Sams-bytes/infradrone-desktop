@@ -103,6 +103,44 @@
         </StackPanel>
       </Border>
 
+    <!-- Geotagging section -->
+      <Border Background="#1a2637" CornerRadius="8" Padding="16"
+              BorderBrush="#1e3a5f" BorderThickness="0.5">
+        <StackPanel Spacing="10">
+          <TextBlock Text="🗺 Image Geotagging" FontSize="13" FontWeight="Bold"
+                     Foreground="#e2e8f0"/>
+          <TextBlock Text="Write GPS coordinates into image EXIF for accurate WebODM georeferencing."
+                     FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+
+          <TextBlock Text="FROM FLIGHT LOG (MAVLink tlog or ArduPilot CSV)"
+                     FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"/>
+          <TextBlock Text="Matches image timestamps to GPS positions from your Loong flight log."
+                     FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Name="BtnGeotag" Content="📍 Geotag from flight log" Click="OnGeotag"
+                    Background="#0d3d2e" Foreground="#0d9e75"
+                    BorderBrush="#0d9e75" BorderThickness="0.5"
+                    Padding="10,5" CornerRadius="6"/>
+          </StackPanel>
+          <TextBlock Name="GeotagStatus" Text="" FontSize="10"
+                     Foreground="#64748b" TextWrapping="Wrap"/>
+
+          <TextBlock Text="FROM SEQUOIA NMEA GPS LOG"
+                     FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1"
+                     Margin="0,8,0,0"/>
+          <TextBlock Text="Uses the Sequoia camera's own GPS track (generated_nmea.txt via ADB)."
+                     FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Name="BtnGeotagNmea" Content="🌿 Geotag from Sequoia NMEA" Click="OnGeotagNmea"
+                    Background="#0d3d2e" Foreground="#0d9e75"
+                    BorderBrush="#0d9e75" BorderThickness="0.5"
+                    Padding="10,5" CornerRadius="6"/>
+          </StackPanel>
+          <TextBlock Name="GeotagNmeaStatus" Text="" FontSize="10"
+                     Foreground="#64748b" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
     </StackPanel>
   </ScrollViewer>
 </UserControl>

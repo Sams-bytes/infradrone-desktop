@@ -145,4 +145,93 @@ public partial class ProcessingView : UserControl
             UseShellExecute = true
         });
     }
+    private async void OnGeotag(object? s, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var top = Avalonia.Controls.TopLevel.GetTopLevel(this);
+        if (top == null) return;
+
+        // Select flight log
+        var logs = await top.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Select flight log (.tlog or .csv)",
+            FileTypeFilter = new[] { new Avalonia.Platform.Storage.FilePickerFileType("Flight logs")
+                { Patterns = new[] { "*.tlog", "*.csv" } } }
+        });
+        if (logs.Count == 0) return;
+        var logPath = logs[0].Path.LocalPath;
+
+        // Select image folder
+        var folders = await top.StorageProvider.OpenFolderPickerAsync(
+            new Avalonia.Platform.Storage.FolderPickerOpenOptions { Title = "Select image folder to geotag" });
+        if (folders.Count == 0) return;
+        var imgFolder = folders[0].Path.LocalPath;
+
+        GeotagStatus.Text = "Geotagging images from flight log...";
+        var script = "/home/sam/infradrone-desktop/tools/geotag_from_tlog.py";
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "/home/sam/agridrone_env/bin/python3",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        psi.ArgumentList.Add(script);
+        psi.ArgumentList.Add(logPath);
+        psi.ArgumentList.Add(imgFolder);
+        string output = "";
+        await System.Threading.Tasks.Task.Run(() => {
+            var proc = System.Diagnostics.Process.Start(psi);
+            output = proc?.StandardOutput.ReadToEnd() ?? "";
+            output += proc?.StandardError.ReadToEnd() ?? "";
+            proc?.WaitForExit();
+        });
+        GeotagStatus.Text = output.Contains("Done:") ?
+            "✓ " + output.Split('\n').LastOrDefault(l => l.Contains("Done:")) :
+            "Error — check terminal output";
+    }
+
+    private async void OnGeotagNmea(object? s, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var top = Avalonia.Controls.TopLevel.GetTopLevel(this);
+        if (top == null) return;
+
+        // Select NMEA file
+        var files = await top.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Select Sequoia NMEA file (generated_nmea.txt)",
+            FileTypeFilter = new[] { new Avalonia.Platform.Storage.FilePickerFileType("NMEA files")
+                { Patterns = new[] { "*.txt", "*nmea*" } } }
+        });
+        if (files.Count == 0) return;
+        var nmea = files[0].Path.LocalPath;
+
+        var folders = await top.StorageProvider.OpenFolderPickerAsync(
+            new Avalonia.Platform.Storage.FolderPickerOpenOptions { Title = "Select Sequoia image folder" });
+        if (folders.Count == 0) return;
+        var imgFolder = folders[0].Path.LocalPath;
+
+        GeotagNmeaStatus.Text = "Geotagging from Sequoia NMEA...";
+        var script = "/home/sam/infradrone-desktop/tools/geotag_from_nmea.py";
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "/home/sam/agridrone_env/bin/python3",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        psi.ArgumentList.Add(script);
+        psi.ArgumentList.Add(nmea);
+        psi.ArgumentList.Add(imgFolder);
+        string output = "";
+        await System.Threading.Tasks.Task.Run(() => {
+            var proc = System.Diagnostics.Process.Start(psi);
+            output = proc?.StandardOutput.ReadToEnd() ?? "";
+            output += proc?.StandardError.ReadToEnd() ?? "";
+            proc?.WaitForExit();
+        });
+        GeotagNmeaStatus.Text = output.Contains("Done:") ?
+            "✓ " + output.Split('\n').LastOrDefault(l => l.Contains("Done:")) :
+            "Error — " + output.Split('\n').FirstOrDefault(l => l.Contains("ERROR")) ?? "check terminal";
+    }
+
 }
