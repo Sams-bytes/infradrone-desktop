@@ -417,4 +417,93 @@ public partial class MissionView : UserControl
             }
         }
     }
+    private void OnValidateInMission(object? s, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        ValidationStrip.Children.Clear();
+        if (_waypoints.Count == 0)
+        {
+            AddStripBadge("NO MISSION", "#ef4444", "#3d0d0d");
+            return;
+        }
+
+        // Altitude check
+        var maxAlt = _waypoints.Max(w => w.AltM);
+        AddStripBadge(maxAlt <= 120 ? "ALT OK" : "ALT!", maxAlt <= 120 ? "#0d9e75" : "#ef4444",
+                      maxAlt <= 120 ? "#0d3d2e" : "#3d0d0d");
+
+        // Airspace check
+        var geojsonPath = "/home/sam/agri_drone/airspace_nl.geojson";
+        if (System.IO.File.Exists(geojsonPath))
+        {
+            bool conflict = false;
+            try
+            {
+                var geojson = System.IO.File.ReadAllText(geojsonPath);
+                var doc = System.Text.Json.JsonDocument.Parse(geojson);
+                var features = doc.RootElement.GetProperty("features");
+                foreach (var wp in _waypoints)
+                {
+                    foreach (var feature in features.EnumerateArray())
+                    {
+                        try
+                        {
+                            var geom = feature.GetProperty("geometry");
+                            var type = geom.GetProperty("type").GetString();
+                            if (type != "Polygon" && type != "MultiPolygon") continue;
+                            var coords = type == "Polygon"
+                                ? geom.GetProperty("coordinates")[0]
+                                : geom.GetProperty("coordinates")[0][0];
+                            double minLat=90,maxLat=-90,minLon=180,maxLon=-180;
+                            foreach (var coord in coords.EnumerateArray())
+                            {
+                                var cLon = coord[0].GetDouble();
+                                var cLat = coord[1].GetDouble();
+                                minLat=Math.Min(minLat,cLat); maxLat=Math.Max(maxLat,cLat);
+                                minLon=Math.Min(minLon,cLon); maxLon=Math.Max(maxLon,cLon);
+                            }
+                            if (wp.Lat>=minLat && wp.Lat<=maxLat && wp.Lon>=minLon && wp.Lon<=maxLon)
+                            { conflict = true; break; }
+                        } catch { }
+                    }
+                    if (conflict) break;
+                }
+            } catch { }
+            AddStripBadge(conflict ? "AIRSPACE!" : "AIRSPACE OK",
+                          conflict ? "#f59e0b" : "#0d9e75",
+                          conflict ? "#3d2e0d" : "#0d3d2e");
+        }
+        else
+        {
+            AddStripBadge("NO AIRSPACE DATA", "#f59e0b", "#3d2e0d");
+        }
+
+        // Waypoint count
+        AddStripBadge($"{_waypoints.Count} WP", "#378add", "#0d1a3d");
+
+        // Distance
+        var dist = 0.0;
+        for (int i = 1; i < _waypoints.Count; i++)
+        {
+            var dLat = (_waypoints[i].Lat - _waypoints[i-1].Lat) * 111320;
+            var dLon = (_waypoints[i].Lon - _waypoints[i-1].Lon) * 111320 * Math.Cos(_waypoints[i].Lat * Math.PI / 180);
+            dist += Math.Sqrt(dLat*dLat + dLon*dLon);
+        }
+        AddStripBadge($"{dist/1000:F1}km", "#94a3b8", "#1a2637");
+    }
+
+    private void AddStripBadge(string text, string fg, string bg)
+    {
+        ValidationStrip.Children.Add(new Avalonia.Controls.Border
+        {
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(bg)),
+            CornerRadius = new Avalonia.CornerRadius(4),
+            Padding = new Avalonia.Thickness(6, 2),
+            Child = new Avalonia.Controls.TextBlock
+            {
+                Text = text, FontSize = 9, FontWeight = Avalonia.Media.FontWeight.Bold,
+                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(fg))
+            }
+        });
+    }
+
 }

@@ -3,7 +3,7 @@
              xmlns:maps="clr-namespace:Mapsui.UI.Avalonia;assembly=Mapsui.UI.Avalonia"
              x:Class="InfraDroneDesktop.Views.MissionView"
              Background="#0f1923">
-  <Grid RowDefinitions="Auto,*,Auto">
+  <Grid RowDefinitions="Auto,*,Auto,Auto">
 
     <!-- Toolbar -->
     <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
@@ -48,8 +48,24 @@
     <!-- Map -->
     <maps:MapControl Grid.Row="1" Name="MapControl"/>
 
+    <!-- Mission validation strip -->
+    <Border Grid.Row="2" Background="#0f1923" Padding="12,6"
+            BorderBrush="#1e3a5f" BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Text="🎯 VALIDATION" FontSize="9" FontWeight="Bold"
+                   Foreground="#4a5568" LetterSpacing="1" VerticalAlignment="Center"
+                   Margin="0,0,12,0"/>
+        <StackPanel Grid.Column="1" Name="ValidationStrip" Orientation="Horizontal" Spacing="6"/>
+        <Button Grid.Column="2" Name="BtnValidateInMission" Content="▶ Validate"
+                Click="OnValidateInMission"
+                Background="#0d3d2e" Foreground="#0d9e75"
+                BorderBrush="#0d9e75" BorderThickness="0.5"
+                Padding="8,3" CornerRadius="4" FontSize="10"/>
+      </Grid>
+    </Border>
+
     <!-- Waypoint list -->
-    <Border Grid.Row="2" Background="#1a2637" MaxHeight="160"
+    <Border Grid.Row="3" Background="#1a2637" MaxHeight="160"
             BorderBrush="#1e3a5f" BorderThickness="0,1,0,0">
       <Grid RowDefinitions="Auto,*">
         <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="16"
