@@ -127,6 +127,13 @@ public partial class MainWindow : Window
             _preflightView = new PreflightView();
             _preflightView.SetMavLink(_mav);
         }
+        // Pass current mission waypoints for validation
+        if (_missionView != null && _missionView._waypoints.Count > 0)
+        {
+            _preflightView.MissionWaypoints = _missionView._waypoints
+                .Select(w => (w.Lat, w.Lon, w.AltM))
+                .ToList();
+        }
         ContentArea.Child = _preflightView;
     }
     private NotamView? _notamView;

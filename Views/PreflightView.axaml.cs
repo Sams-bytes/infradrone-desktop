@@ -268,4 +268,175 @@ public partial class PreflightView : UserControl
         DateText.Text = DateTime.UtcNow.ToString("dd MMMM yyyy — HH:mm UTC");
         UpdateProgress();
     }
+
+    public List<(double Lat, double Lon, double AltM)>? MissionWaypoints { get; set; }
+
+    private void OnValidateMission(object? s, RoutedEventArgs e)
+    {
+        ValidatorResults.Items.Clear();
+        var results = new List<(string label, string status, string detail)>();
+
+        // Check 1: Mission loaded
+        if (MissionWaypoints == null || MissionWaypoints.Count == 0)
+        {
+            AddValidatorResult("Mission waypoints", "NO-GO", "No mission loaded — open Mission Planner and plan a route first.");
+            ValidatorHint.Text = "Load a mission in the Mission Planner first, then validate.";
+            return;
+        }
+        ValidatorHint.Text = $"Validating {MissionWaypoints.Count} waypoints...";
+        AddValidatorResult("Mission loaded", "GO", $"{MissionWaypoints.Count} waypoints found.");
+
+        // Check 2: Altitude limit (120m open category)
+        var maxAlt = MissionWaypoints.Max(w => w.AltM);
+        var altOk = maxAlt <= 120;
+        AddValidatorResult("Altitude limit (120m open category)",
+            altOk ? "GO" : "NO-GO",
+            $"Max altitude: {maxAlt:F0}m — {(altOk ? "within limit" : "EXCEEDS 120m limit")}");
+
+        // Check 3: Airspace check
+        try
+        {
+            var geojsonPath = "/home/sam/agri_drone/airspace_nl.geojson";
+            if (System.IO.File.Exists(geojsonPath))
+            {
+                var geojson = System.IO.File.ReadAllText(geojsonPath);
+                var conflicts = new List<string>();
+                foreach (var wp in MissionWaypoints)
+                {
+                    // Simple point-in-bounding-box check for each zone
+                    var zones = FindConflictingZones(geojson, wp.Lat, wp.Lon);
+                    conflicts.AddRange(zones.Where(z => !conflicts.Contains(z)));
+                }
+                if (conflicts.Count == 0)
+                    AddValidatorResult("LVNL airspace clearance", "GO", "No airspace conflicts detected.");
+                else
+                    AddValidatorResult("LVNL airspace clearance", "CAUTION",
+                        $"Possible conflicts: {string.Join(", ", conflicts.Take(3))}");
+            }
+            else
+            {
+                AddValidatorResult("LVNL airspace clearance", "CAUTION", "Airspace file not found — check ~/agri_drone/airspace_nl.geojson");
+            }
+        }
+        catch (Exception ex)
+        {
+            AddValidatorResult("LVNL airspace clearance", "CAUTION", $"Check failed: {ex.Message}");
+        }
+
+        // Check 4: Battery estimate
+        if (_mav != null)
+        {
+            var battPct = _mav.Telemetry.BatteryPct;
+            var battOk = battPct >= 80;
+            AddValidatorResult("Battery for mission",
+                battPct >= 80 ? "GO" : battPct >= 50 ? "CAUTION" : "NO-GO",
+                $"Current battery: {battPct}% — {(battOk ? "sufficient" : battPct >= 50 ? "marginal" : "insufficient for safe mission")}");
+        }
+        else
+        {
+            AddValidatorResult("Battery for mission", "CAUTION", "No telemetry — connect drone to check battery.");
+        }
+
+        // Check 5: GPS quality
+        if (_mav != null && _mav.Telemetry.Connected)
+        {
+            var sats = _mav.Telemetry.GpsSats;
+            AddValidatorResult("GPS quality",
+                sats >= 8 ? "GO" : sats >= 6 ? "CAUTION" : "NO-GO",
+                $"{sats} satellites — {(sats >= 8 ? "good" : sats >= 6 ? "marginal" : "insufficient")}");
+        }
+        else
+        {
+            AddValidatorResult("GPS quality", "CAUTION", "No telemetry — connect drone to check GPS.");
+        }
+
+        ValidatorHint.Text = "Validation complete.";
+    }
+
+    private List<string> FindConflictingZones(string geojson, double lat, double lon)
+    {
+        var conflicts = new List<string>();
+        try
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(geojson);
+            var features = doc.RootElement.GetProperty("features");
+            foreach (var feature in features.EnumerateArray())
+            {
+                try
+                {
+                    var props = feature.GetProperty("properties");
+                    var name = props.TryGetProperty("name", out var n) ? n.GetString() ?? "" :
+                               props.TryGetProperty("designator", out var d) ? d.GetString() ?? "" : "Unknown";
+                    var geom = feature.GetProperty("geometry");
+                    var type = geom.GetProperty("type").GetString();
+                    if (type != "Polygon" && type != "MultiPolygon") continue;
+
+                    // Get bounding box of first ring
+                    var coords = type == "Polygon"
+                        ? geom.GetProperty("coordinates")[0]
+                        : geom.GetProperty("coordinates")[0][0];
+
+                    double minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
+                    foreach (var coord in coords.EnumerateArray())
+                    {
+                        var cLon = coord[0].GetDouble();
+                        var cLat = coord[1].GetDouble();
+                        minLat = Math.Min(minLat, cLat); maxLat = Math.Max(maxLat, cLat);
+                        minLon = Math.Min(minLon, cLon); maxLon = Math.Max(maxLon, cLon);
+                    }
+                    if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon)
+                        conflicts.Add(name);
+                }
+                catch { }
+            }
+        }
+        catch { }
+        return conflicts;
+    }
+
+    private void AddValidatorResult(string label, string status, string detail)
+    {
+        var color = status == "GO" ? "#0d9e75" : status == "CAUTION" ? "#f59e0b" : "#ef4444";
+        var bg = status == "GO" ? "#0d3d2e" : status == "CAUTION" ? "#3d2e0d" : "#3d0d0d";
+        var row = new Border
+        {
+            Background = new SolidColorBrush(Color.Parse("#1a2637")),
+            CornerRadius = new Avalonia.CornerRadius(6),
+            Padding = new Avalonia.Thickness(8, 5),
+            Margin = new Avalonia.Thickness(0, 1),
+            Child = new Grid
+            {
+                ColumnDefinitions = new ColumnDefinitions("Auto,*"),
+                Children =
+                {
+                    new Border
+                    {
+                        Background = new SolidColorBrush(Color.Parse(bg)),
+                        CornerRadius = new Avalonia.CornerRadius(4),
+                        Padding = new Avalonia.Thickness(6, 2),
+                        Margin = new Avalonia.Thickness(0, 0, 8, 0),
+                        [Grid.ColumnProperty] = 0,
+                        Child = new TextBlock
+                        {
+                            Text = status, FontSize = 9, FontWeight = Avalonia.Media.FontWeight.Bold,
+                            Foreground = new SolidColorBrush(Color.Parse(color))
+                        }
+                    },
+                    new StackPanel
+                    {
+                        [Grid.ColumnProperty] = 1,
+                        Children =
+                        {
+                            new TextBlock { Text = label, FontSize = 11,
+                                Foreground = new SolidColorBrush(Color.Parse("#e2e8f0")) },
+                            new TextBlock { Text = detail, FontSize = 10,
+                                Foreground = new SolidColorBrush(Color.Parse("#64748b")),
+                                TextWrapping = Avalonia.Media.TextWrapping.Wrap }
+                        }
+                    }
+                }
+            }
+        };
+        ValidatorResults.Items.Add(row);
+    }
 }
