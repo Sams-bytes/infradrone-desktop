@@ -9,3 +9,5 @@ mav.tlog
 mav.tlog.raw
 *.tlog
 *.parm
+__pycache__/
+*.pyc

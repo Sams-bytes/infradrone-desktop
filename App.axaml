@@ -18,6 +18,29 @@
     <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
       <Setter Property="Background" Value="#1e3a5f"/>
     </Style>
+
+    <Style Selector="Expander.navgroup">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Margin" Value="4,2"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="Expander.navgroup /template/ ToggleButton#ExpanderHeader">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#64748b"/>
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Padding" Value="8,4"/>
+      <Setter Property="MinHeight" Value="0"/>
+      <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="Expander.navgroup /template/ ContentPresenter#ExpanderContent">
+      <Setter Property="Margin" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+    </Style>
+    <Style Selector="Expander.navgroup /template/ ToggleButton#ExpanderHeader:pointerover">
+      <Setter Property="Background" Value="#152238"/>
+    </Style>
+
     <Style Selector="Button.nav-connect">
       <Setter Property="Background" Value="#0d3d2e"/>
       <Setter Property="Foreground" Value="#0d9e75"/>
