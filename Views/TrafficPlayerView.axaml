@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.TrafficPlayerView">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,10">
+      <TextBlock Text="🎬 Interactive Traffic Replay" FontSize="16" FontWeight="Bold" Foreground="White"/>
+      <TextBlock Text="Real drone-tracked positions, openDD rdb1 -- scrub or play to watch road users move through the roundabout."
+                 FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+    </StackPanel>
+
+    <Border DockPanel.Dock="Bottom" Background="#131f2e" CornerRadius="8" Padding="10" Margin="0,10,0,0"
+            BorderBrush="#1e3a5f" BorderThickness="0.5">
+      <StackPanel Spacing="6">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Button Grid.Column="0" Name="PlayPauseButton" Content="▶ Play" Click="OnPlayPause"
+                  Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                  BorderThickness="0.5" Padding="12,6" CornerRadius="6" FontSize="11"/>
+          <Slider Grid.Column="1" Name="TimeSlider" Margin="10,0" Minimum="0"
+                  ValueChanged="OnSliderChanged"/>
+          <TextBlock Grid.Column="2" Name="TimeLabel" Text="0.0s / 0.0s"
+                     Foreground="#94a3b8" FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
+        </Grid>
+        <TextBlock Name="StatusText" Text="Loading..." FontSize="10" Foreground="#64748b"/>
+      </StackPanel>
+    </Border>
+
+    <Grid>
+      <Viewbox Stretch="Uniform">
+        <Grid>
+          <Image Name="BackgroundImage"/>
+          <Canvas Name="OverlayCanvas" Background="Transparent"/>
+        </Grid>
+      </Viewbox>
+
+      <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12"
+              Background="#c0131f2e" CornerRadius="8" Padding="10"
+              BorderBrush="#1e3a5f" BorderThickness="0.5">
+        <StackPanel Spacing="5">
+          <TextBlock Text="Legend / Filter" FontSize="11" FontWeight="Bold" Foreground="White" Margin="0,0,0,4"/>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <CheckBox Name="FilterPedestrian" IsChecked="True" Click="OnFilterChanged"/>
+            <Ellipse Width="14" Height="14" Fill="#dc2626"/>
+            <TextBlock Text="Pedestrian" FontSize="10" Foreground="#e2e8f0"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <CheckBox Name="FilterBicycle" IsChecked="True" Click="OnFilterChanged"/>
+            <Ellipse Width="14" Height="14" Fill="#eab308"/>
+            <TextBlock Text="Bicycle / Motorcycle" FontSize="10" Foreground="#e2e8f0"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <CheckBox Name="FilterCar" IsChecked="True" Click="OnFilterChanged"/>
+            <Ellipse Width="14" Height="14" Fill="#3E8E7E"/>
+            <TextBlock Text="Car / Van / Truck" FontSize="10" Foreground="#e2e8f0"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <CheckBox Name="FilterBus" IsChecked="True" Click="OnFilterChanged"/>
+            <Ellipse Width="14" Height="14" Fill="#8b5cf6"/>
+            <TextBlock Text="Bus" FontSize="10" Foreground="#e2e8f0"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <CheckBox Name="FilterTrailer" IsChecked="True" Click="OnFilterChanged"/>
+            <Ellipse Width="14" Height="14" Fill="#94a3b8"/>
+            <TextBlock Text="Trailer" FontSize="10" Foreground="#e2e8f0"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,4,0,0">
+            <Ellipse Width="18" Height="18" Fill="Transparent" Stroke="White" StrokeThickness="2.5"/>
+            <TextBlock Text="Near-miss highlight" FontSize="10" Foreground="#e2e8f0"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</UserControl>

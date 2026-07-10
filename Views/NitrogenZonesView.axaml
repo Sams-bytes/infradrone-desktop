@@ -1,0 +1,63 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.NitrogenZonesView">
+  <ScrollViewer>
+    <StackPanel Margin="16" Spacing="10">
+      <TextBlock Text="🌱 Nitrogen Zones" FontSize="16" FontWeight="Bold" Foreground="White"/>
+      <TextBlock Text="Three-layer NDRE-based nitrogen zone classification. Load a folder of Sequoia images to generate Layer 1."
+                 FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+
+      <Button Name="BtnLoadFolder" Content="📁 Load Sequoia image folder" Click="OnLoadFolder"
+              Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+              BorderThickness="0.5" Padding="10,6" CornerRadius="6" FontSize="11"
+              HorizontalAlignment="Left"/>
+      <TextBlock Name="StatusText" Text="No folder loaded." FontSize="10" Foreground="#64748b"/>
+
+      <!-- Layer 1 card -->
+      <Border Background="#131f2e" CornerRadius="8" Padding="10"
+              BorderBrush="#eab308" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="🟨 Layer 1 — Field-relative zones (Low/Medium/High)"
+                       FontSize="11" FontWeight="Bold" Foreground="#eab308"/>
+            <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenLayer1"
+                    Background="#3d2e0d" Foreground="#eab308"
+                    BorderBrush="#eab308" BorderThickness="0.5"
+                    Padding="6,3" CornerRadius="4" FontSize="10"/>
+          </Grid>
+          <Image Name="Layer1Image" Stretch="Uniform" MaxHeight="320" IsVisible="False"/>
+          <TextBlock Name="Layer1Status" Text="Not generated yet."
+                     FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Layer 2 card -->
+      <Border Background="#131f2e" CornerRadius="8" Padding="10"
+              BorderBrush="#eab308" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="📚 Layer 2 — Literature reference curve (winter wheat, RapidScan sensor)"
+                       FontSize="11" FontWeight="Bold" Foreground="#eab308"/>
+            <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenLayer2"
+                    Background="#3d2e0d" Foreground="#eab308"
+                    BorderBrush="#eab308" BorderThickness="0.5"
+                    Padding="6,3" CornerRadius="4" FontSize="10"/>
+          </Grid>
+          <Image Name="Layer2Image" Stretch="Uniform" MaxHeight="320" IsVisible="False"/>
+          <TextBlock Name="Layer2Status" Text="Not loaded." FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Layer 3 card — placeholder, links to Validation tab -->
+      <Border Background="#131f2e" CornerRadius="8" Padding="10"
+              BorderBrush="#64748b" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <TextBlock Text="🔬 Layer 3 — Ground-truth validation"
+                     FontSize="11" FontWeight="Bold" Foreground="#64748b"/>
+          <TextBlock Text="See the Validation &amp; Evidence tab for ground-truth comparison charts."
+                     FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

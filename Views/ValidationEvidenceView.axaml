@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.ValidationEvidenceView">
+  <ScrollViewer>
+    <StackPanel Margin="16" Spacing="10">
+      <TextBlock Text="🔬 Validation &amp; Evidence" FontSize="16" FontWeight="Bold" Foreground="White"/>
+      <TextBlock Text="Evidence generated from the WUR Wageningen reference dataset — validates the NDRE pipeline against independently measured ground spectrometer data. Not live flight data."
+                 FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+
+      <Border Background="#131f2e" CornerRadius="8" Padding="10" BorderBrush="#1e3a5f" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Re-run Ground-Truth Validation against a different flight:"
+                     FontSize="10" Foreground="#94a3b8"/>
+          <Grid ColumnDefinitions="*,Auto">
+            <ComboBox Name="FlightSelector" Grid.Column="0" HorizontalAlignment="Stretch"/>
+            <Button Grid.Column="1" Content="▶ Run Validation" Click="OnRunValidation"
+                    Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                    BorderThickness="0.5" Padding="10,6" CornerRadius="6" FontSize="11"
+                    Margin="8,0,0,0"/>
+          </Grid>
+          <TextBlock Name="RunStatusText" Text="" FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Ground-truth validation card -->
+      <Border Background="#131f2e" CornerRadius="8" Padding="10"
+              BorderBrush="#3E8E7E" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="✅ Ground-Truth Validation — Sequoia vs. tec5/Cropscan spectrometer"
+                       FontSize="11" FontWeight="Bold" Foreground="#3E8E7E"/>
+            <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenGroundTruth"
+                    Background="#0d3d2e" Foreground="#3E8E7E"
+                    BorderBrush="#3E8E7E" BorderThickness="0.5"
+                    Padding="6,3" CornerRadius="4" FontSize="10"/>
+          </Grid>
+          <Image Name="GroundTruthImage" Stretch="Uniform" MaxHeight="340" IsVisible="False"/>
+          <TextBlock Name="GroundTruthStatus" Text="Not loaded." FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Diurnal variability card -->
+      <Border Background="#131f2e" CornerRadius="8" Padding="10"
+              BorderBrush="#eab308" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="🕐 Diurnal Variability — NDRE across the day"
+                       FontSize="11" FontWeight="Bold" Foreground="#eab308"/>
+            <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenDiurnal"
+                    Background="#3d2e0d" Foreground="#eab308"
+                    BorderBrush="#eab308" BorderThickness="0.5"
+                    Padding="6,3" CornerRadius="4" FontSize="10"/>
+          </Grid>
+          <Image Name="DiurnalImage" Stretch="Uniform" MaxHeight="340" IsVisible="False"/>
+          <TextBlock Name="DiurnalStatus" Text="Not loaded." FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Cross-sensor validation -->
+      <Border Background="#131f2e" CornerRadius="8" Padding="10"
+              BorderBrush="#3E8E7E" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="📡 Cross-Sensor Check — Sequoia vs. MSP4C"
+                       FontSize="11" FontWeight="Bold" Foreground="#3E8E7E"/>
+            <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenCrossSensor"
+                    Background="#0d3d2e" Foreground="#3E8E7E"
+                    BorderBrush="#3E8E7E" BorderThickness="0.5"
+                    Padding="6,3" CornerRadius="4" FontSize="10"/>
+          </Grid>
+          <Image Name="CrossSensorImage" Stretch="Uniform" MaxHeight="340" IsVisible="False"/>
+          <TextBlock Name="CrossSensorStatus" Text="Not loaded." FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+      <!-- Thermal x NDRE fusion (water stress prototype) -->
+      <Border Background="#131f2e" CornerRadius="8" Padding="10"
+              BorderBrush="#3E8E7E" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="💧 Thermal x NDRE Fusion — Water Stress Prototype (SDG 6)"
+                       FontSize="11" FontWeight="Bold" Foreground="#3E8E7E"/>
+            <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenThermalFusion"
+                    Background="#0d3d2e" Foreground="#3E8E7E"
+                    BorderBrush="#3E8E7E" BorderThickness="0.5"
+                    Padding="6,3" CornerRadius="4" FontSize="10"/>
+          </Grid>
+          <Image Name="ThermalFusionImage" Stretch="Uniform" MaxHeight="340" IsVisible="False"/>
+          <TextBlock Name="ThermalFusionStatus" Text="Not loaded." FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+      <!-- Calibration-plate sensor accuracy check -->
+      <Border Background="#131f2e" CornerRadius="8" Padding="10"
+              BorderBrush="#3E8E7E" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="🎯 Calibration-Plate Sensor Accuracy Check"
+                       FontSize="11" FontWeight="Bold" Foreground="#3E8E7E"/>
+            <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenCalibrationCheck"
+                    Background="#0d3d2e" Foreground="#3E8E7E"
+                    BorderBrush="#3E8E7E" BorderThickness="0.5"
+                    Padding="6,3" CornerRadius="4" FontSize="10"/>
+          </Grid>
+          <Image Name="CalibrationCheckImage" Stretch="Uniform" MaxHeight="340" IsVisible="False"/>
+          <TextBlock Name="CalibrationCheckStatus" Text="Not loaded." FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+      <!-- Layer 3 pixel-level upgrade -->
+      <Border Background="#131f2e" CornerRadius="8" Padding="10"
+              BorderBrush="#3E8E7E" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Re-run Pixel-Level Validation against a different flight:"
+                     FontSize="10" Foreground="#94a3b8"/>
+          <Grid ColumnDefinitions="*,Auto">
+            <ComboBox Name="PixelFlightSelector" Grid.Column="0" HorizontalAlignment="Stretch"/>
+            <Button Grid.Column="1" Content="▶ Run Pixel Validation" Click="OnRunPixelValidation"
+                    Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                    BorderThickness="0.5" Padding="10,6" CornerRadius="6" FontSize="11"
+                    Margin="8,0,0,0"/>
+          </Grid>
+          <TextBlock Name="PixelRunStatusText" Text="" FontSize="10" Foreground="#64748b"/>
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="✅ Layer 3 (Pixel-Level) — exact coordinate matching (upgraded)"
+                       FontSize="11" FontWeight="Bold" Foreground="#3E8E7E"/>
+            <Button Grid.Column="1" Content="↗ Full screen" Click="OnOpenPixelLevel"
+                    Background="#0d3d2e" Foreground="#3E8E7E"
+                    BorderBrush="#3E8E7E" BorderThickness="0.5"
+                    Padding="6,3" CornerRadius="4" FontSize="10"/>
+          </Grid>
+          <Image Name="PixelLevelImage" Stretch="Uniform" MaxHeight="340" IsVisible="False"/>
+          <TextBlock Name="PixelLevelStatus" Text="Not loaded." FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
