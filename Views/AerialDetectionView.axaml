@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.AerialDetectionView">
+  <Grid ColumnDefinitions="300,*">
+
+    <Border Grid.Column="0" Background="#1a2637" BorderBrush="#1e3a5f"
+            BorderThickness="0,0,1,0">
+      <ScrollViewer>
+        <StackPanel Margin="16" Spacing="14">
+
+          <StackPanel Spacing="2">
+            <TextBlock Text="🚁 Aerial Detection" FontSize="15" FontWeight="Bold" Foreground="White"/>
+            <TextBlock Text="10-class road-user detector, trained on VisDrone (used with permission)"
+                       FontSize="10" Foreground="#94a3b8" TextWrapping="Wrap"/>
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Name="ModelStatusText" Text="No model loaded" FontSize="10" Foreground="#64748b"/>
+            </StackPanel>
+            <Button Name="BtnLoadModel" Content="📦 Load model" Click="OnLoadModel"
+                    Background="#1e3a5f" Foreground="#e2e8f0" BorderBrush="#3E8E7E"
+                    BorderThickness="0.5" Padding="10,6" CornerRadius="6" FontSize="11"
+                    HorizontalAlignment="Stretch"/>
+          </StackPanel>
+
+          <Button Name="BtnSelectImage" Content="🖼 Select image to analyze" Click="OnSelectImage"
+                  Background="#1e3a5f" Foreground="#e2e8f0" BorderBrush="#3E8E7E"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6" FontSize="11"
+                  HorizontalAlignment="Stretch"/>
+
+          <Button Name="BtnSelectFolder" Content="📁 Batch: select folder" Click="OnSelectFolder"
+                  Background="#1e3a5f" Foreground="#e2e8f0" BorderBrush="#3E8E7E"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6" FontSize="11"
+                  HorizontalAlignment="Stretch"/>
+
+          <Button Name="BtnRunDetection" Content="▶ Run detection" Click="OnRunDetection"
+                  Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6" FontSize="11"
+                  HorizontalAlignment="Stretch"/>
+
+          <StackPanel Name="BatchListPanel" Spacing="4" IsVisible="False">
+            <TextBlock Text="Batch results:" FontSize="10" FontWeight="Bold" Foreground="#94a3b8"/>
+            <ItemsControl Name="BatchList"/>
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <TextBlock Name="StatusText" Text="Ready." FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <TextBlock Text="Legend:" FontSize="10" FontWeight="Bold" Foreground="#94a3b8"/>
+            <TextBlock Text="🔴 pedestrian/people  🟡 bicycle/motor  🟢 car/van/truck  ⚪ tricycle/awning  🟣 bus"
+                       FontSize="9" Foreground="#64748b" TextWrapping="Wrap"/>
+          </StackPanel>
+
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+
+    <DockPanel Grid.Column="1">
+      <Border DockPanel.Dock="Top" Background="#131f2e" Padding="10" BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Button Grid.Column="0" Name="BtnPrevImage" Content="◀ Previous" Click="OnPrevImage"
+                  Background="#1e3a5f" Foreground="#e2e8f0" BorderBrush="#3E8E7E"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6" FontSize="11" IsEnabled="False"/>
+          <TextBlock Grid.Column="1" Name="BatchPositionText" Text="" FontSize="11"
+                     Foreground="#94a3b8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          <Button Grid.Column="2" Content="Next ▶" Name="BtnNextImage" Click="OnNextImage"
+                  Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6" FontSize="11" IsEnabled="False"/>
+        </Grid>
+      </Border>
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <Image Name="ImageDisplay" Stretch="Uniform" Margin="16"/>
+      </ScrollViewer>
+    </DockPanel>
+
+  </Grid>
+</UserControl>
