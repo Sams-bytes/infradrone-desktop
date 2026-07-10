@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -26,7 +27,7 @@ namespace InfraDroneDesktop.Views;
 
 public partial class FlightView : UserControl
 {
-    private MavLinkService? _mav;
+    private AsvMavLinkService? _mav;
     private MemoryLayer? _droneLayer;
     private Mapsui.UI.Avalonia.MapControl? _mapControl;
     private Map? _map;
@@ -210,11 +211,11 @@ public partial class FlightView : UserControl
         _mapControl?.Map.Refresh();
     }
 
-    public void SetMavLink(MavLinkService mav)
+    public void SetMavLink(AsvMavLinkService mav)
     {
         _mav = mav;
         _mav.TelemetryUpdated += OnTelemetry;
-        _mav.CommandAck += OnCommandAck;
+        _mav.CommandResult += OnCommandAck;
     }
 
     private void OnCommandAck(string command, bool success)
@@ -242,13 +243,46 @@ public partial class FlightView : UserControl
         });
     }
 
-    private void OnTelemetry(TelemetryData t)
+    private DateTime _lastTelemetryUiUpdate = DateTime.MinValue;
+    private static readonly TimeSpan TelemetryUiThrottle = TimeSpan.FromMilliseconds(150);
+
+    private void OnTelemetry(AsvTelemetryData t)
     {
+        // Real telemetry can arrive 50-100+ times/second -- throttle UI updates
+        // to a human-readable rate to avoid overwhelming the renderer/GC.
+        var now = DateTime.UtcNow;
+        if (now - _lastTelemetryUiUpdate < TelemetryUiThrottle) return;
+        _lastTelemetryUiUpdate = now;
+
         Dispatcher.UIThread.Post(() =>
         {
             HudAlt.Text = t.Connected ? $"{t.AltRel:F1}m" : "—";
             HudSpeed.Text = t.Connected ? $"{t.Speed:F1}m/s" : "—";
             HudHeading.Text = t.Connected ? $"{t.Heading:F0}°" : "—";
+
+            if (t.Connected)
+            {
+                CompassHeadingText.Text = $"{t.Heading:F0}°";
+                if (CompassNeedle.RenderTransform is Avalonia.Media.RotateTransform rt)
+                    rt.Angle = t.Heading;
+            }
+            else
+            {
+                CompassHeadingText.Text = "---°";
+            }
+
+            if (t.Connected)
+            {
+                AttitudeText.Text = $"R:{t.Roll:F0}° P:{t.Pitch:F0}°";
+                if (AttitudeCanvas.RenderTransform is Avalonia.Media.RotateTransform attRt)
+                    attRt.Angle = -t.Roll; // negative: banking right should tilt horizon left visually
+                // Pitch shifts the canvas vertically -- pixels-per-degree tuned to the 300px canvas
+                Avalonia.Controls.Canvas.SetTop(AttitudeCanvas, (t.Pitch * 3) - 75);
+            }
+            else
+            {
+                AttitudeText.Text = "R:0° P:0°";
+            }
             HudBatt.Text = t.Connected ? $"{t.BatteryPct}%" : "—";
             HudMode.Text = t.Connected ? t.FlightMode : "—";
             HudGps.Text = t.Connected ? $"{t.GpsSats} sat" : "—";
@@ -260,22 +294,26 @@ public partial class FlightView : UserControl
         });
     }
 
-    private void OnArm(object? s, RoutedEventArgs e) =>
-        _mav?.SendCommandAsync("127.0.0.1", 14550, 400, 1, 21196);
-    private void OnDisarm(object? s, RoutedEventArgs e) =>
-        _mav?.SendCommandAsync("127.0.0.1", 14550, 400, 0);
-    private void OnTakeoff(object? s, RoutedEventArgs e) =>
-        _mav?.SendCommandAsync("127.0.0.1", 14550, 22, 0, 0, 0, 0, 0, 0, 30);
-    private void OnLand(object? s, RoutedEventArgs e) =>
-        _mav?.SendCommandAsync("127.0.0.1", 14550, 21);
-    private void OnRtl(object? s, RoutedEventArgs e) =>
-        _mav?.SendCommandAsync("127.0.0.1", 14550, 20);
-    private void OnLoiter(object? s, RoutedEventArgs e) =>
-        _mav?.SendCommandAsync("127.0.0.1", 14550, 176, 1, 5);
-    private void OnGuided(object? s, RoutedEventArgs e) =>
-        _mav?.SendCommandAsync("127.0.0.1", 14550, 176, 1, 4);
-    private void OnAuto(object? s, RoutedEventArgs e) =>
-        _mav?.SendCommandAsync("127.0.0.1", 14550, 176, 1, 3);
+    private async void OnArm(object? s, RoutedEventArgs e) =>
+        await (_mav?.ArmAsync(true) ?? Task.FromResult(false));
+    private async void OnDisarm(object? s, RoutedEventArgs e) =>
+        await (_mav?.ArmAsync(false) ?? Task.FromResult(false));
+    private async void OnTakeoff(object? s, RoutedEventArgs e) =>
+        await (_mav?.TakeoffAsync(30) ?? Task.FromResult(false));
+    private async void OnLand(object? s, RoutedEventArgs e) =>
+        await (_mav?.LandAsync() ?? Task.FromResult(false));
+    private async void OnRtl(object? s, RoutedEventArgs e) =>
+        await (_mav?.RtlAsync() ?? Task.FromResult(false));
+    // SAFETY FIX: mode IDs were previously wrong -- OnLoiter sent 5 (actually FBWA),
+    // OnGuided sent 4 (actually ACRO), OnAuto sent 3 (actually TRAINING).
+    // Corrected against real ArduPlane mode table (verified via mavlink_bridge.py):
+    // 10=Auto, 12=Loiter, 15=Guided.
+    private async void OnLoiter(object? s, RoutedEventArgs e) =>
+        await (_mav?.SetModeAsync(12) ?? Task.FromResult(false));
+    private async void OnGuided(object? s, RoutedEventArgs e) =>
+        await (_mav?.SetModeAsync(15) ?? Task.FromResult(false));
+    private async void OnAuto(object? s, RoutedEventArgs e) =>
+        await (_mav?.SetModeAsync(10) ?? Task.FromResult(false));
     private void OnMapToggle(object? s, RoutedEventArgs e)
     {
         ToggleMapLayer();

@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.MavLinkTestView">
+  <StackPanel Margin="20" Spacing="12">
+    <TextBlock Text="🧪 MAVLink Library Test (Asv.Mavlink)" FontSize="16" FontWeight="Bold" Foreground="White"/>
+    <TextBlock Text="Tests the new replacement library for stability against real vehicle telemetry -- previous library crashed with heap corruption under real data."
+               FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+
+    <Button Name="BtnTestConnect" Content="▶ Connect &amp; Start Test" Click="OnTestConnect"
+            Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+            BorderThickness="0.5" Padding="12,8" CornerRadius="6" FontSize="12"
+            HorizontalAlignment="Left"/>
+
+    <Border Background="#131f2e" CornerRadius="8" Padding="14" BorderBrush="#1e3a5f" BorderThickness="0.5">
+      <StackPanel Spacing="6">
+        <TextBlock Name="StatusText" Text="Not connected." FontSize="13" Foreground="White" FontWeight="Bold"/>
+        <TextBlock Name="DeviceText" Text="No device discovered yet." FontSize="12" Foreground="#94a3b8"/>
+        <TextBlock Name="PacketCountText" Text="Packets processed: 0" FontSize="12" Foreground="#0d9e75"/>
+        <TextBlock Name="ElapsedText" Text="Elapsed: 0s" FontSize="12" Foreground="#94a3b8"/>
+      </StackPanel>
+    </Border>
+
+    <TextBlock Name="LogText" FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+  </StackPanel>
+</UserControl>

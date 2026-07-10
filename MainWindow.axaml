@@ -12,7 +12,10 @@
     <!-- Sidebar -->
     <Border Grid.Column="0" Background="#1a2637"
             BorderBrush="#2d3f52" BorderThickness="0,0,1,0">
-      <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <DockPanel>
+        <Button DockPanel.Dock="Bottom" Content="🔌  Connect" Classes="nav-connect" Click="OnConnect"
+                Margin="8" HorizontalAlignment="Stretch"/>
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <StackPanel>
 
         <!-- Brand -->
@@ -52,32 +55,52 @@
         </Border>
 
         <!-- Nav -->
-        <TextBlock Text="FLIGHT OPS" FontSize="9" FontWeight="Bold"
-                   Foreground="#4a5568" Margin="10,8,10,2" LetterSpacing="1"/>
-        <Button Content="✈  Flight view" Classes="nav" Click="OnFlightView"/>
-        <Button Content="🗺  Mission planner" Classes="nav" Click="OnMissionView"/>
-        <Button Content="☑  Pre-flight check" Classes="nav" Click="OnPreflightView"/>
-        <Button Content="🌤  Weather" Classes="nav" Click="OnWeatherView"/>
+        <Expander Header="FLIGHT OPS" Classes="navgroup" IsExpanded="True">
+          <StackPanel>
+            <Button Content="✈  Flight view" Classes="nav" Click="OnFlightView"/>
+            <Button Content="🧪  MAVLink Test" Classes="nav" Click="OnMavLinkTestView"/>
+            <Button Content="🗺  Mission planner" Classes="nav" Click="OnMissionView"/>
+            <Button Content="☑  Pre-flight check" Classes="nav" Click="OnPreflightView"/>
+            <Button Content="🌤  Weather" Classes="nav" Click="OnWeatherView"/>
+          </StackPanel>
+        </Expander>
 
-        <TextBlock Text="AIRCRAFT" FontSize="9" FontWeight="Bold"
-                   Foreground="#4a5568" Margin="10,8,10,2" LetterSpacing="1"/>
-        <Button Content="🏔  Terrain" Classes="nav" Click="OnTerrainView"/>
-        <Button Content="⬡  Geofence" Classes="nav" Click="OnGeofenceView"/>
-        <Button Content="⚙  Parameters" Classes="nav" Click="OnParamsView"/>
-        <Button Content="📋  Audit log" Classes="nav" Click="OnAuditView"/>
+        <Expander Header="INFRASTRUCTURE" Classes="navgroup" IsExpanded="True">
+          <StackPanel>
+            <Button Content="🤖  AI" Classes="nav" Click="OnAiView"/>
+            <Button Content="📐  Survey Grid" Classes="nav" Click="OnSurveyGridView"/>
+            <Button Content="🗺  Processing" Classes="nav" Click="OnProcessingView"/>
+            <Button Content="🚶  Traffic Behavior" Classes="nav" Click="OnTrafficBehaviorView"/>
+            <Button Content="🎬  Traffic Replay" Classes="nav" Click="OnTrafficPlayerView"/>
+            <Button Content="📊  Traffic Analytics" Classes="nav" Click="OnTrafficAnalyticsView"/>
+            <Button Content="🚁  Aerial Detection" Classes="nav" Click="OnAerialDetectionView"/>
 
-        <TextBlock Text="CONNECTION" FontSize="9" FontWeight="Bold"
-                   Foreground="#4a5568" Margin="10,8,10,2" LetterSpacing="1"/>
-        <Button Content="🤖  AI" Classes="nav" Click="OnAiView"/>
-        <Button Content="📐  Survey Grid" Classes="nav" Click="OnSurveyGridView"/>
-        <Button Content="🗺  Processing" Classes="nav" Click="OnProcessingView"/>
-        <Button Content="🌿  Sequoia" Classes="nav" Click="OnSequoiaView"/>
-        <Button Content="🚁  DJI Tools" Classes="nav" Click="OnDjiView"/>
-        <Button Content="🔑  License" Classes="nav" Click="OnParamsViewLicense"/>
-        <Button Content="🔌  Connect" Classes="nav-connect" Click="OnConnect"/>
+            <Button Content="📖  Story Mode" Classes="nav" Click="OnStoryModeView"/>
+          </StackPanel>
+        </Expander>
+
+        <Expander Header="AGRICULTURE" Classes="navgroup" IsExpanded="True">
+          <StackPanel>
+            <Button Content="🌿  Sequoia Capture" Classes="nav" Click="OnSequoiaView"/>
+            <Button Content="🌱  Nitrogen Zones" Classes="nav" Click="OnNitrogenZonesView"/>
+            <Button Content="🔬  Validation &amp; Evidence" Classes="nav" Click="OnValidationView"/>
+          </StackPanel>
+        </Expander>
+
+        <Expander Header="SYSTEM" Classes="navgroup" IsExpanded="False">
+          <StackPanel>
+            <Button Content="🏔  Terrain" Classes="nav" Click="OnTerrainView"/>
+            <Button Content="⬡  Geofence" Classes="nav" Click="OnGeofenceView"/>
+            <Button Content="⚙  Parameters" Classes="nav" Click="OnParamsView"/>
+            <Button Content="📋  Audit log" Classes="nav" Click="OnAuditView"/>
+            <Button Content="🚁  DJI Tools" Classes="nav" Click="OnDjiView"/>
+            <Button Content="🔑  License" Classes="nav" Click="OnParamsViewLicense"/>
+          </StackPanel>
+        </Expander>
 
       </StackPanel>
-      </ScrollViewer>
+        </ScrollViewer>
+      </DockPanel>
     </Border>
 
     <!-- Main content -->

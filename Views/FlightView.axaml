@@ -44,6 +44,81 @@
     <!-- Map -->
     <maps:MapControl Grid.Row="1" Name="MapControl"/>
 
+    <!-- Attitude indicator overlay -->
+    <Border Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="16,16,182,16"
+            Width="150" Height="150" CornerRadius="75" ClipToBounds="True"
+            BorderBrush="#3E8E7E" BorderThickness="1.5">
+      <Grid>
+        <!-- Rotating/shifting sky-ground plane, driven by roll (rotation) and pitch (offset) -->
+        <Canvas Name="AttitudeCanvas" Width="300" Height="300"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                RenderTransformOrigin="0.5,0.5">
+          <Canvas.RenderTransform>
+            <RotateTransform Angle="0"/>
+          </Canvas.RenderTransform>
+          <Rectangle Name="SkyRect" Canvas.Left="-150" Canvas.Top="-300" Width="300" Height="300" Fill="#2563eb"/>
+          <Rectangle Name="GroundRect" Canvas.Left="-150" Canvas.Top="0" Width="300" Height="300" Fill="#65a30d"/>
+          <Line StartPoint="-150,0" EndPoint="150,0" Stroke="White" StrokeThickness="2"/>
+        </Canvas>
+
+        <!-- Fixed aircraft reference symbol (gull-wing bracket), stays centered always -->
+        <Canvas Width="80" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <Line StartPoint="0,10" EndPoint="28,10" Stroke="#eab308" StrokeThickness="3"/>
+          <Line StartPoint="52,10" EndPoint="80,10" Stroke="#eab308" StrokeThickness="3"/>
+          <Line StartPoint="28,10" EndPoint="34,16" Stroke="#eab308" StrokeThickness="3"/>
+          <Line StartPoint="52,10" EndPoint="46,16" Stroke="#eab308" StrokeThickness="3"/>
+          <Ellipse Canvas.Left="36" Canvas.Top="6" Width="8" Height="8" Fill="#eab308"/>
+        </Canvas>
+
+        <!-- Pitch ladder marks -->
+        <TextBlock Text="10" Foreground="White" FontSize="10" FontWeight="Bold"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="-60,-30,0,0"/>
+        <TextBlock Text="10" Foreground="White" FontSize="10" FontWeight="Bold"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="60,-30,0,0"/>
+        <TextBlock Text="-10" Foreground="#dc2626" FontSize="10" FontWeight="Bold"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="-60,30,0,0"/>
+        <TextBlock Text="-10" Foreground="#dc2626" FontSize="10" FontWeight="Bold"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="60,30,0,0"/>
+
+        <Border Background="#0f1923" CornerRadius="4" Padding="6,2"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,8">
+          <TextBlock Name="AttitudeText" Text="R:0° P:0°" Foreground="#0d9e75"
+                     FontFamily="Consolas" FontSize="10" FontWeight="Bold"/>
+        </Border>
+      </Grid>
+    </Border>
+
+    <!-- Compass rose overlay -->
+    <Border Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="16"
+            Width="150" Height="150" CornerRadius="75" Background="#c0131f2e"
+            BorderBrush="#3E8E7E" BorderThickness="1.5">
+      <Grid>
+        <TextBlock Text="N" Foreground="White" FontWeight="Bold" FontSize="13"
+                   HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,6,0,0"/>
+        <TextBlock Text="S" Foreground="#94a3b8" FontSize="13"
+                   HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,6"/>
+        <TextBlock Text="E" Foreground="#94a3b8" FontSize="13"
+                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+        <TextBlock Text="W" Foreground="#94a3b8" FontSize="13"
+                   HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0"/>
+
+        <Path Name="CompassNeedle" Fill="#dc2626" Stroke="White" StrokeThickness="0.5"
+              Data="M 0,-45 L 8,10 L 0,0 L -8,10 Z"
+              HorizontalAlignment="Center" VerticalAlignment="Center"
+              RenderTransformOrigin="0.5,0.5">
+          <Path.RenderTransform>
+            <RotateTransform Angle="0"/>
+          </Path.RenderTransform>
+        </Path>
+
+        <Border Background="#0f1923" CornerRadius="4" Padding="6,2"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+          <TextBlock Name="CompassHeadingText" Text="---°" Foreground="#0d9e75"
+                     FontFamily="Consolas" FontSize="13" FontWeight="Bold"/>
+        </Border>
+      </Grid>
+    </Border>
+
     <!-- HUD strip -->
     <Grid Grid.Row="2" ColumnDefinitions="*,*,*,*,*,*,*"
           Background="#0f1923" Height="54">

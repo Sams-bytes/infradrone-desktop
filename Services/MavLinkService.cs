@@ -66,7 +66,42 @@ public class MavLinkService
             try
             {
                 var result = await _udp!.ReceiveAsync(ct);
-                var stream = new MemoryStream(result.Buffer);
+                var buf = result.Buffer;
+
+                if (buf.Length > 0 && buf[0] != 0xFD)
+                {
+                    Console.WriteLine($"[MAVLink DEBUG] Non-v2 packet seen, magic byte=0x{buf[0]:X2}, length={buf.Length}");
+                }
+
+                // Only pre-filter real MAVLink v2 packets (magic byte 0xFD).
+                if (buf.Length >= 10 && buf[0] == 0xFD)
+                {
+                    // MAVLink v2 header: [0]=magic [1]=len [2]=incompat [3]=compat
+                    // [4]=seq [5]=sysid [6]=compid [7..9]=msgid (24-bit little-endian)
+                    uint realMsgId = (uint)(buf[7] | (buf[8] << 8) | (buf[9] << 16));
+
+                    // Verified real IDs from the actual installed MAVLink 1.0.0 library
+                    // (not guessed): only allow the small set this app actually handles.
+                    // Skips extended/vendor messages (e.g. AOA_SSA=11020) before they
+                    // ever reach the parser, since the version-mismatched library may
+                    // not handle those safely.
+                    var allowedMsgIds = new HashSet<uint> {
+                        0,   // HEARTBEAT
+                        1,   // SYS_STATUS
+                        24,  // GPS_RAW_INT
+                        30,  // ATTITUDE
+                        33,  // GLOBAL_POSITION_INT
+                        74,  // VFR_HUD
+                        77,  // COMMAND_ACK
+                        162, // FENCE_STATUS
+                    };
+                    if (!allowedMsgIds.Contains(realMsgId))
+                    {
+                        continue; // skip parsing entirely -- avoid the buggy path
+                    }
+                }
+
+                var stream = new MemoryStream(buf);
                 var msg = _parser.ReadPacket(stream);
                 if (msg != null) ProcessMessage(msg);
             }

@@ -29,7 +29,7 @@ public partial class GeofenceView : UserControl
     private MemoryLayer? _pointsLayer;
     private readonly List<(double Lat, double Lon)> _points = new();
     private bool _drawing = false;
-    private MavLinkService? _mav;
+    private AsvMavLinkService? _mav;
 
     public GeofenceView()
     {
@@ -37,7 +37,7 @@ public partial class GeofenceView : UserControl
         Loaded += OnLoaded;
     }
 
-    public void SetMavLink(MavLinkService mav) => _mav = mav;
+    public void SetMavLink(AsvMavLinkService mav) => _mav = mav;
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {

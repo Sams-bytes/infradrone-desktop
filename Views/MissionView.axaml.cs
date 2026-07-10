@@ -41,7 +41,7 @@ public partial class MissionView : UserControl
     private Mapsui.UI.Avalonia.MapControl? _mapControl;
     private MemoryLayer? _wpLayer;
     private MemoryLayer? _routeLayer;
-    private MavLinkService? _mav;
+    private AsvMavLinkService? _mav;
 
     public MissionView()
     {
@@ -49,7 +49,7 @@ public partial class MissionView : UserControl
         Loaded += OnLoaded;
     }
 
-    public void SetMavLink(MavLinkService mav) => _mav = mav;
+    public void SetMavLink(AsvMavLinkService mav) => _mav = mav;
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {

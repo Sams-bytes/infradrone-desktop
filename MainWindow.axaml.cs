@@ -11,7 +11,7 @@ namespace InfraDroneDesktop;
 
 public partial class MainWindow : Window
 {
-    private readonly MavLinkService _mav = new MavLinkService();
+    private readonly AsvMavLinkService _mav = new AsvMavLinkService();
     private readonly BatteryHealthService _batteryHealth = new BatteryHealthService();
     private bool _mavRunning = false;
 
@@ -23,7 +23,7 @@ public partial class MainWindow : Window
         _mav.SafetyAlert += OnSafetyAlert;
     }
 
-    private void OnTelemetry(TelemetryData t)
+    private void OnTelemetry(AsvTelemetryData t)
     {
         Dispatcher.UIThread.Post(() =>
         {
@@ -208,6 +208,55 @@ public partial class MainWindow : Window
         if (_sequoiaView == null) _sequoiaView = new SequoiaView();
         ContentArea.Child = _sequoiaView;
     }
+    private Views.NitrogenZonesView? _nitrogenZonesView;
+    private Views.ValidationEvidenceView? _validationEvidenceView;
+    private Views.TrafficBehaviorView? _trafficBehaviorView;
+    private Views.TrafficPlayerView? _trafficPlayerView;
+    private Views.TrafficAnalyticsView? _trafficAnalyticsView;
+    private Views.AerialDetectionView? _aerialDetectionView;
+    private Views.MavLinkTestView? _mavLinkTestView;
+    private Views.StoryModeView? _storyModeView;
+
+    private void OnNitrogenZonesView(object? sender, RoutedEventArgs e)
+    {
+        if (_nitrogenZonesView == null) _nitrogenZonesView = new Views.NitrogenZonesView();
+        ContentArea.Child = _nitrogenZonesView;
+    }
+    private void OnValidationView(object? sender, RoutedEventArgs e)
+    {
+        if (_validationEvidenceView == null) _validationEvidenceView = new Views.ValidationEvidenceView();
+        ContentArea.Child = _validationEvidenceView;
+    }
+    private void OnTrafficBehaviorView(object? sender, RoutedEventArgs e)
+    {
+        if (_trafficBehaviorView == null) _trafficBehaviorView = new Views.TrafficBehaviorView();
+        ContentArea.Child = _trafficBehaviorView;
+    }
+    private void OnTrafficPlayerView(object? sender, RoutedEventArgs e)
+    {
+        if (_trafficPlayerView == null) _trafficPlayerView = new Views.TrafficPlayerView();
+        ContentArea.Child = _trafficPlayerView;
+    }
+    private void OnTrafficAnalyticsView(object? sender, RoutedEventArgs e)
+    {
+        if (_trafficAnalyticsView == null) _trafficAnalyticsView = new Views.TrafficAnalyticsView();
+        ContentArea.Child = _trafficAnalyticsView;
+    }
+    private void OnAerialDetectionView(object? sender, RoutedEventArgs e)
+    {
+        if (_aerialDetectionView == null) _aerialDetectionView = new Views.AerialDetectionView();
+        ContentArea.Child = _aerialDetectionView;
+    }
+    private void OnMavLinkTestView(object? sender, RoutedEventArgs e)
+    {
+        if (_mavLinkTestView == null) _mavLinkTestView = new Views.MavLinkTestView();
+        ContentArea.Child = _mavLinkTestView;
+    }
+    private void OnStoryModeView(object? sender, RoutedEventArgs e)
+    {
+        if (_storyModeView == null) _storyModeView = new Views.StoryModeView();
+        ContentArea.Child = _storyModeView;
+    }
     private void OnDjiView(object? sender, RoutedEventArgs e)
     {
         if (_djiView == null) _djiView = new DjiView();
@@ -224,7 +273,7 @@ public partial class MainWindow : Window
         if (!_mavRunning)
         {
             _mavRunning = true;
-            Task.Run(() => _mav.StartAsync(14572));
+            _mav.Start("udp://127.0.0.1:14571");
             ConnText.Text = "Connecting...";
         }
         else

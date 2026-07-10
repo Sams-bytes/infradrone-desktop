@@ -78,7 +78,7 @@ public partial class PreflightView : UserControl
         ("SAFETY", "Flight log entry started", true),
     };
 
-    private MavLinkService? _mav;
+    private AsvMavLinkService? _mav;
 
     public PreflightView()
     {
@@ -86,13 +86,13 @@ public partial class PreflightView : UserControl
         Loaded += OnLoaded;
     }
 
-    public void SetMavLink(MavLinkService mav)
+    public void SetMavLink(AsvMavLinkService mav)
     {
         _mav = mav;
         _mav.TelemetryUpdated += OnTelemetry;
     }
 
-    private void OnTelemetry(TelemetryData t)
+    private void OnTelemetry(AsvTelemetryData t)
     {
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {

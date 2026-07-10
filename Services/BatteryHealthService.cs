@@ -31,7 +31,7 @@ public class BatteryHealthService
         _logPath = Path.Combine(home, "agri_drone", "battery_health_log.jsonl");
     }
 
-    public void OnTelemetryUpdate(TelemetryData t)
+    public void OnTelemetryUpdate(AsvTelemetryData t)
     {
         if (t.Armed && !_wasArmed)
         {
