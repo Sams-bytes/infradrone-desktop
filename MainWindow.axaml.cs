@@ -215,6 +215,7 @@ public partial class MainWindow : Window
     private Views.TrafficAnalyticsView? _trafficAnalyticsView;
     private Views.AerialDetectionView? _aerialDetectionView;
     private Views.MavLinkTestView? _mavLinkTestView;
+    private Views.FailsafeMonitorView? _failsafeMonitorView;
     private Views.StoryModeView? _storyModeView;
 
     private void OnNitrogenZonesView(object? sender, RoutedEventArgs e)
@@ -252,6 +253,15 @@ public partial class MainWindow : Window
         if (_mavLinkTestView == null) _mavLinkTestView = new Views.MavLinkTestView();
         ContentArea.Child = _mavLinkTestView;
     }
+    private void OnFailsafeMonitorView(object? sender, RoutedEventArgs e)
+    {
+        if (_failsafeMonitorView == null)
+        {
+            _failsafeMonitorView = new Views.FailsafeMonitorView();
+            _failsafeMonitorView.SetMavLink(_mav);
+        }
+        ContentArea.Child = _failsafeMonitorView;
+    }
     private void OnStoryModeView(object? sender, RoutedEventArgs e)
     {
         if (_storyModeView == null) _storyModeView = new Views.StoryModeView();
@@ -273,7 +283,13 @@ public partial class MainWindow : Window
         if (!_mavRunning)
         {
             _mavRunning = true;
-            _mav.Start("udp://127.0.0.1:14571");
+            // SAFETY FIX: plain "udp://host:port" with no rhost/rport can RECEIVE
+            // but cannot reliably SEND (no known destination) -- this means Arm/
+            // Disarm/Takeoff/RTL/SetMode may have NEVER actually reached the vehicle
+            // despite compiling correctly. Fixed by giving it mavproxy's real input
+            // port as an explicit destination, same fix that resolved fence-breach
+            // testing.
+            _mav.Start("udp://127.0.0.1:14571?rhost=127.0.0.1&rport=14445");
             ConnText.Text = "Connecting...";
         }
         else

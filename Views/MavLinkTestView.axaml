@@ -20,6 +20,15 @@
       </StackPanel>
     </Border>
 
+    <Button Name="BtnCheckFence" Content="🔒 Check Fence Parameters" Click="OnCheckFence"
+            Background="#3d1e0d" Foreground="#eab308" BorderBrush="#eab308"
+            BorderThickness="0.5" Padding="12,8" CornerRadius="6" FontSize="12"
+            HorizontalAlignment="Left" IsEnabled="False"/>
+
+    <Border Background="#131f2e" CornerRadius="8" Padding="14" BorderBrush="#1e3a5f" BorderThickness="0.5">
+      <StackPanel Name="FenceParamsPanel" Spacing="4"/>
+    </Border>
+
     <TextBlock Name="LogText" FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
   </StackPanel>
 </UserControl>

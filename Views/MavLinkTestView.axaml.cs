@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Asv.Mavlink;
+using InfraDroneDesktop.Services;
 
 namespace InfraDroneDesktop.Views
 {
@@ -56,6 +57,9 @@ namespace InfraDroneDesktop.Views
 
                 StatusText.Text = "Connected -- listening for real telemetry...";
                 BtnTestConnect.IsEnabled = false;
+                BtnCheckFence.IsEnabled = true;
+                _mavService = new AsvMavLinkService();
+                _mavService.Start("udp://127.0.0.1:14571?rhost=127.0.0.1&rport=14445");
 
                 _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
                 _uiTimer.Tick += (s, args) =>
@@ -72,6 +76,36 @@ namespace InfraDroneDesktop.Views
                 LogAppend("[TEST] Exception: " + ex.ToString());
             }
         }
+
+        private async void OnCheckFence(object? sender, RoutedEventArgs e)
+        {
+            FenceParamsPanel.Children.Clear();
+            var names = new[] { "FENCE_ENABLE", "FENCE_TYPE", "FENCE_ACTION", "FENCE_RADIUS", "FENCE_ALT_MAX", "FENCE_MARGIN" };
+            foreach (var name in names)
+            {
+                var value = await _mavService!.ReadParamAsync(name);
+                var text = value.HasValue ? $"{name} = {value.Value}" : $"{name} = FAILED TO READ";
+                var color = value.HasValue ? "#0d9e75" : "#ef4444";
+                FenceParamsPanel.Children.Add(new TextBlock
+                {
+                    Text = text, FontSize = 12, FontFamily = new Avalonia.Media.FontFamily("Consolas"),
+                    Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(color))
+                });
+            }
+
+            var enableVal = await _mavService!.ReadParamAsync("FENCE_ENABLE");
+            if (enableVal.HasValue && enableVal.Value == 0)
+            {
+                FenceParamsPanel.Children.Add(new TextBlock
+                {
+                    Text = "⚠ FENCE_ENABLE = 0 -- geofence is currently OFF on this vehicle.",
+                    FontSize = 12, FontWeight = Avalonia.Media.FontWeight.Bold,
+                    Foreground = Avalonia.Media.Brushes.OrangeRed, TextWrapping = Avalonia.Media.TextWrapping.Wrap
+                });
+            }
+        }
+
+        private AsvMavLinkService? _mavService;
 
         private void LogAppend(string line)
         {
