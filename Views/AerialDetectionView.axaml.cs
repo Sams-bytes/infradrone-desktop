@@ -132,14 +132,58 @@ namespace InfraDroneDesktop.Views
             StatusText.Text = $"Done: {imagePaths.Count} images processed.";
         }
 
+        // Shared pose-drawing logic, used by BOTH the single-image "Run detection"
+        // button AND batch folder browsing (previously only wired into the single-
+        // image path, silently doing nothing when browsing a loaded batch).
+        private int DrawPosesIfEnabled(SKBitmap annotated, string imagePath, List<AerialDetection> dets)
+        {
+            int posesEstimated = 0;
+            if (ChkEstimatePoses.IsChecked != true) return 0;
+
+            if (!_poseModelLoadAttempted)
+            {
+                _poseModelLoadAttempted = true;
+                var modelPath = System.IO.Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "models", "flypose_s.onnx");
+                var fullPath = System.IO.Path.GetFullPath(modelPath);
+                if (!_pose.LoadModel(fullPath))
+                {
+                    StatusText.Text = "Failed to load pose model -- check models/flypose_s.onnx exists.";
+                    return 0;
+                }
+            }
+            if (!_pose.IsLoaded) return 0;
+
+            using var frame = SKBitmap.Decode(imagePath);
+            using var canvas = new SKCanvas(annotated);
+            using var linePaint = new SKPaint { Color = new SKColor(255, 153, 51), StrokeWidth = 2, IsAntialias = true };
+
+            foreach (var d in dets.Where(d => d.Label == "pedestrian" || d.Label == "people"))
+            {
+                var poseResult = _pose.EstimatePose(frame, d.X, d.Y, d.Width, d.Height);
+                if (poseResult == null) continue;
+                posesEstimated++;
+
+                foreach (var (a, b) in PoseEstimationService.Skeleton)
+                {
+                    if (poseResult.Scores[a] < PoseEstimationService.KeypointThreshold ||
+                        poseResult.Scores[b] < PoseEstimationService.KeypointThreshold) continue;
+                    canvas.DrawLine(poseResult.Keypoints[a], poseResult.Keypoints[b], linePaint);
+                }
+            }
+            return posesEstimated;
+        }
+
         private void ShowResult(AerialBatchResult r)
         {
             _imagePath = r.ImagePath;
             using var annotated = _ai.DrawDetections(r.ImagePath, r.Detections);
+            var posesEstimated = DrawPosesIfEnabled(annotated, r.ImagePath, r.Detections);
             using var data = annotated.Encode(SKEncodedImageFormat.Png, 100);
             using var ms = new MemoryStream(data.ToArray());
             ImageDisplay.Source = new Bitmap(ms);
-            StatusText.Text = $"{Path.GetFileName(r.ImagePath)}: {r.Detections.Count} detection(s)";
+            StatusText.Text = $"{Path.GetFileName(r.ImagePath)}: {r.Detections.Count} detection(s)" +
+                (ChkEstimatePoses.IsChecked == true ? $", {posesEstimated} pose(s) estimated." : ".");
         }
 
         private void ShowBatchImage()
@@ -168,8 +212,13 @@ namespace InfraDroneDesktop.Views
             }
         }
 
+        private readonly PoseEstimationService _pose = new PoseEstimationService();
+        private bool _poseModelLoadAttempted = false;
+
         private void OnRunDetection(object? s, RoutedEventArgs e)
         {
+          try
+          {
             if (string.IsNullOrEmpty(_imagePath) || !_ai.IsLoaded)
             {
                 StatusText.Text = "Load a model and select an image first.";
@@ -177,10 +226,19 @@ namespace InfraDroneDesktop.Views
             }
             var dets = _ai.Detect(_imagePath);
             using var annotated = _ai.DrawDetections(_imagePath, dets);
+            var posesEstimated = DrawPosesIfEnabled(annotated, _imagePath, dets);
+
             using var data = annotated.Encode(SKEncodedImageFormat.Png, 100);
             using var ms = new MemoryStream(data.ToArray());
             ImageDisplay.Source = new Bitmap(ms);
-            StatusText.Text = $"{dets.Count} detection(s) found.";
+            StatusText.Text = $"{dets.Count} detection(s) found." +
+                (ChkEstimatePoses.IsChecked == true ? $" {posesEstimated} pose(s) estimated." : "");
+          }
+          catch (Exception ex)
+          {
+              Console.WriteLine($"[DEBUG] EXCEPTION in OnRunDetection: {ex}");
+              StatusText.Text = $"ERROR: {ex.Message}";
+          }
         }
     }
 }

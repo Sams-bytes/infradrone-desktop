@@ -59,6 +59,7 @@
           <StackPanel>
             <Button Content="✈  Flight view" Classes="nav" Click="OnFlightView"/>
             <Button Content="🧪  MAVLink Test" Classes="nav" Click="OnMavLinkTestView"/>
+            <Button Content="🛡  Failsafe Monitor" Classes="nav" Click="OnFailsafeMonitorView"/>
             <Button Content="🗺  Mission planner" Classes="nav" Click="OnMissionView"/>
             <Button Content="☑  Pre-flight check" Classes="nav" Click="OnPreflightView"/>
             <Button Content="🌤  Weather" Classes="nav" Click="OnWeatherView"/>

@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.FailsafeMonitorView">
+  <ScrollViewer>
+  <StackPanel Margin="20" Spacing="14">
+    <TextBlock Text="🛡 Failsafe Monitor" FontSize="18" FontWeight="Bold" Foreground="White"/>
+    <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#94a3b8"
+               Text="Alert-only monitoring. The vehicle's own onboard failsafe parameters (FS_GCS_ENABL, BATT_FS_LOW_ACT/CRT_ACT, FENCE_ACTION) are the real safety net and act independently of this app -- this screen exists so the operator is never caught unaware, and to keep a permanent record of exactly when and why an alert fired."/>
+
+    <!-- Live condition cards -->
+    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
+      <Border Grid.Row="0" Grid.Column="0" Name="LinkCard" Background="#131f2e" CornerRadius="8" Padding="14" Margin="0,0,5,5" BorderThickness="1">
+        <StackPanel Spacing="4">
+          <TextBlock Text="📡 Telemetry Link" FontSize="13" FontWeight="Bold" Foreground="White"/>
+          <TextBlock Name="LinkStatusText" Text="—" FontSize="20" FontWeight="Bold"/>
+          <TextBlock Name="LinkDetailText" Text="Threshold: — s of silence" FontSize="11" Foreground="#94a3b8"/>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="0" Grid.Column="1" Name="BatteryCard" Background="#131f2e" CornerRadius="8" Padding="14" Margin="5,0,0,5" BorderThickness="1">
+        <StackPanel Spacing="4">
+          <TextBlock Text="🔋 Battery" FontSize="13" FontWeight="Bold" Foreground="White"/>
+          <TextBlock Name="BatteryStatusText" Text="—" FontSize="20" FontWeight="Bold"/>
+          <TextBlock Name="BatteryDetailText" Text="Low: — %  Critical: — %" FontSize="11" Foreground="#94a3b8"/>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="1" Grid.Column="0" Name="GpsCard" Background="#131f2e" CornerRadius="8" Padding="14" Margin="0,0,5,0" BorderThickness="1">
+        <StackPanel Spacing="4">
+          <TextBlock Text="🛰 GPS Quality" FontSize="13" FontWeight="Bold" Foreground="White"/>
+          <TextBlock Name="GpsStatusText" Text="—" FontSize="20" FontWeight="Bold"/>
+          <TextBlock Name="GpsDetailText" Text="Minimum: — satellites, 3D fix" FontSize="11" Foreground="#94a3b8"/>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="1" Grid.Column="1" Name="FenceCard" Background="#131f2e" CornerRadius="8" Padding="14" Margin="5,0,0,0" BorderThickness="1">
+        <StackPanel Spacing="4">
+          <TextBlock Text="⬡ Geofence" FontSize="13" FontWeight="Bold" Foreground="White"/>
+          <TextBlock Name="FenceStatusText" Text="Monitoring" FontSize="20" FontWeight="Bold" Foreground="#0d9e75"/>
+          <TextBlock Text="Alerts on any breach message from the vehicle" FontSize="11" Foreground="#94a3b8"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- Alert history -->
+    <TextBlock Text="Alert History (persisted to failsafe_alert_log.jsonl)" FontSize="13" FontWeight="Bold" Foreground="White" Margin="0,10,0,0"/>
+    <Border Background="#131f2e" CornerRadius="8" Padding="10" BorderThickness="1" MinHeight="150">
+      <StackPanel Name="AlertHistoryPanel" Spacing="6">
+        <TextBlock Name="NoAlertsText" Text="No alerts recorded yet this session." FontSize="12" Foreground="#64748b"/>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+  </ScrollViewer>
+</UserControl>

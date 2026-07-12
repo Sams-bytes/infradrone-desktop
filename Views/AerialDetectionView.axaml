@@ -39,6 +39,9 @@
                   BorderThickness="0.5" Padding="10,6" CornerRadius="6" FontSize="11"
                   HorizontalAlignment="Stretch"/>
 
+          <CheckBox Name="ChkEstimatePoses" Content="Also estimate poses (pedestrians/people)"
+                    Foreground="#e2e8f0" FontSize="10"/>
+
           <StackPanel Name="BatchListPanel" Spacing="4" IsVisible="False">
             <TextBlock Text="Batch results:" FontSize="10" FontWeight="Bold" Foreground="#94a3b8"/>
             <ItemsControl Name="BatchList"/>
