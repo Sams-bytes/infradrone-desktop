@@ -28,7 +28,82 @@ namespace InfraDroneDesktop.Views;
 public partial class FlightView : UserControl
 {
     private AsvMavLinkService? _mav;
+    private Mavlink1SerialService? _v1;
+
+    public void SetMavlinkV1(Mavlink1SerialService v1)
+    {
+        if (_v1 == v1) return;
+        _v1 = v1;
+        _v1.TelemetryUpdated += OnV1Telemetry;
+        _v1.StatusTextReceived += (severity, text) => ShowStatusBanner(text);
+    }
+
+    private void ShowStatusBanner(string text)
+    {
+        var lower = text.ToLowerInvariant();
+        bool actionNeeded = lower.Contains("place") || lower.Contains("rotate") || lower.Contains("press");
+        bool prearmBlock = lower.Contains("prearm") || lower.Contains("inconsistent") || lower.Contains("fail");
+        Dispatcher.UIThread.Post(() =>
+        {
+            StatusBanner.IsVisible = true;
+            StatusBannerText.Text = text;
+            string accentHex, label, icon;
+            if (prearmBlock) { accentHex = "#ef4444"; label = "PREFLIGHT BLOCKED"; icon = "⛔"; }
+            else if (actionNeeded) { accentHex = "#f59e0b"; label = "ACTION NEEDED"; icon = "⚠"; }
+            else { accentHex = "#0d9e75"; label = "VEHICLE STATUS"; icon = "ℹ"; }
+            var accentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(accentHex));
+            StatusBannerAccent.Background = accentBrush;
+            StatusBannerIcon.Foreground = accentBrush;
+            StatusBannerIcon.Text = icon;
+            StatusBannerLabel.Text = label;
+        });
+    }
+
+    private DateTime _lastV1UiUpdate = DateTime.MinValue;
+    private void OnV1Telemetry(Mavlink1Telemetry t)
+    {
+        // Only drive the HUD from v1 telemetry when the Cube Orange path isn't
+        // the one actually connected -- avoids the two controllers fighting
+        // over the same display if both happened to be plugged in.
+        if (CubeOrangeConnected) return;
+
+        var now = DateTime.UtcNow;
+        if (now - _lastV1UiUpdate < TelemetryUiThrottle) return;
+        _lastV1UiUpdate = now;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            HudAlt.Text = t.Connected ? $"{t.RelativeAlt:F1}m" : "—";
+            HudSpeed.Text = t.Connected ? $"{t.Speed:F1}m/s" : "—";
+            HudHeading.Text = t.Connected ? $"{t.Heading:F0}°" : "—";
+            HudBatt.Text = t.Connected && t.BatteryPct >= 0 ? $"{t.BatteryPct}%" : "—";
+            HudMode.Text = t.Connected ? t.FlightMode : "—";
+            HudGps.Text = t.Connected ? $"fix={t.GpsFix} {t.GpsSats}sat" : "—";
+            HudPos.Text = t.Connected && t.GpsFix >= 3 && t.Lat != 0 ? $"{t.Lat:F5}, {t.Lon:F5}" : "—";
+            if (t.Connected)
+            {
+                AttitudeText.Text = $"R:{t.Roll:F0}° P:{t.Pitch:F0}°";
+                if (AttitudeCanvas.RenderTransform is Avalonia.Media.RotateTransform attRt)
+                    attRt.Angle = -t.Roll;
+                Avalonia.Controls.Canvas.SetTop(AttitudeCanvas, (t.Pitch * 3) - 75);
+            }
+            else
+            {
+                AttitudeText.Text = "R:0° P:0°";
+            }
+            if (t.Connected)
+            {
+                CompassHeadingText.Text = $"{t.Heading:F0}°";
+                if (CompassNeedle.RenderTransform is Avalonia.Media.RotateTransform rt)
+                    rt.Angle = t.Heading;
+                if (t.Lat != 0 && t.Lon != 0)
+                    UpdateDroneMarker(t.Lat, t.Lon, t.Heading);
+            }
+        });
+    }
     private MemoryLayer? _droneLayer;
+    private MemoryLayer? _adsbLayer;
+    private readonly AdsbService _adsb = new AdsbService();
     private Mapsui.UI.Avalonia.MapControl? _mapControl;
     private Map? _map;
     private int _mapMode = 0; // 0=OSM, 1=PDOK Aerial, 2=Hybrid
@@ -93,6 +168,46 @@ public partial class FlightView : UserControl
         if (_mapControl == null) return;
         _mapControl.Renderer = new MapRenderer();
         SetupMap();
+
+        // Real OpenSky Network ADS-B data, anonymous access, bounding box
+        // covering Groningen province. Anonymous quota is 400 credits/day;
+        // a box this size costs 1 credit/call, so 15s polling is fine for
+        // demo/testing use but would need a free account for 24/7 running.
+        _adsb.AircraftUpdated += OnAdsbUpdated;
+        _adsb.Start(laMin: 52.9, loMin: 6.0, laMax: 53.5, loMax: 7.2, pollSeconds: 15);
+    }
+
+    private void OnAdsbUpdated(System.Collections.Generic.List<Services.AdsbAircraft> aircraft)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_adsbLayer == null) return;
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var ac in aircraft)
+            {
+                var (x, y) = SphericalMercator.FromLonLat(ac.Longitude, ac.Latitude);
+                var f = new PointFeature(new MPoint(x, y));
+                f.Styles.Add(new SymbolStyle
+                {
+                    Fill = new MBrush(new MColor(59, 130, 246)),
+                    Outline = new MPen(MColor.White, 1.5f),
+                    SymbolScale = 0.5,
+                    SymbolRotation = ac.TrueTrack ?? 0
+                });
+                var altText = ac.BaroAltitude.HasValue ? $"{ac.BaroAltitude:F0}m" : "alt?";
+                var label = $"{(string.IsNullOrWhiteSpace(ac.Callsign) ? ac.Icao24 : ac.Callsign)} ({altText})";
+                f.Styles.Add(new LabelStyle
+                {
+                    Text = label, Font = new Mapsui.Styles.Font { Size = 10 }, ForeColor = MColor.White,
+                    BackColor = new MBrush(new MColor(15, 25, 35, 180)),
+                    Offset = new Mapsui.Styles.Offset(0, -18)
+                });
+                features.Add(f);
+            }
+            _adsbLayer.Features = features;
+            _mapControl?.Map.Refresh();
+            AdsbCountText.Text = $"{aircraft.Count} aircraft nearby";
+        });
     }
 
     private void SetupMap()
@@ -109,6 +224,8 @@ public partial class FlightView : UserControl
 
         _droneLayer = new MemoryLayer { Name = "Drone" };
         map.Layers.Add(_droneLayer);
+        _adsbLayer = new MemoryLayer { Name = "ADS-B Aircraft" };
+        map.Layers.Add(_adsbLayer);
 
         var groningen = SphericalMercator.FromLonLat(6.5665, 53.2194);
         map.Home = n => n.CenterOnAndZoomTo(new MPoint(groningen.x, groningen.y), 5);
@@ -294,26 +411,59 @@ public partial class FlightView : UserControl
         });
     }
 
-    private async void OnArm(object? s, RoutedEventArgs e) =>
-        await (_mav?.ArmAsync(true) ?? Task.FromResult(false));
-    private async void OnDisarm(object? s, RoutedEventArgs e) =>
-        await (_mav?.ArmAsync(false) ?? Task.FromResult(false));
-    private async void OnTakeoff(object? s, RoutedEventArgs e) =>
-        await (_mav?.TakeoffAsync(30) ?? Task.FromResult(false));
-    private async void OnLand(object? s, RoutedEventArgs e) =>
-        await (_mav?.LandAsync() ?? Task.FromResult(false));
-    private async void OnRtl(object? s, RoutedEventArgs e) =>
-        await (_mav?.RtlAsync() ?? Task.FromResult(false));
+    // Routes to whichever controller is actually connected: the working
+    // Cube Orange path (_mav, MAVLink v2) or the BCube/older-Pixhawk path
+    // (_v1, MAVLink v1). Prefers _mav if both happen to be set; falls back
+    // to _v1 -- mirrors the controller-selector pattern from MavLinkTestView.
+    // Routes to whichever controller is ACTUALLY connected right now --
+    // checking Telemetry.Connected, not just whether the object exists,
+    // since _mav always exists as an object even with no real vehicle.
+    private bool CubeOrangeConnected => _mav != null && _mav.Telemetry.Connected;
+
+    private async void OnArm(object? s, RoutedEventArgs e)
+    {
+        if (CubeOrangeConnected) await _mav!.ArmAsync(true);
+        else _v1?.ArmAsync(true);
+    }
+    private async void OnDisarm(object? s, RoutedEventArgs e)
+    {
+        if (CubeOrangeConnected) await _mav!.ArmAsync(false);
+        else _v1?.ArmAsync(false);
+    }
+    private async void OnTakeoff(object? s, RoutedEventArgs e)
+    {
+        if (CubeOrangeConnected) await _mav!.TakeoffAsync(30);
+        else _v1?.TakeoffAsync(30);
+    }
+    private async void OnLand(object? s, RoutedEventArgs e)
+    {
+        if (CubeOrangeConnected) await _mav!.LandAsync();
+        else _v1?.LandAsync();
+    }
+    private async void OnRtl(object? s, RoutedEventArgs e)
+    {
+        if (CubeOrangeConnected) await _mav!.RtlAsync();
+        else _v1?.RtlAsync();
+    }
     // SAFETY FIX: mode IDs were previously wrong -- OnLoiter sent 5 (actually FBWA),
     // OnGuided sent 4 (actually ACRO), OnAuto sent 3 (actually TRAINING).
     // Corrected against real ArduPlane mode table (verified via mavlink_bridge.py):
     // 10=Auto, 12=Loiter, 15=Guided.
-    private async void OnLoiter(object? s, RoutedEventArgs e) =>
-        await (_mav?.SetModeAsync(12) ?? Task.FromResult(false));
-    private async void OnGuided(object? s, RoutedEventArgs e) =>
-        await (_mav?.SetModeAsync(15) ?? Task.FromResult(false));
-    private async void OnAuto(object? s, RoutedEventArgs e) =>
-        await (_mav?.SetModeAsync(10) ?? Task.FromResult(false));
+    private async void OnLoiter(object? s, RoutedEventArgs e)
+    {
+        if (CubeOrangeConnected) await _mav!.SetModeAsync(12);
+        else _v1?.SetMode(5); // ArduCopter LOITER=5 (different numbering from ArduPlane)
+    }
+    private async void OnGuided(object? s, RoutedEventArgs e)
+    {
+        if (CubeOrangeConnected) await _mav!.SetModeAsync(15);
+        else _v1?.SetMode(4); // ArduCopter GUIDED=4
+    }
+    private async void OnAuto(object? s, RoutedEventArgs e)
+    {
+        if (CubeOrangeConnected) await _mav!.SetModeAsync(10);
+        else _v1?.SetMode(3); // ArduCopter AUTO=3
+    }
     private void OnMapToggle(object? s, RoutedEventArgs e)
     {
         ToggleMapLayer();

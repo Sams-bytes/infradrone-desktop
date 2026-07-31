@@ -6,10 +6,46 @@
     <TextBlock Text="Tests the new replacement library for stability against real vehicle telemetry -- previous library crashed with heap corruption under real data."
                FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
 
+    <Border Background="#131f2e" CornerRadius="8" Padding="14" BorderBrush="#1e3a5f" BorderThickness="0.5">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Controller" FontSize="12" Foreground="White" FontWeight="Bold"/>
+        <ComboBox Name="ControllerSelect" SelectedIndex="0" HorizontalAlignment="Stretch">
+          <ComboBoxItem Content="Cube Orange (ArduPilot, network/UDP)"/>
+          <ComboBoxItem Content="BCube / older Pixhawk (ArduPilot, MAVLink v1 serial)"/>
+        </ComboBox>
+      </StackPanel>
+    </Border>
+
     <Button Name="BtnTestConnect" Content="▶ Connect &amp; Start Test" Click="OnTestConnect"
             Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
             BorderThickness="0.5" Padding="12,8" CornerRadius="6" FontSize="12"
             HorizontalAlignment="Left"/>
+
+    <Border Name="V1StatusCard" Background="#131f2e" CornerRadius="8" Padding="14"
+            BorderBrush="#1e3a5f" BorderThickness="0.5" IsVisible="False">
+      <StackPanel Spacing="6">
+        <TextBlock Text="MAVLink v1 (BCube) status" FontSize="13" Foreground="White" FontWeight="Bold"/>
+        <TextBlock Name="V1StatusText" Text="Not connected." FontSize="12" Foreground="#94a3b8"/>
+      </StackPanel>
+    </Border>
+
+    <Button Name="BtnV1SafeSendTest" Content="🧪 Test safe send (request capabilities, zero flight effect)"
+            Click="OnV1SafeSendTest"
+            Background="#1e293b" Foreground="#38bdf8" BorderBrush="#38bdf8"
+            BorderThickness="0.5" Padding="12,8" CornerRadius="6" FontSize="12"
+            HorizontalAlignment="Left" IsVisible="False"/>
+    <TextBlock Name="V1SendResultText" FontSize="12" Foreground="#94a3b8" IsVisible="False"/>
+
+    <StackPanel Orientation="Horizontal" Spacing="10">
+      <Button Name="BtnV1Arm" Content="🔴 ARM" Click="OnV1Arm"
+              Background="#3d0d0d" Foreground="#ef4444" BorderBrush="#ef4444"
+              BorderThickness="1" Padding="16,10" CornerRadius="6" FontSize="13" FontWeight="Bold"
+              IsVisible="False"/>
+      <Button Name="BtnV1Disarm" Content="⬛ DISARM" Click="OnV1Disarm"
+              Background="#1e293b" Foreground="#94a3b8" BorderBrush="#94a3b8"
+              BorderThickness="1" Padding="16,10" CornerRadius="6" FontSize="13"
+              IsVisible="False"/>
+    </StackPanel>
 
     <Border Background="#131f2e" CornerRadius="8" Padding="14" BorderBrush="#1e3a5f" BorderThickness="0.5">
       <StackPanel Spacing="6">

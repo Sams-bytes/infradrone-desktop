@@ -1,0 +1,155 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.CalibrationView">
+  <ScrollViewer>
+  <StackPanel Margin="20" Spacing="14">
+    <TextBlock Text="🎯 Sensor Calibration" FontSize="18" FontWeight="Bold" Foreground="White"/>
+    <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#94a3b8"
+               Text="Calibrate the vehicle's gyroscope, compass, and accelerometer before any flight. Follow the on-screen instructions from the vehicle exactly as they appear below."/>
+
+    <Border Background="#131f2e" CornerRadius="8" Padding="14" BorderBrush="#1e3a5f" BorderThickness="0.5">
+      <TextBlock Name="ConnStatusText" Text="Not connected. Connect via the sidebar first." FontSize="13" Foreground="#94a3b8"/>
+    </Border>
+
+    <!-- ===================== GYRO ===================== -->
+    <Border Background="#0f1923" CornerRadius="8" Padding="16" BorderBrush="#0d9e75" BorderThickness="1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="🌀 1. Gyroscope Calibration" FontSize="15" FontWeight="Bold" Foreground="#0d9e75"/>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 1: "/><Run Text="Place the drone on a flat, completely still surface." FontWeight="Bold"/>
+        </TextBlock>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 2: "/><Run Text="Click the button below and do NOT touch or move the drone." FontWeight="Bold"/>
+        </TextBlock>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 3: "/><Run Text="Wait a few seconds for the confirmation message below." FontWeight="Bold"/>
+        </TextBlock>
+        <Button Name="BtnGyroCal" Content="▶ Start Gyro Calibration" Click="OnGyroCal"
+                Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                BorderThickness="0.5" Padding="12,8" CornerRadius="6" FontSize="12" IsEnabled="False"
+                HorizontalAlignment="Left"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ===================== COMPASS ===================== -->
+    <Border Background="#0f1923" CornerRadius="8" Padding="16" BorderBrush="#38bdf8" BorderThickness="1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="🧭 2. Compass Calibration" FontSize="15" FontWeight="Bold" Foreground="#38bdf8"/>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 1: "/><Run Text="Move away from metal objects, laptops, and phones -- anything magnetic will throw off the reading." FontWeight="Bold"/>
+        </TextBlock>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 2: "/><Run Text="Click the button below, then slowly and continuously rotate the drone through all angles -- like slowly tumbling it in your hands, covering every direction." FontWeight="Bold"/>
+        </TextBlock>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 3: "/><Run Text="Keep rotating until the log below confirms completion." FontWeight="Bold"/>
+        </TextBlock>
+        <Button Name="BtnCompassCal" Content="▶ Start Compass Calibration" Click="OnCompassCal"
+                Background="#1e293b" Foreground="#38bdf8" BorderBrush="#38bdf8"
+                BorderThickness="0.5" Padding="12,8" CornerRadius="6" FontSize="12" IsEnabled="False"
+                HorizontalAlignment="Left"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ===================== ACCELEROMETER ===================== -->
+    <Border Background="#0f1923" CornerRadius="8" Padding="16" BorderBrush="#eab308" BorderThickness="1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="📐 3. Accelerometer Calibration" FontSize="15" FontWeight="Bold" Foreground="#eab308"/>
+        <TextBlock FontSize="12" Foreground="#94a3b8" TextWrapping="Wrap"
+                    Text="This one asks you to hold the drone steady in 6 different positions, one at a time. Always follow the exact wording shown in &quot;Live Instructions From Vehicle&quot; below -- it is the real, authoritative source of what to do next."/>
+
+        <Border Background="#131f2e" CornerRadius="6" Padding="12" BorderBrush="#1e3a5f" BorderThickness="0.5">
+          <StackPanel Spacing="6">
+            <TextBlock FontSize="12" Foreground="#e2e8f0"><Run Text="① Level" FontWeight="Bold" Foreground="#eab308"/><Run Text="  --  sitting flat, normal upright position"/></TextBlock>
+            <TextBlock FontSize="12" Foreground="#e2e8f0"><Run Text="② Left side down" FontWeight="Bold" Foreground="#eab308"/><Run Text="  --  resting on its left side"/></TextBlock>
+            <TextBlock FontSize="12" Foreground="#e2e8f0"><Run Text="③ Right side down" FontWeight="Bold" Foreground="#eab308"/><Run Text="  --  resting on its right side"/></TextBlock>
+            <TextBlock FontSize="12" Foreground="#e2e8f0"><Run Text="④ Nose down" FontWeight="Bold" Foreground="#eab308"/><Run Text="  --  front tipped toward the ground"/></TextBlock>
+            <TextBlock FontSize="12" Foreground="#e2e8f0"><Run Text="⑤ Nose up" FontWeight="Bold" Foreground="#eab308"/><Run Text="  --  front tipped toward the sky"/></TextBlock>
+            <TextBlock FontSize="12" Foreground="#e2e8f0"><Run Text="⑥ Upside down" FontWeight="Bold" Foreground="#eab308"/><Run Text="  --  fully flipped over"/></TextBlock>
+          </StackPanel>
+        </Border>
+
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 1: "/><Run Text="Click the button below." FontWeight="Bold"/>
+        </TextBlock>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 2: "/><Run Text="Read the instruction that appears below and match it to the correct position from the list above." FontWeight="Bold"/>
+        </TextBlock>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 3: "/><Run Text="Hold that exact position steady for 2-3 seconds without moving." FontWeight="Bold"/>
+        </TextBlock>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 4: "/><Run Text="Wait for the next instruction and repeat until all 6 positions are done." FontWeight="Bold"/>
+        </TextBlock>
+        <Button Name="BtnAccelCal" Content="▶ Start Accelerometer Calibration" Click="OnAccelCal"
+                Background="#3d1e0d" Foreground="#eab308" BorderBrush="#eab308"
+                BorderThickness="0.5" Padding="12,8" CornerRadius="6" FontSize="12" IsEnabled="False"
+                HorizontalAlignment="Left"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ===================== LEVEL HORIZON ===================== -->
+    <Border Background="#0f1923" CornerRadius="8" Padding="16" BorderBrush="#a78bfa" BorderThickness="1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="📏 4. Level Horizon" FontSize="15" FontWeight="Bold" Foreground="#a78bfa"/>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Do this AFTER accelerometer calibration is complete, only if the horizon indicator looks tilted when the drone is genuinely sitting flat."/>
+        </TextBlock>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 1: "/><Run Text="Place the drone level, on a genuinely flat surface." FontWeight="Bold"/>
+        </TextBlock>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap">
+          <Run Text="Step 2: "/><Run Text="Click the button below and keep it still." FontWeight="Bold"/>
+        </TextBlock>
+        <Button Name="BtnLevelCal" Content="▶ Calibrate Level Horizon" Click="OnLevelCal"
+                Background="#2e1065" Foreground="#a78bfa" BorderBrush="#a78bfa"
+                BorderThickness="0.5" Padding="12,8" CornerRadius="6" FontSize="12" IsEnabled="False"
+                HorizontalAlignment="Left"/>
+      </StackPanel>
+    </Border>
+
+    <!-- ===================== RADIO / RC ===================== -->
+    <Border Background="#0f1923" CornerRadius="8" Padding="16" BorderBrush="#f472b6" BorderThickness="1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="🎮 5. Radio (RC Transmitter) Check" FontSize="15" FontWeight="Bold" Foreground="#f472b6"/>
+        <TextBlock FontSize="12" Foreground="#e2e8f0" TextWrapping="Wrap"
+                    Text="This confirms your physical RC transmitter is genuinely being read correctly -- critical since it's your manual safety backup. Turn your transmitter on, then move each stick and switch and confirm the numbers below change in response."/>
+        <Border Background="#131f2e" CornerRadius="6" Padding="12" BorderBrush="#1e3a5f" BorderThickness="0.5">
+          <UniformGrid Columns="4" Rows="2">
+            <TextBlock Name="RcCh1" Text="CH1: —" FontSize="12" Foreground="#e2e8f0" FontFamily="Consolas" Margin="4"/>
+            <TextBlock Name="RcCh2" Text="CH2: —" FontSize="12" Foreground="#e2e8f0" FontFamily="Consolas" Margin="4"/>
+            <TextBlock Name="RcCh3" Text="CH3: —" FontSize="12" Foreground="#e2e8f0" FontFamily="Consolas" Margin="4"/>
+            <TextBlock Name="RcCh4" Text="CH4: —" FontSize="12" Foreground="#e2e8f0" FontFamily="Consolas" Margin="4"/>
+            <TextBlock Name="RcCh5" Text="CH5: —" FontSize="12" Foreground="#e2e8f0" FontFamily="Consolas" Margin="4"/>
+            <TextBlock Name="RcCh6" Text="CH6: —" FontSize="12" Foreground="#e2e8f0" FontFamily="Consolas" Margin="4"/>
+            <TextBlock Name="RcCh7" Text="CH7: —" FontSize="12" Foreground="#e2e8f0" FontFamily="Consolas" Margin="4"/>
+            <TextBlock Name="RcCh8" Text="CH8: —" FontSize="12" Foreground="#e2e8f0" FontFamily="Consolas" Margin="4"/>
+          </UniformGrid>
+        </Border>
+        <TextBlock Name="RcRssiText" Text="Signal: —" FontSize="12" Foreground="#94a3b8"/>
+        <TextBlock FontSize="11" Foreground="#eab308" TextWrapping="Wrap"
+                    Text="⚠ If these numbers stay at — or don't change when you move the sticks, the RC link is NOT working correctly -- do not treat it as a working safety backup until this is confirmed."/>
+      </StackPanel>
+    </Border>
+
+    <Border Background="#0f1923" CornerRadius="8" Padding="16" BorderBrush="#1e3a5f" BorderThickness="1" MinHeight="220">
+      <StackPanel Spacing="8">
+        <TextBlock Text="Live Instructions From Vehicle" FontSize="13" FontWeight="Bold" Foreground="White"/>
+
+        <Border Name="ResultBanner" IsVisible="False" CornerRadius="6" Padding="10">
+          <TextBlock Name="ResultBannerText" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center"/>
+        </Border>
+
+        <TextBlock Name="CurrentInstructionText" Text="No calibration in progress."
+                   FontSize="16" FontWeight="Bold" Foreground="#eab308" TextWrapping="Wrap"/>
+        <TextBlock Name="LastUpdateText" Text="" FontSize="11" Foreground="#64748b"/>
+        <Separator Margin="0,6"/>
+        <TextBlock Text="Message Log" FontSize="11" Foreground="#64748b"/>
+        <ScrollViewer MaxHeight="200">
+          <StackPanel Name="LogPanel" Spacing="3"/>
+        </ScrollViewer>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+  </ScrollViewer>
+</UserControl>

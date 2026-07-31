@@ -62,6 +62,7 @@
             <Button Content="🛡  Failsafe Monitor" Classes="nav" Click="OnFailsafeMonitorView"/>
             <Button Content="🗺  Mission planner" Classes="nav" Click="OnMissionView"/>
             <Button Content="☑  Pre-flight check" Classes="nav" Click="OnPreflightView"/>
+            <Button Content="🎯  Calibration" Classes="nav" Click="OnCalibrationView"/>
             <Button Content="🌤  Weather" Classes="nav" Click="OnWeatherView"/>
           </StackPanel>
         </Expander>

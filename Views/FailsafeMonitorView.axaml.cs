@@ -10,6 +10,7 @@ namespace InfraDroneDesktop.Views
     public partial class FailsafeMonitorView : UserControl
     {
         private AsvMavLinkService? _mav;
+        private Mavlink1SerialService? _v1;
         private DispatcherTimer? _refreshTimer;
 
         public FailsafeMonitorView()
@@ -21,7 +22,20 @@ namespace InfraDroneDesktop.Views
         {
             _mav = mav;
             _mav.SafetyAlert += (title, message) => Dispatcher.UIThread.Post(RefreshAlertHistory);
+            EnsureTimer();
+        }
 
+        public void SetMavlinkV1(Mavlink1SerialService v1)
+        {
+            if (_v1 == v1) return;
+            _v1 = v1;
+            _v1.SafetyAlert += (title, message) => Dispatcher.UIThread.Post(RefreshAlertHistory);
+            EnsureTimer();
+        }
+
+        private void EnsureTimer()
+        {
+            if (_refreshTimer != null) return;
             _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _refreshTimer.Tick += (s, e) => RefreshStatus();
             _refreshTimer.Start();
@@ -41,6 +55,7 @@ namespace InfraDroneDesktop.Views
                 SetCard(LinkStatusText, LinkCard, "NOT CONNECTED", GreyBrush);
                 SetCard(BatteryStatusText, BatteryCard, "NOT CONNECTED", GreyBrush);
                 SetCard(GpsStatusText, GpsCard, "NOT CONNECTED", GreyBrush);
+                RefreshV1Status();
                 return;
             }
 
@@ -69,6 +84,42 @@ namespace InfraDroneDesktop.Views
             else
                 SetCard(GpsStatusText, GpsCard, $"DEGRADED ({_mav.Telemetry.GpsSats} sats)", BadBrush);
             GpsDetailText.Text = $"Minimum: {_mav.GpsMinSatsThreshold} satellites, 3D fix";
+
+            RefreshV1Status();
+        }
+
+        private void RefreshV1Status()
+        {
+            if (_v1 == null || !_v1.Telemetry.Connected)
+            {
+                SetCard(V1LinkStatusText, V1LinkCard, "NOT CONNECTED", GreyBrush);
+                SetCard(V1BatteryStatusText, V1BatteryCard, "NOT CONNECTED", GreyBrush);
+                SetCard(V1GpsStatusText, V1GpsCard, "NOT CONNECTED", GreyBrush);
+                return;
+            }
+
+            if (_v1.IsLinkOk)
+                SetCard(V1LinkStatusText, V1LinkCard, "OK", OkBrush);
+            else
+                SetCard(V1LinkStatusText, V1LinkCard, $"LOST ({_v1.SecondsSinceLastTelemetry:F0}s)", BadBrush);
+            V1LinkDetailText.Text = $"Threshold: {_v1.LinkTimeoutThreshold} s of silence";
+
+            var v1Batt = _v1.Telemetry.BatteryPct;
+            if (v1Batt < 0)
+                SetCard(V1BatteryStatusText, V1BatteryCard, "UNKNOWN", GreyBrush);
+            else if (_v1.IsBatteryCritical)
+                SetCard(V1BatteryStatusText, V1BatteryCard, $"CRITICAL ({v1Batt}%)", BadBrush);
+            else if (!_v1.IsBatteryOk)
+                SetCard(V1BatteryStatusText, V1BatteryCard, $"LOW ({v1Batt}%)", WarnBrush);
+            else
+                SetCard(V1BatteryStatusText, V1BatteryCard, $"OK ({v1Batt}%)", OkBrush);
+            V1BatteryDetailText.Text = $"Low: {_v1.BatteryLowThreshold}%  Critical: {_v1.BatteryCriticalThreshold}%";
+
+            if (_v1.IsGpsOk)
+                SetCard(V1GpsStatusText, V1GpsCard, $"OK ({_v1.Telemetry.GpsSats} sats)", OkBrush);
+            else
+                SetCard(V1GpsStatusText, V1GpsCard, $"DEGRADED ({_v1.Telemetry.GpsSats} sats)", BadBrush);
+            V1GpsDetailText.Text = $"Minimum: {_v1.GpsMinSatsThreshold} satellites, 3D fix";
         }
 
         private void SetCard(TextBlock statusText, Border card, string text, IBrush color)
@@ -80,10 +131,16 @@ namespace InfraDroneDesktop.Views
 
         private void RefreshAlertHistory()
         {
-            if (_mav == null) return;
             AlertHistoryPanel.Children.Clear();
 
-            if (_mav.AlertHistory.Count == 0)
+            var merged = new System.Collections.Generic.List<(DateTime Time, string Title, string Message, string Vehicle)>();
+            if (_mav != null)
+                merged.AddRange(_mav.AlertHistory.Select(a => (a.Time, a.Title, a.Message, "Cube Orange")));
+            if (_v1 != null)
+                merged.AddRange(_v1.AlertHistory.Select(a => (a.Time, a.Title, a.Message, "BCube")));
+            merged = merged.OrderByDescending(a => a.Time).ToList();
+
+            if (merged.Count == 0)
             {
                 AlertHistoryPanel.Children.Add(new TextBlock
                 {
@@ -93,7 +150,7 @@ namespace InfraDroneDesktop.Views
                 return;
             }
 
-            foreach (var alert in _mav.AlertHistory.Take(50))
+            foreach (var alert in merged.Take(50))
             {
                 var isRestored = alert.Title.Contains("RESTORED") || alert.Title.Contains("RECOVERED");
                 var color = isRestored ? OkBrush : (IBrush)new SolidColorBrush(Color.Parse("#ef4444"));
@@ -101,7 +158,7 @@ namespace InfraDroneDesktop.Views
                 var panel = new StackPanel { Spacing = 2, Margin = new Avalonia.Thickness(0, 0, 0, 8) };
                 panel.Children.Add(new TextBlock
                 {
-                    Text = $"{alert.Time:yyyy-MM-dd HH:mm:ss} -- {alert.Title}",
+                    Text = $"{alert.Time:yyyy-MM-dd HH:mm:ss} -- [{alert.Vehicle}] {alert.Title}",
                     FontSize = 12, FontWeight = Avalonia.Media.FontWeight.Bold, Foreground = color
                 });
                 panel.Children.Add(new TextBlock

@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -27,6 +28,10 @@ public partial class MainWindow : Window
     {
         Dispatcher.UIThread.Post(() =>
         {
+            // Cube Orange takes priority for the sidebar if it's actually connected,
+            // same priority pattern as Flight View's CubeOrangeConnected -- avoids the
+            // two controllers fighting over the same display if both are plugged in.
+            if (_v1 != null && _v1.Telemetry.Connected && !t.Connected) return;
             ConnDot.Fill = t.Connected
                 ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75"))
                 : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444"));
@@ -37,7 +42,38 @@ public partial class MainWindow : Window
         });
     }
 
+    private void OnV1TelemetrySidebar(Mavlink1Telemetry t)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Only drive the sidebar from BCube if Cube Orange isn't the one connected.
+            if (_mav != null && _mav.Telemetry.Connected) return;
+            ConnDot.Fill = t.Connected
+                ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75"))
+                : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444"));
+            ConnText.Text = t.Connected ? "Online" : "Offline";
+            ModeText.Text = t.FlightMode;
+            BattText.Text = t.Connected && t.BatteryPct >= 0 ? $"{t.BatteryPct}%" : "—";
+            GpsText.Text = t.Connected ? $"{t.GpsSats} sat / fix {t.GpsFix}" : "—";
+        });
+    }
+
     private FlightView? _flightView;
+    private Mavlink1SerialService? _v1;
+    private CalibrationView? _calibrationView;
+
+    private void OnCalibrationView(object? sender, RoutedEventArgs e)
+    {
+        if (_calibrationView == null)
+        {
+            _calibrationView = new CalibrationView();
+        }
+        // Re-check the connection every time this screen is opened, not just
+        // on first creation -- fixes the case where the user opens this
+        // screen before clicking Connect.
+        if (_v1 != null) _calibrationView.SetMavlinkV1(_v1);
+        ContentArea.Child = _calibrationView;
+    }
     private void OnSafetyAlert(string title, string message)
     {
         Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
@@ -97,6 +133,7 @@ public partial class MainWindow : Window
             _flightView = new FlightView();
             _flightView.SetMavLink(_mav);
         }
+        if (_v1 != null) _flightView.SetMavlinkV1(_v1);
         ContentArea.Child = _flightView;
     }
     private MissionView? _missionView;
@@ -260,6 +297,7 @@ public partial class MainWindow : Window
             _failsafeMonitorView = new Views.FailsafeMonitorView();
             _failsafeMonitorView.SetMavLink(_mav);
         }
+        if (_v1 != null) _failsafeMonitorView.SetMavlinkV1(_v1);
         ContentArea.Child = _failsafeMonitorView;
     }
     private void OnStoryModeView(object? sender, RoutedEventArgs e)
@@ -290,6 +328,27 @@ public partial class MainWindow : Window
             // port as an explicit destination, same fix that resolved fence-breach
             // testing.
             _mav.Start("udp://127.0.0.1:14571?rhost=127.0.0.1&rport=14445");
+
+            // Also attempt the BCube/older-Pixhawk (MAVLink v1) path -- separate
+            // hardware/port, so this is safe to try alongside the Cube Orange
+            // connection above. Fails silently (logged only) if that device
+            // isn't actually plugged in right now.
+            if (_v1 == null) // guard against a stray duplicate click clobbering an already-open port
+            {
+                try
+                {
+                    _v1 = new Mavlink1SerialService();
+                    bool v1Ok = _v1.Start("/dev/bcube", 57600);
+                    if (!v1Ok) _v1 = null;
+                    else _v1.TelemetryUpdated += OnV1TelemetrySidebar;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[MainWindow] BCube/v1 connection not available: {ex.Message}");
+                    _v1 = null;
+                }
+            }
+
             ConnText.Text = "Connecting...";
         }
         else

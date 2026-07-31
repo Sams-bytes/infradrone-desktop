@@ -83,6 +83,11 @@ namespace InfraDroneDesktop.Services
         public bool IsBatteryOk => Telemetry.BatteryPct < 0 || Telemetry.BatteryPct > BatteryLowPct;
         public bool IsBatteryCritical => Telemetry.BatteryPct >= 0 && Telemetry.BatteryPct <= BatteryCriticalPct;
         public bool IsGpsOk => Telemetry.GpsFix >= (int)Asv.Mavlink.V2.Common.GpsFixType.GpsFixType3dFix && Telemetry.GpsSats >= GpsSatsMinimum;
+        public enum FirmwareType { Unknown, ArduPilot, Px4 }
+        public FirmwareType DetectedFirmware { get; private set; } = FirmwareType.Unknown;
+        public FirmwareType SelectedFirmware { get; set; } = FirmwareType.ArduPilot; // user's manual choice
+        public event Action<FirmwareType>? FirmwareDetected;
+
         public int LinkTimeoutThreshold => (int)LinkLostTimeoutSeconds;
         public int BatteryLowThreshold => BatteryLowPct;
         public int BatteryCriticalThreshold => BatteryCriticalPct;
@@ -126,15 +131,25 @@ namespace InfraDroneDesktop.Services
                     {
                         Console.WriteLine($"[AsvMavLink] Device discovered: key={change.Current}");
 
-                        // Only build a vehicle client for the REAL ArduPilot autopilot --
-                        // skip GCS heartbeats (our own service, QGC, etc.) so we don't
-                        // waste effort or risk ending up targeting the wrong device
-                        // depending on discovery order.
-                        if (change.Current.Autopilot != MavAutopilot.MavAutopilotArdupilotmega)
+                        // Accept real vehicle autopilots (ArduPilot OR PX4) -- skip GCS
+                        // heartbeats (our own service, QGC, etc.) so we don't waste effort
+                        // or risk targeting the wrong device depending on discovery order.
+                        if (change.Current.Autopilot == MavAutopilot.MavAutopilotArdupilotmega)
+                        {
+                            DetectedFirmware = FirmwareType.ArduPilot;
+                            Console.WriteLine("[AsvMavLink] Detected firmware: ArduPilot");
+                        }
+                        else if (change.Current.Autopilot == MavAutopilot.MavAutopilotPx4)
+                        {
+                            DetectedFirmware = FirmwareType.Px4;
+                            Console.WriteLine("[AsvMavLink] Detected firmware: PX4");
+                        }
+                        else
                         {
                             Console.WriteLine($"[AsvMavLink] Skipping non-vehicle device (autopilot={change.Current.Autopilot})");
                             continue;
                         }
+                        FirmwareDetected?.Invoke(DetectedFirmware);
 
                         SetupVehicleClient(change.Current);
                     }

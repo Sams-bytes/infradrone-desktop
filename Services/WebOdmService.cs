@@ -47,6 +47,8 @@ public class WebOdmService
             });
             var resp = await _http.PostAsync($"{BASE}/api/token-auth/", form);
             var json = await resp.Content.ReadAsStringAsync();
+            Console.WriteLine($"[WebODM DEBUG] Status: {(int)resp.StatusCode} {resp.StatusCode}");
+            Console.WriteLine($"[WebODM DEBUG] Raw response: {json}");
             var doc = JsonDocument.Parse(json);
             if (doc.RootElement.TryGetProperty("token", out var t))
             {
@@ -57,7 +59,11 @@ public class WebOdmService
             }
             return false;
         }
-        catch { return false; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WebODM DEBUG] LoginAsync EXCEPTION: {ex}");
+            return false;
+        }
     }
 
     public async Task<List<OdmProject>> GetProjectsAsync()

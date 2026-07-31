@@ -20,8 +20,16 @@ namespace InfraDroneDesktop.Views
             InitializeComponent();
         }
 
+        private Mavlink1SerialService? _v1Service;
+
         private void OnTestConnect(object? sender, RoutedEventArgs e)
         {
+            if (ControllerSelect.SelectedIndex == 1)
+            {
+                OnTestConnectV1();
+                return;
+            }
+
             try
             {
                 StatusText.Text = "Connecting...";
@@ -75,6 +83,87 @@ namespace InfraDroneDesktop.Views
                 StatusText.Text = "ERROR: " + ex.Message;
                 LogAppend("[TEST] Exception: " + ex.ToString());
             }
+        }
+
+        // Isolated BCube / older-Pixhawk (MAVLink v1) connection path.
+        // Completely separate from the working Cube Orange / v2 path above --
+        // does not touch _connection, _browser, or _mavService.
+        private void OnTestConnectV1()
+        {
+            V1StatusCard.IsVisible = true;
+            V1StatusText.Text = "Connecting on /dev/bcube @ 57600 baud (read-only)...";
+            BtnTestConnect.IsEnabled = false;
+
+            _v1Service = new Mavlink1SerialService();
+            _v1Service.TelemetryUpdated += t =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    V1StatusText.Text =
+                        $"Connected. sysid={t.SystemId} compid={t.ComponentId} " +
+                        $"autopilot={t.Autopilot} type={t.VehicleType} armed={t.Armed} " +
+                        $"customMode={t.CustomMode} systemStatus={t.SystemStatus}";
+                    BtnV1SafeSendTest.IsVisible = true;
+                    BtnV1Arm.IsVisible = true;
+                    BtnV1Disarm.IsVisible = true;
+                });
+            };
+            _v1Service.CommandAckReceived += (cmd, result) =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    V1SendResultText.IsVisible = true;
+                    V1SendResultText.Text = $"COMMAND_ACK received: command={cmd}, result={result} " +
+                        (result == 0 ? "(0 = MAV_RESULT_ACCEPTED -- real round-trip confirmed working)" : $"(non-zero result, see MAV_RESULT enum)");
+                });
+            };
+
+            bool ok = _v1Service.Start("/dev/bcube", 57600);
+            if (!ok)
+            {
+                V1StatusText.Text = "Failed to open port -- check the device path and that no other program (e.g. QGroundControl) has it open.";
+                BtnTestConnect.IsEnabled = true;
+            }
+        }
+
+        // MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES = 520. Purely informational --
+        // asks the vehicle to report its capabilities. Zero effect on flight
+        // state, arming, or motors. Used here only to prove the send->ACK
+        // round-trip genuinely works before ever sending Arm/Takeoff.
+        private void OnV1SafeSendTest(object? sender, RoutedEventArgs e)
+        {
+            if (_v1Service == null) return;
+            V1SendResultText.IsVisible = true;
+            V1SendResultText.Text = "Sending MAV_CMD_REQUEST_AUTOPILOT_CAPABILITIES (520)...";
+            _v1Service.SendCommandLong(
+                targetSystem: _v1Service.Telemetry.SystemId,
+                targetComponent: _v1Service.Telemetry.ComponentId,
+                command: 520, p1: 1);
+        }
+
+        // MAV_CMD_COMPONENT_ARM_DISARM = 400. param1: 1 = arm, 0 = disarm.
+        // Real, physical-effect command -- only reachable via explicit button
+        // click, never sent automatically.
+        private void OnV1Arm(object? sender, RoutedEventArgs e)
+        {
+            if (_v1Service == null) return;
+            V1SendResultText.IsVisible = true;
+            V1SendResultText.Text = "Sending ARM command...";
+            _v1Service.SendCommandLong(
+                targetSystem: _v1Service.Telemetry.SystemId,
+                targetComponent: _v1Service.Telemetry.ComponentId,
+                command: 400, p1: 1);
+        }
+
+        private void OnV1Disarm(object? sender, RoutedEventArgs e)
+        {
+            if (_v1Service == null) return;
+            V1SendResultText.IsVisible = true;
+            V1SendResultText.Text = "Sending DISARM command...";
+            _v1Service.SendCommandLong(
+                targetSystem: _v1Service.Telemetry.SystemId,
+                targetComponent: _v1Service.Telemetry.ComponentId,
+                command: 400, p1: 0);
         }
 
         private async void OnCheckFence(object? sender, RoutedEventArgs e)
