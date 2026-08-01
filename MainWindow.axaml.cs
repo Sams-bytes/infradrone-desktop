@@ -239,6 +239,13 @@ public partial class MainWindow : Window
     private void OnProcessingView(object? sender, RoutedEventArgs e)
     {
         if (_processingView == null) _processingView = new ProcessingView();
+        if (_flightView == null)
+        {
+            _flightView = new FlightView();
+            _flightView.SetMavLink(_mav);
+        }
+        if (_v1 != null) _flightView.SetMavlinkV1(_v1);
+        _processingView.SetFlightView(_flightView);
         ContentArea.Child = _processingView;
     }
     private void OnSequoiaView(object? sender, RoutedEventArgs e)

@@ -669,4 +669,18 @@ public partial class FlightView : UserControl
             MissionStatusText.Text = "Cube Orange mission upload not yet implemented.";
         }
     }
+
+    private MemoryLayer? _orthoLayer;
+    public void AddOrthomosaicLayer(byte[] imageBytes, double minX, double minY, double maxX, double maxY)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (_orthoLayer != null) _map.Layers.Remove(_orthoLayer);
+        var extent = new Mapsui.MRect(minX, minY, maxX, maxY);
+        var raster = new Mapsui.MRaster(imageBytes, extent);
+        var feature = new Mapsui.Layers.RasterFeature(raster);
+        feature.Styles.Add(new Mapsui.Styles.RasterStyle());
+        _orthoLayer = new MemoryLayer { Name = "Orthomosaic", Features = new System.Collections.Generic.List<IFeature> { feature } };
+        _map.Layers.Add(_orthoLayer);
+        _mapControl.Map.Refresh();
+    }
 }

@@ -19,10 +19,147 @@ public partial class ProcessingView : UserControl
     private string[] _imagePaths = Array.Empty<string>();
     private int _projectId = -1;
     private string _taskId = "";
+    private FlightView? _flightView;
+    private readonly System.Collections.Generic.List<(int ProjectId, string TaskId, string Label)> _existingTasks = new();
+    public void SetFlightView(FlightView fv) => _flightView = fv;
 
     public ProcessingView()
     {
         InitializeComponent();
+    }
+
+    private async void OnLoadOnMap(object? s, RoutedEventArgs e)
+    {
+        if (_flightView == null)
+        {
+            ProgressDetail.Text = "Flight View not available -- open it once first.";
+            return;
+        }
+        try
+        {
+            ProgressDetail.Text = "Downloading orthomosaic...";
+            var url = _odm.GetOrthomosaicUrl(_projectId, _taskId);
+            var httpClient = _odm.GetHttpClient();
+            var bytes = await httpClient.GetByteArrayAsync(url);
+            var rawPath = Path.Combine(Path.GetTempPath(), $"ortho_{_taskId}.tif");
+            await File.WriteAllBytesAsync(rawPath, bytes);
+
+            ProgressDetail.Text = "Reprojecting to Web Mercator...";
+            var warpedPath = Path.Combine(Path.GetTempPath(), $"ortho_{_taskId}_3857.tif");
+            if (File.Exists(warpedPath)) File.Delete(warpedPath);
+            var warpPsi = new ProcessStartInfo
+            {
+                FileName = "gdalwarp",
+                Arguments = $"-t_srs EPSG:3857 \"{rawPath}\" \"{warpedPath}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+            using (var warpProc = Process.Start(warpPsi))
+            {
+                await warpProc!.WaitForExitAsync();
+                if (warpProc.ExitCode != 0)
+                {
+                    var err = await warpProc.StandardError.ReadToEndAsync();
+                    ProgressDetail.Text = $"gdalwarp failed: {err.Substring(0, Math.Min(200, err.Length))}";
+                    return;
+                }
+            }
+
+            ProgressDetail.Text = "Reading extent...";
+            var infoPsi = new ProcessStartInfo
+            {
+                FileName = "gdalinfo",
+                Arguments = $"\"{warpedPath}\"",
+                RedirectStandardOutput = true,
+                UseShellExecute = false
+            };
+            string gdalInfoOutput;
+            using (var infoProc = Process.Start(infoPsi))
+            {
+                gdalInfoOutput = await infoProc!.StandardOutput.ReadToEndAsync();
+                await infoProc.WaitForExitAsync();
+            }
+
+            double minX = 0, minY = 0, maxX = 0, maxY = 0;
+            foreach (var line in gdalInfoOutput.Split('\n'))
+            {
+                if (line.TrimStart().StartsWith("Upper Left"))
+                {
+                    var coords = ParseCoords(line);
+                    minX = coords.Item1; maxY = coords.Item2;
+                }
+                else if (line.TrimStart().StartsWith("Lower Right"))
+                {
+                    var coords = ParseCoords(line);
+                    maxX = coords.Item1; minY = coords.Item2;
+                }
+            }
+            if (minX == 0 && maxX == 0)
+            {
+                ProgressDetail.Text = "Could not parse extent from gdalinfo output.";
+                return;
+            }
+
+            var imageBytes = await File.ReadAllBytesAsync(warpedPath);
+            _flightView.AddOrthomosaicLayer(imageBytes, minX, minY, maxX, maxY);
+            ProgressDetail.Text = "Orthomosaic loaded on Flight View map.";
+        }
+        catch (Exception ex)
+        {
+            ProgressDetail.Text = $"Load on map failed: {ex.Message}";
+        }
+    }
+
+    private static (double, double) ParseCoords(string gdalinfoLine)
+    {
+        var openParen = gdalinfoLine.IndexOf('(');
+        var closeParen = gdalinfoLine.IndexOf(')');
+        var inner = gdalinfoLine.Substring(openParen + 1, closeParen - openParen - 1);
+        var parts = inner.Split(',');
+        return (double.Parse(parts[0].Trim()), double.Parse(parts[1].Trim()));
+    }
+
+    private async void OnRefreshProjects(object? s, RoutedEventArgs e)
+    {
+        ExistingProjectsStatus.Text = "Loading projects...";
+        _existingTasks.Clear();
+        ExistingTasksCombo.Items.Clear();
+        try
+        {
+            var projects = await _odm.GetProjectsAsync();
+            foreach (var proj in projects)
+            {
+                var tasks = await _odm.GetTasksAsync(proj.Id);
+                foreach (var task in tasks)
+                {
+                    var label = $"{proj.Name} / {(string.IsNullOrEmpty(task.Name) ? task.Uuid.Substring(0, 8) : task.Name)} -- {task.StatusLabel} ({task.Progress:F0}%)";
+                    _existingTasks.Add((proj.Id, task.Uuid, label));
+                    ExistingTasksCombo.Items.Add(label);
+                }
+            }
+            ExistingProjectsStatus.Text = $"{_existingTasks.Count} task(s) found across {projects.Count} project(s).";
+        }
+        catch (Exception ex)
+        {
+            ExistingProjectsStatus.Text = $"Failed to load projects: {ex.Message}";
+        }
+    }
+
+    private void OnLoadExisting(object? s, RoutedEventArgs e)
+    {
+        var idx = ExistingTasksCombo.SelectedIndex;
+        if (idx < 0 || idx >= _existingTasks.Count)
+        {
+            ExistingProjectsStatus.Text = "Select a task from the list first.";
+            return;
+        }
+        var (projectId, taskId, label) = _existingTasks[idx];
+        _projectId = projectId;
+        _taskId = taskId;
+        ResultsCard.IsVisible = true;
+        ProgressCard.IsVisible = false;
+        ExistingProjectsStatus.Text = $"Loaded: {label}";
     }
 
     private async void OnConnect(object? s, RoutedEventArgs e)

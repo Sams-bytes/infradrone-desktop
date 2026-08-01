@@ -35,6 +35,7 @@ public class WebOdmService
     private const string BASE = "http://localhost:8000";
 
     public bool IsAuthenticated => !string.IsNullOrEmpty(_token);
+    public System.Net.Http.HttpClient GetHttpClient() => _http;
 
     public async Task<bool> LoginAsync(string username, string password)
     {
@@ -81,6 +82,22 @@ public class WebOdmService
         return projects;
     }
 
+    public async Task<List<OdmTask>> GetTasksAsync(int projectId)
+    {
+        var resp = await _http.GetStringAsync($"{BASE}/api/projects/{projectId}/tasks/?format=json");
+        var doc = JsonDocument.Parse(resp);
+        var tasks = new List<OdmTask>();
+        var results = doc.RootElement.TryGetProperty("results", out var r) ? r : doc.RootElement;
+        foreach (var t in results.EnumerateArray())
+            tasks.Add(new OdmTask
+            {
+                Uuid = t.TryGetProperty("id", out var idProp) ? (idProp.GetString() ?? "") : "",
+                Name = t.TryGetProperty("name", out var nameProp) ? (nameProp.GetString() ?? "") : "",
+                Status = t.TryGetProperty("status", out var statusProp) ? statusProp.GetInt32() : 0,
+                Progress = t.TryGetProperty("running_progress", out var progProp) ? progProp.GetDouble() * 100 : 0
+            });
+        return tasks;
+    }
     public async Task<int> CreateProjectAsync(string name)
     {
         var content = new StringContent(
