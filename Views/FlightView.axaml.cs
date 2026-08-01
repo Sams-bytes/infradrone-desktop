@@ -1,5 +1,7 @@
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using InfraDroneDesktop.Services;
@@ -103,6 +105,8 @@ public partial class FlightView : UserControl
     }
     private MemoryLayer? _droneLayer;
     private MemoryLayer? _adsbLayer;
+    private MemoryLayer? _wpLayer;
+    private MemoryLayer? _routeLayer;
     private readonly AdsbService _adsb = new AdsbService();
     private Mapsui.UI.Avalonia.MapControl? _mapControl;
     private Map? _map;
@@ -226,6 +230,10 @@ public partial class FlightView : UserControl
         map.Layers.Add(_droneLayer);
         _adsbLayer = new MemoryLayer { Name = "ADS-B Aircraft" };
         map.Layers.Add(_adsbLayer);
+        _routeLayer = new MemoryLayer { Name = "Mission Route" };
+        map.Layers.Add(_routeLayer);
+        _wpLayer = new MemoryLayer { Name = "Mission Waypoints" };
+        map.Layers.Add(_wpLayer);
 
         var groningen = SphericalMercator.FromLonLat(6.5665, 53.2194);
         map.Home = n => n.CenterOnAndZoomTo(new MPoint(groningen.x, groningen.y), 5);
@@ -256,8 +264,8 @@ public partial class FlightView : UserControl
                 var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
                 mf.Styles.Add(new VectorStyle
                 {
-                    Fill = new Brush(new Color((int)r, (int)g, (int)b)),
-                    Outline = new Pen(new Color((int)r, (int)g, (int)b), 2.0f)
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color((int)r, (int)g, (int)b)),
+                    Outline = new Mapsui.Styles.Pen(new Mapsui.Styles.Color((int)r, (int)g, (int)b), 2.0f)
                 });
                 features.Add(mf);
             }
@@ -469,5 +477,196 @@ public partial class FlightView : UserControl
         ToggleMapLayer();
         var labels = new[] { "🗺 Street", "🛰 Aerial", "🌍 Hybrid" };
         BtnMapToggle.Content = labels[_mapMode];
+    }
+
+    // --- Minimal waypoint plotting on this view's own map (no export/import/survey) ---
+    internal readonly System.Collections.Generic.List<Waypoint> _waypoints = new();
+    private bool _addWpMode = false;
+    private Avalonia.Point _wpPressPos;
+
+    private void OnAddWpToggle(object? s, RoutedEventArgs e)
+    {
+        _addWpMode = !_addWpMode;
+        BtnAddWpToggle.Content = _addWpMode ? "📍 Add WP: ON" : "📍 Add WP: OFF";
+        BtnAddWpToggle.Background = _addWpMode
+            ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d3d2e"))
+            : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#1a2637"));
+        if (_addWpMode)
+        {
+            _mapControl.PointerPressed += OnWpMapPressed;
+            _mapControl.PointerReleased += OnWpMapReleased;
+        }
+        else
+        {
+            _mapControl.PointerPressed -= OnWpMapPressed;
+            _mapControl.PointerReleased -= OnWpMapReleased;
+        }
+    }
+
+    private void OnWpMapPressed(object? sender, PointerPressedEventArgs e)
+    {
+        _wpPressPos = e.GetPosition(_mapControl);
+    }
+
+    private void OnWpMapReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        var releasePos = e.GetPosition(_mapControl);
+        var dx = releasePos.X - _wpPressPos.X;
+        var dy = releasePos.Y - _wpPressPos.Y;
+        if (Math.Sqrt(dx * dx + dy * dy) > 5) return; // was a pan/drag, not a click
+        if (_mapControl?.Map == null) return;
+        var vp = _mapControl.Map.Navigator.Viewport;
+        var worldX = vp.CenterX + (releasePos.X - vp.Width / 2) * vp.Resolution;
+        var worldY = vp.CenterY - (releasePos.Y - vp.Height / 2) * vp.Resolution;
+        var lonLat = Mapsui.Projections.SphericalMercator.ToLonLat(worldX, worldY);
+        _waypoints.Add(new Waypoint
+        {
+            Number = _waypoints.Count + 1,
+            Lat = lonLat.lat,
+            Lon = lonLat.lon,
+            AltM = 30
+        });
+        RefreshWaypointList();
+        RefreshWpMap();
+        MissionStatusText.Text = $"{_waypoints.Count} waypoint(s) placed.";
+    }
+
+    private void RefreshWpMap()
+    {
+        if (_wpLayer == null || _routeLayer == null) return;
+        var wpFeatures = new System.Collections.Generic.List<IFeature>();
+        var routeFeatures = new System.Collections.Generic.List<IFeature>();
+        foreach (var wp in _waypoints)
+        {
+            var (x, y) = Mapsui.Projections.SphericalMercator.FromLonLat(wp.Lon, wp.Lat);
+            var f = new PointFeature(new MPoint(x, y));
+            f.Styles.Add(new SymbolStyle
+            {
+                Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(13, 158, 117)),
+                Outline = new Mapsui.Styles.Pen(Mapsui.Styles.Color.White, 2),
+                SymbolScale = 0.5
+            });
+            wpFeatures.Add(f);
+        }
+        if (_waypoints.Count >= 2)
+        {
+            var coords = _waypoints.Select(wp =>
+            {
+                var (x, y) = Mapsui.Projections.SphericalMercator.FromLonLat(wp.Lon, wp.Lat);
+                return new NetTopologySuite.Geometries.Coordinate(x, y);
+            }).ToArray();
+            var factory = NetTopologySuite.NtsGeometryServices.Instance.CreateGeometryFactory();
+            var line = factory.CreateLineString(coords);
+            var lf = new GeometryFeature { Geometry = line };
+            lf.Styles.Add(new VectorStyle
+            {
+                Fill = null,
+                Line = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(13, 158, 117, 200), 2)
+            });
+            routeFeatures.Add(lf);
+        }
+        _wpLayer.Features = wpFeatures;
+        _routeLayer.Features = routeFeatures;
+        _mapControl?.Map.Refresh();
+    }
+    private void RefreshWaypointList()
+    {
+        WpCount.Text = $"{_waypoints.Count} points";
+        WaypointList.Items.Clear();
+        foreach (var wp in _waypoints)
+        {
+            var altBox = new TextBox { Text = wp.AltM.ToString("F0"), Width = 50, FontSize = 10, Height = 26,
+                Background = Avalonia.Media.SolidColorBrush.Parse("#f8fafc"), Foreground = Avalonia.Media.SolidColorBrush.Parse("#0f1923"),
+                BorderBrush = Avalonia.Media.SolidColorBrush.Parse("#0d9e75"), BorderThickness = new Avalonia.Thickness(1.5),
+                FontWeight = FontWeight.Bold, Padding = new Avalonia.Thickness(4) };
+            altBox.LostFocus += (_, _) => { if (double.TryParse(altBox.Text, out var v)) wp.AltM = v; };
+
+            var holdBox = new TextBox { Text = wp.HoldTimeSec.ToString("F0"), Width = 50, FontSize = 10, Height = 26,
+                Background = Avalonia.Media.SolidColorBrush.Parse("#f8fafc"), Foreground = Avalonia.Media.SolidColorBrush.Parse("#0f1923"),
+                BorderBrush = Avalonia.Media.SolidColorBrush.Parse("#0d9e75"), BorderThickness = new Avalonia.Thickness(1.5),
+                FontWeight = FontWeight.Bold, Padding = new Avalonia.Thickness(4) };
+            holdBox.LostFocus += (_, _) => { if (double.TryParse(holdBox.Text, out var v)) wp.HoldTimeSec = v; };
+
+            var radiusBox = new TextBox { Text = wp.AcceptRadiusM.ToString("F0"), Width = 50, FontSize = 10, Height = 26,
+                Background = Avalonia.Media.SolidColorBrush.Parse("#f8fafc"), Foreground = Avalonia.Media.SolidColorBrush.Parse("#0f1923"),
+                BorderBrush = Avalonia.Media.SolidColorBrush.Parse("#0d9e75"), BorderThickness = new Avalonia.Thickness(1.5),
+                FontWeight = FontWeight.Bold, Padding = new Avalonia.Thickness(4) };
+            radiusBox.LostFocus += (_, _) => { if (double.TryParse(radiusBox.Text, out var v)) wp.AcceptRadiusM = v; };
+
+            var yawBox = new TextBox { Text = wp.YawDeg.ToString("F0"), Width = 50, FontSize = 10, Height = 26,
+                Background = Avalonia.Media.SolidColorBrush.Parse("#f8fafc"), Foreground = Avalonia.Media.SolidColorBrush.Parse("#0f1923"),
+                BorderBrush = Avalonia.Media.SolidColorBrush.Parse("#0d9e75"), BorderThickness = new Avalonia.Thickness(1.5),
+                FontWeight = FontWeight.Bold, Padding = new Avalonia.Thickness(4) };
+            yawBox.LostFocus += (_, _) => { if (double.TryParse(yawBox.Text, out var v)) wp.YawDeg = v; };
+
+            var camCheck = new CheckBox { Content = "📷", IsChecked = wp.CameraTrigger, FontSize = 10,
+                Foreground = Avalonia.Media.SolidColorBrush.Parse("#94a3b8") };
+            camCheck.IsCheckedChanged += (_, _) => wp.CameraTrigger = camCheck.IsChecked ?? false;
+
+            WaypointList.Items.Add(new Border
+            {
+                Background = Avalonia.Media.SolidColorBrush.Parse("#131f2e"),
+                BorderBrush = Avalonia.Media.SolidColorBrush.Parse("#1e3a5f"),
+                BorderThickness = new Avalonia.Thickness(0.5),
+                CornerRadius = new Avalonia.CornerRadius(6),
+                Padding = new Avalonia.Thickness(10, 6),
+                Margin = new Avalonia.Thickness(2),
+                Width = 190,
+                Child = new StackPanel
+                {
+                    Spacing = 3,
+                    Children =
+                    {
+                        new TextBlock { Text = $"WP {wp.Number}", FontSize = 11, FontWeight = FontWeight.Bold, Foreground = Avalonia.Media.SolidColorBrush.Parse("#0d9e75") },
+                        new TextBlock { Text = $"{wp.Lat:F5}°N  {wp.Lon:F5}°E", FontSize = 9, Foreground = Avalonia.Media.SolidColorBrush.Parse("#94a3b8"), FontFamily = new FontFamily("Consolas") },
+                        new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"),
+                            Children = { new TextBlock { Text = "Alt(m):", FontSize = 10, FontWeight = FontWeight.Bold, Foreground = Avalonia.Media.SolidColorBrush.Parse("#cbd5e1"), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center }, altBox } },
+                        new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"),
+                            Children = { new TextBlock { Text = "Hold(s):", FontSize = 10, FontWeight = FontWeight.Bold, Foreground = Avalonia.Media.SolidColorBrush.Parse("#cbd5e1"), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center }, holdBox } },
+                        new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"),
+                            Children = { new TextBlock { Text = "Radius(m):", FontSize = 10, FontWeight = FontWeight.Bold, Foreground = Avalonia.Media.SolidColorBrush.Parse("#cbd5e1"), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center }, radiusBox } },
+                        new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"),
+                            Children = { new TextBlock { Text = "Yaw(°):", FontSize = 10, FontWeight = FontWeight.Bold, Foreground = Avalonia.Media.SolidColorBrush.Parse("#cbd5e1"), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center }, yawBox } },
+                        camCheck,
+                    }
+                }
+            });
+        }
+    }
+
+    private void OnClearWaypoints(object? s, RoutedEventArgs e)
+    {
+        _waypoints.Clear();
+        RefreshWaypointList();
+        RefreshWpMap();
+        MissionStatusText.Text = "Waypoints cleared.";
+    }
+
+    private async void OnUploadMission(object? s, RoutedEventArgs e)
+    {
+        if (_waypoints.Count == 0) { MissionStatusText.Text = "No waypoints to upload."; return; }
+        bool bcubeConnected = _v1 != null && _v1.Telemetry.Connected;
+        if (!CubeOrangeConnected && !bcubeConnected)
+        {
+            MissionStatusText.Text = "No vehicle connected -- cannot upload.";
+            return;
+        }
+        MissionStatusText.Text = $"Uploading {_waypoints.Count} waypoints...";
+        var wps = _waypoints.Select(wp => (wp.Lat, wp.Lon, (float)wp.AltM)).ToList();
+        if (bcubeConnected)
+        {
+            var result = await _v1!.UploadMissionAsync(wps);
+            MissionStatusText.Text = result switch
+            {
+                Mavlink1SerialService.MissionUploadResult.Success => $"Upload complete: {_waypoints.Count} waypoints sent to BCube.",
+                Mavlink1SerialService.MissionUploadResult.Timeout => "Upload FAILED: vehicle stopped responding (timeout).",
+                Mavlink1SerialService.MissionUploadResult.Rejected => "Upload FAILED: vehicle rejected the mission.",
+                _ => "Upload failed: unknown error."
+            };
+        }
+        else
+        {
+            MissionStatusText.Text = "Cube Orange mission upload not yet implemented.";
+        }
     }
 }
