@@ -107,6 +107,7 @@ public class Mavlink1SerialService
     private bool _criticalBatteryAlertSent = false;
     private bool _linkLostAlertSent = false;
     private bool _gpsDegradedAlertSent = false;
+    private bool _fenceBreachAlertSent = false;
     private System.Threading.Timer? _linkWatchdogTimer;
 
     public double SecondsSinceLastTelemetry => (DateTime.UtcNow - _lastTelemetryTime).TotalSeconds;
@@ -187,6 +188,7 @@ public class Mavlink1SerialService
     private const byte RC_CHANNELS_RAW_CRC_EXTRA = 244;
     private const byte GPS_RAW_INT_CRC_EXTRA = 24; // confirmed via pymavlink common dialect crc_extra
     private const byte ATTITUDE_CRC_EXTRA = 39; // confirmed via pymavlink common dialect crc_extra
+    private const byte FENCE_STATUS_CRC_EXTRA = 189; // confirmed via pymavlink ardupilotmega dialect crc_extra
     private byte _sendSeq = 0;
     private bool _streamsRequested = false;
 
@@ -330,7 +332,130 @@ public class Mavlink1SerialService
     public bool SetMode(byte modeId) =>
         SendCommandLong(Telemetry.SystemId, Telemetry.ComponentId, 176, p1: 1, p2: modeId);
 
+    // --- Mission upload protocol (hand-built, no library support available) ---
+    public event Action<ushort>? MissionRequestReceived; // seq requested by vehicle
+    public event Action<byte>? MissionAckReceived; // type: 0=accepted
+
+    private const byte MISSION_COUNT_CRC_EXTRA = 221;
+    private const byte MISSION_ITEM_CRC_EXTRA = 254;
+    private const byte MISSION_REQUEST_CRC_EXTRA = 230;
+    private const byte MISSION_ACK_CRC_EXTRA = 153;
+
+    private byte[] BuildPacket(byte msgid, byte[] payload, byte crcExtra)
+    {
+        var packet = new byte[6 + payload.Length + 2];
+        packet[0] = 0xFE;
+        packet[1] = (byte)payload.Length;
+        packet[2] = _sendSeq++;
+        packet[3] = 255; // our GCS sysid
+        packet[4] = 190; // our GCS compid
+        packet[5] = msgid;
+        payload.CopyTo(packet, 6);
+        ushort crc = 0xFFFF;
+        for (int k = 1; k < 6 + payload.Length; k++) crc = CrcAccumulate(packet[k], crc);
+        crc = CrcAccumulate(crcExtra, crc);
+        packet[6 + payload.Length] = (byte)(crc & 0xFF);
+        packet[6 + payload.Length + 1] = (byte)(crc >> 8);
+        return packet;
+    }
+
+    public bool SendMissionCount(ushort count)
+    {
+        if (_port == null || !_port.IsOpen) return false;
+        var payload = new byte[4];
+        BitConverter.GetBytes(count).CopyTo(payload, 0);
+        payload[2] = Telemetry.SystemId;
+        payload[3] = Telemetry.ComponentId;
+        var packet = BuildPacket(44, payload, MISSION_COUNT_CRC_EXTRA);
+        _port.Write(packet, 0, packet.Length);
+        Console.WriteLine($"[Mavlink1Serial] Sent MISSION_COUNT count={count}");
+        return true;
+    }
+
+    public bool SendMissionItem(ushort seq, double lat, double lon, float altM, bool current = false)
+    {
+        if (_port == null || !_port.IsOpen) return false;
+        var payload = new byte[37];
+        BitConverter.GetBytes(0f).CopyTo(payload, 0);   // param1
+        BitConverter.GetBytes(0f).CopyTo(payload, 4);   // param2
+        BitConverter.GetBytes(0f).CopyTo(payload, 8);   // param3
+        BitConverter.GetBytes(0f).CopyTo(payload, 12);  // param4
+        BitConverter.GetBytes((float)lat).CopyTo(payload, 16); // x = lat
+        BitConverter.GetBytes((float)lon).CopyTo(payload, 20); // y = lon
+        BitConverter.GetBytes(altM).CopyTo(payload, 24);       // z = alt
+        BitConverter.GetBytes(seq).CopyTo(payload, 28);
+        BitConverter.GetBytes((ushort)16).CopyTo(payload, 30); // command=16 MAV_CMD_NAV_WAYPOINT
+        payload[32] = Telemetry.SystemId;
+        payload[33] = Telemetry.ComponentId;
+        payload[34] = 3; // frame=3 MAV_FRAME_GLOBAL_RELATIVE_ALT
+        payload[35] = (byte)(current ? 1 : 0);
+        payload[36] = 1; // autocontinue
+        var packet = BuildPacket(39, payload, MISSION_ITEM_CRC_EXTRA);
+        _port.Write(packet, 0, packet.Length);
+        Console.WriteLine($"[Mavlink1Serial] Sent MISSION_ITEM seq={seq} lat={lat} lon={lon} alt={altM}");
+        return true;
+    }
+
+    public enum MissionUploadResult { Success, Timeout, Rejected }
+
+    // Drives the full MISSION_COUNT -> per-item MISSION_REQUEST/MISSION_ITEM -> MISSION_ACK
+    // handshake. Real network round-trip, so this is async with a timeout -- if the vehicle
+    // stops responding partway through, we don't hang forever, we report Timeout.
+    public async Task<MissionUploadResult> UploadMissionAsync(
+        System.Collections.Generic.List<(double Lat, double Lon, float AltM)> waypoints,
+        TimeSpan? timeoutPerStep = null)
+    {
+        var timeout = timeoutPerStep ?? TimeSpan.FromSeconds(3);
+        var tcsAck = new TaskCompletionSource<byte>();
+        var requestedSeqs = new System.Collections.Generic.Queue<ushort>();
+        var seqSignal = new SemaphoreSlim(0);
+
+        void OnReq(ushort seq) { requestedSeqs.Enqueue(seq); seqSignal.Release(); }
+        void OnAck(byte type) => tcsAck.TrySetResult(type);
+
+        MissionRequestReceived += OnReq;
+        MissionAckReceived += OnAck;
+        try
+        {
+            SendMissionCount((ushort)waypoints.Count);
+
+            int itemsSent = 0;
+            while (itemsSent < waypoints.Count)
+            {
+                using var cts = new CancellationTokenSource(timeout);
+                try { await seqSignal.WaitAsync(cts.Token); }
+                catch (OperationCanceledException) { return MissionUploadResult.Timeout; }
+
+                var seq = requestedSeqs.Dequeue();
+                if (seq >= waypoints.Count) continue; // ignore out-of-range, don't crash
+                var wp = waypoints[(int)seq];
+                SendMissionItem(seq, wp.Lat, wp.Lon, wp.AltM, current: seq == 0);
+                itemsSent++;
+            }
+
+            var ackTask = tcsAck.Task;
+            var completed = await Task.WhenAny(ackTask, Task.Delay(timeout));
+            if (completed != ackTask) return MissionUploadResult.Timeout;
+            return ackTask.Result == 0 ? MissionUploadResult.Success : MissionUploadResult.Rejected;
+        }
+        finally
+        {
+            MissionRequestReceived -= OnReq;
+            MissionAckReceived -= OnAck;
+        }
+    }
+
     public bool Start(string portName, int baud = 57600)
+    {
+        // Test override: set MAVDEBUG_PORT to redirect to a virtual serial
+        // port (e.g. via socat) instead of real hardware, for safe synthetic
+        // packet injection testing (e.g. fence breach) without touching the
+        // real vehicle link.
+        var overridePort = Environment.GetEnvironmentVariable("MAVDEBUG_PORT");
+        if (!string.IsNullOrEmpty(overridePort)) portName = overridePort;
+        return StartInternal(portName, baud);
+    }
+    private bool StartInternal(string portName, int baud = 57600)
     {
         try
         {
@@ -461,6 +586,53 @@ public class Mavlink1SerialService
                                 Console.WriteLine($"[ATTITUDE VALUES] roll={Telemetry.Roll:F2} pitch={Telemetry.Pitch:F2}");
                             _lastTelemetryTime = DateTime.UtcNow;
                             TelemetryUpdated?.Invoke(Telemetry);
+                        }
+                    }
+                    else if (msgid == 162 && len == 8) // FENCE_STATUS (ardupilotmega dialect)
+                    {
+                        ushort crcFence = 0xFFFF;
+                        for (int k = 1; k < 6 + len; k++) crcFence = CrcAccumulate(_buffer[i + k], crcFence);
+                        crcFence = CrcAccumulate(FENCE_STATUS_CRC_EXTRA, crcFence);
+                        ushort recvCrcFence = (ushort)(_buffer[i + 6 + len] | (_buffer[i + 6 + len + 1] << 8));
+                        if (crcFence == recvCrcFence)
+                        {
+                            byte breachStatus = _buffer[i + 6 + 6];
+                            byte breachType = _buffer[i + 6 + 7];
+                            if (breachStatus != 0 && !_fenceBreachAlertSent)
+                            {
+                                _fenceBreachAlertSent = true;
+                                RaiseSafetyAlert("GEOFENCE BREACH",
+                                    $"BCube has breached the geofence! Breach type: {breachType}. RTL recommended.");
+                            }
+                            else if (breachStatus == 0 && _fenceBreachAlertSent)
+                            {
+                                _fenceBreachAlertSent = false;
+                                RaiseSafetyAlert("GEOFENCE CLEAR", "BCube is back within the geofence boundary.");
+                            }
+                        }
+                    }
+                    else if (msgid == 40 && len == 4) // MISSION_REQUEST
+                    {
+                        ushort crcMR = 0xFFFF;
+                        for (int k = 1; k < 6 + len; k++) crcMR = CrcAccumulate(_buffer[i + k], crcMR);
+                        crcMR = CrcAccumulate(MISSION_REQUEST_CRC_EXTRA, crcMR);
+                        ushort recvCrcMR = (ushort)(_buffer[i + 6 + len] | (_buffer[i + 6 + len + 1] << 8));
+                        if (crcMR == recvCrcMR)
+                        {
+                            ushort reqSeq = BitConverter.ToUInt16(_buffer, i + 6);
+                            MissionRequestReceived?.Invoke(reqSeq);
+                        }
+                    }
+                    else if (msgid == 47 && len == 3) // MISSION_ACK
+                    {
+                        ushort crcMA = 0xFFFF;
+                        for (int k = 1; k < 6 + len; k++) crcMA = CrcAccumulate(_buffer[i + k], crcMA);
+                        crcMA = CrcAccumulate(MISSION_ACK_CRC_EXTRA, crcMA);
+                        ushort recvCrcMA = (ushort)(_buffer[i + 6 + len] | (_buffer[i + 6 + len + 1] << 8));
+                        if (crcMA == recvCrcMA)
+                        {
+                            byte ackType = _buffer[i + 6 + 2];
+                            MissionAckReceived?.Invoke(ackType);
                         }
                     }
                     else if (msgid == 1 && len == 31) // SYS_STATUS

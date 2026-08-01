@@ -120,6 +120,12 @@ namespace InfraDroneDesktop.Views
             else
                 SetCard(V1GpsStatusText, V1GpsCard, $"DEGRADED ({_v1.Telemetry.GpsSats} sats)", BadBrush);
             V1GpsDetailText.Text = $"Minimum: {_v1.GpsMinSatsThreshold} satellites, 3D fix";
+
+            var lastFenceAlert = _v1.AlertHistory.FirstOrDefault(a => a.Title.Contains("GEOFENCE"));
+            if (lastFenceAlert != null && lastFenceAlert.Title == "GEOFENCE BREACH")
+                SetCard(V1FenceStatusText, V1FenceCard, "BREACHED", BadBrush);
+            else
+                SetCard(V1FenceStatusText, V1FenceCard, "Monitoring", OkBrush);
         }
 
         private void SetCard(TextBlock statusText, Border card, string text, IBrush color)

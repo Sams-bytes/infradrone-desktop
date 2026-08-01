@@ -39,6 +39,14 @@
                 Background="#1a2637" Foreground="#94a3b8"
                 BorderBrush="#2d3f52" BorderThickness="0.5"
                 Padding="10,5" CornerRadius="6"/>
+        <Button Name="BtnMapToggle" Content="🗺 Street" Click="OnMapToggle"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <TextBlock Text="Speed:" FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center" Margin="12,0,4,0"/>
+        <TextBox Name="SpeedInput" Width="50" FontSize="11" Watermark="m/s"
+                  Background="#1a2637" Foreground="#e2e8f0" BorderBrush="#2d3f52"
+                  Padding="6,4" VerticalContentAlignment="Center"/>
         <TextBlock Name="StatusText" Text="Click map to add waypoints"
                    FontSize="11" Foreground="#64748b"
                    VerticalAlignment="Center" Margin="12,0,0,0"/>

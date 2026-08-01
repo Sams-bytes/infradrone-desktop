@@ -144,6 +144,7 @@ public partial class MainWindow : Window
             _missionView = new MissionView();
             _missionView.SetMavLink(_mav);
         }
+        if (_v1 != null) _missionView.SetMavlinkV1(_v1);
         ContentArea.Child = _missionView;
     }
     private GeofenceView? _geofenceView;
