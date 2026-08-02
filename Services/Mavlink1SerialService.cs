@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Ports;
 using System.Threading;
 using System.Threading.Tasks;
@@ -109,6 +110,35 @@ public class Mavlink1SerialService
     private bool _gpsDegradedAlertSent = false;
     private bool _fenceBreachAlertSent = false;
     private System.Threading.Timer? _linkWatchdogTimer;
+    public string? FlightLogPath { get; private set; }
+    private System.Threading.Timer? _flightLogTimer;
+
+    private void LogTelemetrySnapshot(object? state)
+    {
+        if (FlightLogPath == null || !Telemetry.Connected) return;
+        try
+        {
+            var line = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                type = "telemetry",
+                time = DateTime.UtcNow.ToString("o"),
+                lat = Telemetry.Lat,
+                lon = Telemetry.Lon,
+                alt_m = Telemetry.RelativeAlt,
+                speed_mps = Telemetry.Speed,
+                heading_deg = Telemetry.Heading,
+                roll_deg = Telemetry.Roll,
+                pitch_deg = Telemetry.Pitch,
+                battery_pct = Telemetry.BatteryPct,
+                mode = Telemetry.FlightMode,
+                armed = Telemetry.Armed,
+                gps_fix = Telemetry.GpsFix,
+                gps_sats = Telemetry.GpsSats
+            });
+            File.AppendAllText(FlightLogPath, line + Environment.NewLine);
+        }
+        catch { }
+    }
 
     public double SecondsSinceLastTelemetry => (DateTime.UtcNow - _lastTelemetryTime).TotalSeconds;
     public bool IsLinkOk => _lastTelemetryTime != DateTime.MinValue && SecondsSinceLastTelemetry <= LinkLostTimeoutSeconds;
@@ -464,6 +494,11 @@ public class Mavlink1SerialService
             _cts = new CancellationTokenSource();
             _ = Task.Run(() => ReadLoop(_cts.Token));
             _linkWatchdogTimer = new System.Threading.Timer(CheckFailsafes, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+            var logDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "agri_drone", "flight_logs");
+            Directory.CreateDirectory(logDir);
+            FlightLogPath = Path.Combine(logDir, $"bcube_flight_{DateTime.Now:yyyyMMdd_HHmmss}.jsonl");
+            _flightLogTimer = new System.Threading.Timer(LogTelemetrySnapshot, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+            Console.WriteLine($"[Mavlink1Serial] Flight log: {FlightLogPath}");
             Console.WriteLine($"[Mavlink1Serial] Opened {portName} @ {baud} baud (read-only).");
             return true;
         }

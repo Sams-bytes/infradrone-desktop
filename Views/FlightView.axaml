@@ -46,6 +46,8 @@
               BorderBrush="#ef4444" Click="OnClearWaypoints">🗑 Clear WP</Button>
       <Button Name="BtnUploadMission" Background="#0d3d2e" Foreground="#0d9e75"
               BorderBrush="#0d9e75" Click="OnUploadMission">⬆ Upload Mission</Button>
+      <Button Name="BtnViewFlightLog" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnViewFlightLog">📋 View Flight Log</Button>
       <TextBlock Text="Speed:" FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center" Margin="6,0,4,0"/>
       <TextBox Name="SpeedInput" Width="45" FontSize="11" Watermark="m/s"
                 Background="#f8fafc" Foreground="#0f1923" BorderBrush="#0d9e75"

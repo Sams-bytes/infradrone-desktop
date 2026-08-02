@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -634,6 +635,16 @@ public partial class FlightView : UserControl
         }
     }
 
+    private void OnViewFlightLog(object? s, RoutedEventArgs e)
+    {
+        var path = _v1?.FlightLogPath;
+        if (path == null || !System.IO.File.Exists(path))
+        {
+            MissionStatusText.Text = "No flight log yet -- connect BCube first.";
+            return;
+        }
+        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+    }
     private void OnClearWaypoints(object? s, RoutedEventArgs e)
     {
         _waypoints.Clear();
