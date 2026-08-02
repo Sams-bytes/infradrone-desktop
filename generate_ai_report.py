@@ -3,8 +3,9 @@
 DAMbv InfraDrone — AI Defect Detection Report Generator
 Usage: python3 generate_ai_report.py <manifest_json> <images_dir> <output_pdf>
 """
-import sys, json, os
+import sys, json, os, tempfile
 from datetime import datetime
+from PIL import Image as PILImage
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
@@ -75,7 +76,14 @@ def generate(json_path, images_dir, out_path):
         block = []
         img_path = os.path.join(images_dir, m['annotated_image'])
         if os.path.exists(img_path):
-            block.append(Image(img_path, width=160*mm, height=90*mm, kind='proportional'))
+            # Downscale before embedding -- the full-resolution source was
+            # being loaded even though it only displays at 160x90mm, which
+            # made large batches (1000+ images) extremely slow to generate.
+            with PILImage.open(img_path) as im:
+                im.thumbnail((1200, 1200))
+                resized_path = img_path.rsplit('.', 1)[0] + '_resized.jpg'
+                im.convert('RGB').save(resized_path, 'JPEG', quality=85)
+            block.append(Image(resized_path, width=160*mm, height=90*mm, kind='proportional'))
         block.append(Spacer(1, 4))
         block.append(Paragraph(m['filename'], fname_style))
 

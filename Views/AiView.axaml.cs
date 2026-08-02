@@ -231,7 +231,9 @@ public partial class AiView : UserControl
         File.WriteAllText(jsonPath, System.Text.Json.JsonSerializer.Serialize(manifest,
             new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
 
-        var outPdf = Path.Combine(reportDir, "ai_defect_report.pdf");
+        var downloadsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+        Directory.CreateDirectory(downloadsDir);
+        var outPdf = Path.Combine(downloadsDir, $"ai_defect_report_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
         var script = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             "infradrone-desktop", "generate_ai_report.py");
