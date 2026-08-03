@@ -255,9 +255,7 @@ public partial class MainWindow : Window
     }
     private Views.NitrogenZonesView? _nitrogenZonesView;
     private Views.ValidationEvidenceView? _validationEvidenceView;
-    private Views.TrafficBehaviorView? _trafficBehaviorView;
     private Views.TrafficPlayerView? _trafficPlayerView;
-    private Views.TrafficAnalyticsView? _trafficAnalyticsView;
     private Views.AerialDetectionView? _aerialDetectionView;
     private Views.MavLinkTestView? _mavLinkTestView;
     private Views.FailsafeMonitorView? _failsafeMonitorView;
@@ -273,20 +271,10 @@ public partial class MainWindow : Window
         if (_validationEvidenceView == null) _validationEvidenceView = new Views.ValidationEvidenceView();
         ContentArea.Child = _validationEvidenceView;
     }
-    private void OnTrafficBehaviorView(object? sender, RoutedEventArgs e)
-    {
-        if (_trafficBehaviorView == null) _trafficBehaviorView = new Views.TrafficBehaviorView();
-        ContentArea.Child = _trafficBehaviorView;
-    }
     private void OnTrafficPlayerView(object? sender, RoutedEventArgs e)
     {
         if (_trafficPlayerView == null) _trafficPlayerView = new Views.TrafficPlayerView();
         ContentArea.Child = _trafficPlayerView;
-    }
-    private void OnTrafficAnalyticsView(object? sender, RoutedEventArgs e)
-    {
-        if (_trafficAnalyticsView == null) _trafficAnalyticsView = new Views.TrafficAnalyticsView();
-        ContentArea.Child = _trafficAnalyticsView;
     }
     private Views.TrafficHubView? _trafficHubView;
     private void OnTrafficHubView(object? sender, RoutedEventArgs e)
