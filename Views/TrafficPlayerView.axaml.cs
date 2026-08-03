@@ -118,8 +118,51 @@ namespace InfraDroneDesktop.Views
             StatusText.Text = $"Loaded {_frameTimes.Count} frames.";
             DrawFrame(0);
 
-            _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
-            _timer.Tick += (s, e) => Advance();
+            if (_timer == null)
+            {
+                _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+                _timer.Tick += (s, e) => Advance();
+            }
+        }
+
+        private async void OnRegenerateData(object? sender, RoutedEventArgs e)
+        {
+            BtnRegenerateData.IsEnabled = false;
+            StatusText.Text = "Regenerating player data (export_player_data.py)...";
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "/home/sam/miniconda3/bin/python3",
+                Arguments = "export_player_data.py",
+                WorkingDirectory = "/home/sam/opendd_dataset",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            try
+            {
+                var proc = System.Diagnostics.Process.Start(psi);
+                var stderr = await proc!.StandardError.ReadToEndAsync();
+                await proc.WaitForExitAsync();
+                if (proc.ExitCode == 0)
+                {
+                    PausePlayback();
+                    _currentIndex = 0;
+                    _frames.Clear();
+                    LoadData();
+                }
+                else
+                {
+                    StatusText.Text = $"Regenerate failed: {stderr.Substring(0, Math.Min(300, stderr.Length))}";
+                }
+            }
+            catch (Exception ex)
+            {
+                StatusText.Text = $"Failed to run export script: {ex.Message}";
+            }
+            finally
+            {
+                BtnRegenerateData.IsEnabled = true;
+            }
         }
 
         private void Advance()

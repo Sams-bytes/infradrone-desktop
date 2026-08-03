@@ -20,7 +20,12 @@
           <TextBlock Grid.Column="2" Name="TimeLabel" Text="0.0s / 0.0s"
                      Foreground="#94a3b8" FontSize="11" VerticalAlignment="Center" Margin="8,0,0,0"/>
         </Grid>
-        <TextBlock Name="StatusText" Text="Loading..." FontSize="10" Foreground="#64748b"/>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button Name="BtnRegenerateData" Content="🔄 Regenerate Data" Click="OnRegenerateData"
+                  Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                  BorderThickness="0.5" Padding="10,5" CornerRadius="6" FontSize="10"/>
+          <TextBlock Name="StatusText" Text="Loading..." FontSize="10" Foreground="#64748b" VerticalAlignment="Center"/>
+        </StackPanel>
       </StackPanel>
     </Border>
 
