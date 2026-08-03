@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.TrafficHubView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Background="#1a2637" Padding="16,12"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="10">
+        <TextBlock Text="🚦 Traffic Analytics" FontSize="16" FontWeight="Bold" Foreground="#e2e8f0"/>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <ComboBox Name="ChartCombo" Width="320" SelectedIndex="0" SelectionChanged="OnChartSelected"/>
+          <Button Name="BtnRegenerate" Content="🔄 Regenerate" Click="OnRegenerate"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="10,6" CornerRadius="6"/>
+          <TextBlock Name="StatusText" Text="" FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+    <ScrollViewer Grid.Row="1">
+      <Image Name="ChartImage" Stretch="Uniform" Margin="16"/>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

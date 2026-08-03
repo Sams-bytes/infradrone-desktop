@@ -75,6 +75,7 @@
             <Button Content="🚶  Traffic Behavior" Classes="nav" Click="OnTrafficBehaviorView"/>
             <Button Content="🎬  Traffic Replay" Classes="nav" Click="OnTrafficPlayerView"/>
             <Button Content="📊  Traffic Analytics" Classes="nav" Click="OnTrafficAnalyticsView"/>
+            <Button Content="🚦  Traffic Hub (new)" Classes="nav" Click="OnTrafficHubView"/>
             <Button Content="🚁  Aerial Detection" Classes="nav" Click="OnAerialDetectionView"/>
 
             <Button Content="📖  Story Mode" Classes="nav" Click="OnStoryModeView"/>

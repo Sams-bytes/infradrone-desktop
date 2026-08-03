@@ -288,6 +288,12 @@ public partial class MainWindow : Window
         if (_trafficAnalyticsView == null) _trafficAnalyticsView = new Views.TrafficAnalyticsView();
         ContentArea.Child = _trafficAnalyticsView;
     }
+    private Views.TrafficHubView? _trafficHubView;
+    private void OnTrafficHubView(object? sender, RoutedEventArgs e)
+    {
+        if (_trafficHubView == null) _trafficHubView = new Views.TrafficHubView();
+        ContentArea.Child = _trafficHubView;
+    }
     private void OnAerialDetectionView(object? sender, RoutedEventArgs e)
     {
         if (_aerialDetectionView == null) _aerialDetectionView = new Views.AerialDetectionView();
