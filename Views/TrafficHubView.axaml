@@ -2,22 +2,63 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="InfraDroneDesktop.Views.TrafficHubView"
              Background="#0f1923">
-  <Grid RowDefinitions="Auto,*">
+  <Grid RowDefinitions="Auto,Auto,*">
     <Border Grid.Row="0" Background="#1a2637" Padding="16,12"
             BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
-      <StackPanel Spacing="10">
-        <TextBlock Text="🚦 Traffic Analytics" FontSize="16" FontWeight="Bold" Foreground="#e2e8f0"/>
-        <StackPanel Orientation="Horizontal" Spacing="10">
-          <ComboBox Name="ChartCombo" Width="320" SelectedIndex="0" SelectionChanged="OnChartSelected"/>
-          <Button Name="BtnRegenerate" Content="🔄 Regenerate" Click="OnRegenerate"
-                  Background="#0d3d2e" Foreground="#0d9e75"
-                  BorderBrush="#0d9e75" BorderThickness="0.5"
-                  Padding="10,6" CornerRadius="6"/>
-          <TextBlock Name="StatusText" Text="" FontSize="11" Foreground="#64748b" VerticalAlignment="Center"/>
+      <StackPanel Spacing="8">
+        <TextBlock Text="🚦 Traffic Hub" FontSize="16" FontWeight="Bold" Foreground="#e2e8f0"/>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Name="BtnSubCharts" Content="📊 Charts" Click="OnSubNav"
+                  Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubMultiScene" Content="🔀 Multi-Scene" Click="OnSubNav"
+                  Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubVideo" Content="🎬 Video" Click="OnSubNav"
+                  Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
         </StackPanel>
       </StackPanel>
     </Border>
-    <ScrollViewer Grid.Row="1">
+
+    <!-- Charts subtab -->
+    <Border Name="ChartsPanel" Grid.Row="1" Background="#0f1923" Padding="16,10" IsVisible="True">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <ComboBox Name="ChartCombo" Width="320" SelectedIndex="0" SelectionChanged="OnChartSelected"/>
+        <Button Name="BtnRegenerate" Content="🔄 Regenerate" Click="OnRegenerate"
+                Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Multi-Scene subtab -->
+    <Border Name="MultiScenePanel" Grid.Row="1" Background="#0f1923" Padding="16,10" IsVisible="False">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <ComboBox Name="SceneCombo" Width="100" SelectedIndex="0" SelectionChanged="OnSceneChanged"/>
+        <ComboBox Name="SegmentCombo" Width="120" IsVisible="False"/>
+        <ComboBox Name="AnalysisCombo" Width="220" SelectedIndex="0"/>
+        <Button Name="BtnRegenerateMultiScene" Content="🔄 Run Analysis" Click="OnRegenerateMultiScene"
+                Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Video subtab -->
+    <Border Name="VideoPanel" Grid.Row="1" Background="#0f1923" Padding="16,10" IsVisible="False">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <Button Name="BtnPlayVideo" Content="▶ Play Existing Video" Click="OnPlayVideo"
+                Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+        <Button Name="BtnRegenerateVideo" Content="🔄 Regenerate (~70s)" Click="OnRegenerateVideo"
+                Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52"
+                BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+      </StackPanel>
+    </Border>
+
+    <TextBlock Name="StatusText" Grid.Row="1" Text="" FontSize="11" Foreground="#64748b"
+               HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,16,4"/>
+
+    <ScrollViewer Grid.Row="2">
       <Image Name="ChartImage" Stretch="Uniform" Margin="16"/>
     </ScrollViewer>
   </Grid>

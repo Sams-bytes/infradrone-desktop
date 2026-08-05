@@ -36,9 +36,12 @@ namespace InfraDroneDesktop.Views
         {
             var top = TopLevel.GetTopLevel(this);
             if (top == null) return;
+            var modelsFolder = await top.StorageProvider.TryGetFolderFromPathAsync(
+                "/home/sam/infradrone-desktop/models");
             var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Select trained ONNX model",
+                SuggestedStartLocation = modelsFolder,
                 FileTypeFilter = new[] { new FilePickerFileType("ONNX model") { Patterns = new[] { "*.onnx" } } }
             });
             if (files.Count == 0) return;

@@ -40,6 +40,10 @@
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
       <Button Name="BtnMapToggle" Background="#1a2637" Foreground="#94a3b8"
               BorderBrush="#2d3f52" Click="OnMapToggle">🗺 Street</Button>
+      <Button Name="BtnLoadGroningenRoads" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnLoadGroningenRoads">🏛 Groningen Roads</Button>
+      <Button Name="BtnLoadGroningenBridges" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnLoadGroningenBridges">🌉 Bridges</Button>
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
       <Button Name="BtnAddWpToggle" Background="#1a2637" Foreground="#94a3b8"
               BorderBrush="#2d3f52" Click="OnAddWpToggle">📍 Add WP: OFF</Button>
@@ -60,6 +64,14 @@
 
     <!-- Map -->
     <maps:MapControl Grid.Row="1" Name="MapControl"/>
+    <Border Name="GroningenInfoCard" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+            Margin="16" MaxWidth="320" Background="#e0131f2e" CornerRadius="8" Padding="12"
+            BorderBrush="#3b82f6" BorderThickness="1" IsVisible="False">
+      <StackPanel Spacing="4">
+        <TextBlock Text="🏛 Groningen Road Asset" FontSize="11" FontWeight="Bold" Foreground="#3b82f6"/>
+        <TextBlock Name="GroningenInfoText" Text="" FontSize="11" Foreground="#e2e8f0" TextWrapping="Wrap" FontFamily="Consolas"/>
+      </StackPanel>
+    </Border>
 
     <Border Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16"
             Background="#c0131f2e" CornerRadius="6" Padding="10,6" BorderBrush="#3b82f6" BorderThickness="1">

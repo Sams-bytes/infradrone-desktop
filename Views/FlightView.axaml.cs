@@ -311,6 +311,11 @@ public partial class FlightView : UserControl
             }
             return factory.CreateMultiPolygon(polys);
         }
+        if (geom is NetTopologySuite.Geometries.Point pt)
+        {
+            var (x, y) = SphericalMercator.FromLonLat(pt.X, pt.Y);
+            return factory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(x, y));
+        }
         return geom;
     }
 
@@ -693,5 +698,162 @@ public partial class FlightView : UserControl
         _orthoLayer = new MemoryLayer { Name = "Orthomosaic", Features = new System.Collections.Generic.List<IFeature> { feature } };
         _map.Layers.Add(_orthoLayer);
         _mapControl.Map.Refresh();
+    }
+
+    private MemoryLayer? _groningenRoadLayer;
+    private MemoryLayer? _groningenBridgeLayer;
+    private bool _groningenInfoWired = false;
+    private static readonly System.Net.Http.HttpClient _groningenHttp = new System.Net.Http.HttpClient();
+    private void OnGroningenMapInfo(object? sender, Mapsui.MapInfoEventArgs e)
+    {
+        var feature = e.MapInfo?.Feature;
+        var layer = e.MapInfo?.Layer;
+        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer))
+        {
+            GroningenInfoCard.IsVisible = false;
+            return;
+        }
+        var lines = new System.Collections.Generic.List<string>();
+        foreach (var field in feature.Fields)
+        {
+            if (field == "SHAPE.STArea()" || field == "SHAPE.STLength()") continue;
+            var val = feature[field];
+            if (val == null || string.IsNullOrEmpty(val.ToString())) continue;
+            lines.Add($"{field}: {val}");
+        }
+        GroningenInfoText.Text = string.Join("\n", lines);
+        GroningenInfoCard.IsVisible = true;
+    }
+    private async void OnLoadGroningenRoads(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (_groningenRoadLayer != null)
+        {
+            _map.Layers.Remove(_groningenRoadLayer);
+            _groningenRoadLayer = null;
+            GroningenInfoCard.IsVisible = false;
+            BtnLoadGroningenRoads.Content = "🏛 Groningen Roads";
+            _mapControl.Map.Refresh();
+            return;
+        }
+        BtnLoadGroningenRoads.IsEnabled = false;
+        try
+        {
+            // Real, public, no-login ArcGIS Server (Province of Groningen), confirmed
+            // live via curl before writing this code. Layer 314 = "Open verharding
+            // berm" (road-shoulder paving) under Mobiliteit/Areaalviewer. Data comes
+            // back as WGS84 lon/lat when requesting f=geojson, so it plugs directly
+            // into the same ProjectGeometry() used for airspace zones -- no separate
+            // RD New reprojection needed.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Mobiliteit/Areaalviewer/MapServer/314/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(59, 130, 246, 100)),
+                    Outline = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(59, 130, 246), 1.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_groningenRoadLayer != null) _map.Layers.Remove(_groningenRoadLayer);
+            _groningenRoadLayer = new MemoryLayer { Name = "Groningen Road Assets", Features = features, IsMapInfoLayer = true, Opacity = 0.6 };
+            _map.Layers.Add(_groningenRoadLayer);
+            // Fly to the loaded data's own extent -- the map could be sitting anywhere
+            // (e.g. wherever earlier waypoint testing left it), so don't assume it's
+            // already pointed at Groningen.
+            var extent = _groningenRoadLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[GroningenRoads] Loaded {features.Count} features from live province ArcGIS server, extent: {extent}");
+            BtnLoadGroningenRoads.Content = "🏛 Hide Roads";
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GroningenRoads] Failed to load: {ex.Message}");
+        }
+        finally
+        {
+            BtnLoadGroningenRoads.IsEnabled = true;
+        }
+    }
+
+    private async void OnLoadGroningenBridges(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (_groningenBridgeLayer != null)
+        {
+            _map.Layers.Remove(_groningenBridgeLayer);
+            _groningenBridgeLayer = null;
+            GroningenInfoCard.IsVisible = false;
+            BtnLoadGroningenBridges.Content = "🌉 Bridges";
+            _mapControl.Map.Refresh();
+            return;
+        }
+        BtnLoadGroningenBridges.IsEnabled = false;
+        try
+        {
+            // Mobiliteit/BruggenVast, layer id=2 ("Bruggen vast" / Fixed Bridges),
+            // confirmed live via a real query before writing this -- point geometry,
+            // native RD New (28992) but f=geojson auto-reprojects to WGS84 lon/lat.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Mobiliteit/BruggenVast/MapServer/2/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new SymbolStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(234, 179, 8)),
+                    Outline = new Mapsui.Styles.Pen(Mapsui.Styles.Color.White, 1.5f),
+                    SymbolScale = 0.6
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_groningenBridgeLayer != null) _map.Layers.Remove(_groningenBridgeLayer);
+            _groningenBridgeLayer = new MemoryLayer { Name = "Groningen Bridges", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_groningenBridgeLayer);
+            var extent = _groningenBridgeLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[GroningenBridges] Loaded {features.Count} bridges from live province ArcGIS server");
+            BtnLoadGroningenBridges.Content = "🌉 Hide Bridges";
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GroningenBridges] Failed to load: {ex.Message}");
+        }
+        finally
+        {
+            BtnLoadGroningenBridges.IsEnabled = true;
+        }
     }
 }
