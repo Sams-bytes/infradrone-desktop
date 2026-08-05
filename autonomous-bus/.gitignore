@@ -1,0 +1,19 @@
+# ROS 2 build artifacts
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Data/logs (bag files etc. — keep large data out of git)
+*.bag
+*.db3
+sim/data/
