@@ -316,6 +316,20 @@ public partial class FlightView : UserControl
             var (x, y) = SphericalMercator.FromLonLat(pt.X, pt.Y);
             return factory.CreatePoint(new NetTopologySuite.Geometries.Coordinate(x, y));
         }
+        if (geom is NetTopologySuite.Geometries.LineString ls)
+        {
+            return factory.CreateLineString(ProjectRing(ls.Coordinates));
+        }
+        if (geom is NetTopologySuite.Geometries.MultiLineString mls)
+        {
+            var lines = new NetTopologySuite.Geometries.LineString[mls.NumGeometries];
+            for (int i = 0; i < mls.NumGeometries; i++)
+            {
+                var l = (NetTopologySuite.Geometries.LineString)mls.GetGeometryN(i);
+                lines[i] = factory.CreateLineString(ProjectRing(l.Coordinates));
+            }
+            return factory.CreateMultiLineString(lines);
+        }
         return geom;
     }
 
@@ -708,7 +722,7 @@ public partial class FlightView : UserControl
     {
         var feature = e.MapInfo?.Feature;
         var layer = e.MapInfo?.Layer;
-        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer))
+        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer))
         {
             GroningenInfoCard.IsVisible = false;
             return;
@@ -724,19 +738,20 @@ public partial class FlightView : UserControl
         GroningenInfoText.Text = string.Join("\n", lines);
         GroningenInfoCard.IsVisible = true;
     }
-    private async void OnLoadGroningenRoads(object? s, RoutedEventArgs e)
+    private async void OnGroningenRoadsToggled(object? s, RoutedEventArgs e)
     {
         if (_map == null || _mapControl == null) return;
-        if (_groningenRoadLayer != null)
+        if (ChkGroningenRoads.IsChecked != true)
         {
-            _map.Layers.Remove(_groningenRoadLayer);
-            _groningenRoadLayer = null;
-            GroningenInfoCard.IsVisible = false;
-            BtnLoadGroningenRoads.Content = "🏛 Groningen Roads";
-            _mapControl.Map.Refresh();
+            if (_groningenRoadLayer != null)
+            {
+                _map.Layers.Remove(_groningenRoadLayer);
+                _groningenRoadLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
             return;
         }
-        BtnLoadGroningenRoads.IsEnabled = false;
         try
         {
             // Real, public, no-login ArcGIS Server (Province of Groningen), confirmed
@@ -769,14 +784,10 @@ public partial class FlightView : UserControl
             if (_groningenRoadLayer != null) _map.Layers.Remove(_groningenRoadLayer);
             _groningenRoadLayer = new MemoryLayer { Name = "Groningen Road Assets", Features = features, IsMapInfoLayer = true, Opacity = 0.6 };
             _map.Layers.Add(_groningenRoadLayer);
-            // Fly to the loaded data's own extent -- the map could be sitting anywhere
-            // (e.g. wherever earlier waypoint testing left it), so don't assume it's
-            // already pointed at Groningen.
             var extent = _groningenRoadLayer.Extent;
             if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
             _mapControl.Map.Refresh();
             Console.WriteLine($"[GroningenRoads] Loaded {features.Count} features from live province ArcGIS server, extent: {extent}");
-            BtnLoadGroningenRoads.Content = "🏛 Hide Roads";
             if (!_groningenInfoWired)
             {
                 _groningenInfoWired = true;
@@ -787,25 +798,22 @@ public partial class FlightView : UserControl
         {
             Console.WriteLine($"[GroningenRoads] Failed to load: {ex.Message}");
         }
-        finally
-        {
-            BtnLoadGroningenRoads.IsEnabled = true;
-        }
     }
 
-    private async void OnLoadGroningenBridges(object? s, RoutedEventArgs e)
+    private async void OnGroningenBridgesToggled(object? s, RoutedEventArgs e)
     {
         if (_map == null || _mapControl == null) return;
-        if (_groningenBridgeLayer != null)
+        if (ChkGroningenBridges.IsChecked != true)
         {
-            _map.Layers.Remove(_groningenBridgeLayer);
-            _groningenBridgeLayer = null;
-            GroningenInfoCard.IsVisible = false;
-            BtnLoadGroningenBridges.Content = "🌉 Bridges";
-            _mapControl.Map.Refresh();
+            if (_groningenBridgeLayer != null)
+            {
+                _map.Layers.Remove(_groningenBridgeLayer);
+                _groningenBridgeLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
             return;
         }
-        BtnLoadGroningenBridges.IsEnabled = false;
         try
         {
             // Mobiliteit/BruggenVast, layer id=2 ("Bruggen vast" / Fixed Bridges),
@@ -840,7 +848,6 @@ public partial class FlightView : UserControl
             if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
             _mapControl.Map.Refresh();
             Console.WriteLine($"[GroningenBridges] Loaded {features.Count} bridges from live province ArcGIS server");
-            BtnLoadGroningenBridges.Content = "🌉 Hide Bridges";
             if (!_groningenInfoWired)
             {
                 _groningenInfoWired = true;
@@ -851,9 +858,362 @@ public partial class FlightView : UserControl
         {
             Console.WriteLine($"[GroningenBridges] Failed to load: {ex.Message}");
         }
-        finally
+    }
+
+    private MemoryLayer? _groningenGuardrailLayer;
+    private MemoryLayer? _groningenCrackingLayer;
+    private MemoryLayer? _groningenRavelingLayer;
+    private MemoryLayer? _groningenUnevennessLayer;
+    private MemoryLayer? _groningenRuttingLayer;
+    private MemoryLayer? _groningenLongEvennessLayer;
+    private async void OnGroningenGuardrailsToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkGroningenGuardrails.IsChecked != true)
         {
-            BtnLoadGroningenBridges.IsEnabled = true;
+            if (_groningenGuardrailLayer != null)
+            {
+                _map.Layers.Remove(_groningenGuardrailLayer);
+                _groningenGuardrailLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Mobiliteit/Geleiderails (Guardrails), layer id=0, confirmed live via
+            // curl before writing this -- polyline geometry, native RD New (28992)
+            // but f=geojson auto-reprojects to WGS84 lon/lat, same as Roads/Bridges.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Mobiliteit/Geleiderails/MapServer/0/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Line = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(239, 68, 68), 2.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_groningenGuardrailLayer != null) _map.Layers.Remove(_groningenGuardrailLayer);
+            _groningenGuardrailLayer = new MemoryLayer { Name = "Groningen Guardrails", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_groningenGuardrailLayer);
+            var extent = _groningenGuardrailLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[GroningenGuardrails] Loaded {features.Count} guardrail segments from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GroningenGuardrails] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnGroningenRavelingToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkGroningenRaveling.IsChecked != true)
+        {
+            if (_groningenRavelingLayer != null)
+            {
+                _map.Layers.Remove(_groningenRavelingLayer);
+                _groningenRavelingLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Hosted/Vergelijking_weginspecties, layer id=101 ("Vergelijking Rafeling"),
+            // same real official CROW pavement survey source as Cracking, confirmed
+            // via the same server listing before writing this.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Hosted/Vergelijking_weginspecties/FeatureServer/101/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(139, 92, 246, 130)),
+                    Outline = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(139, 92, 246), 1.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_groningenRavelingLayer != null) _map.Layers.Remove(_groningenRavelingLayer);
+            _groningenRavelingLayer = new MemoryLayer { Name = "Groningen Raveling", Features = features, IsMapInfoLayer = true, Opacity = 0.7 };
+            _map.Layers.Add(_groningenRavelingLayer);
+            var extent = _groningenRavelingLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[GroningenRaveling] Loaded {features.Count} segments from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GroningenRaveling] Failed to load: {ex.Message}");
+        }
+    }
+    private async void OnGroningenUnevennessToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkGroningenUnevenness.IsChecked != true)
+        {
+            if (_groningenUnevennessLayer != null)
+            {
+                _map.Layers.Remove(_groningenUnevennessLayer);
+                _groningenUnevennessLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Hosted/Vergelijking_weginspecties, layer id=103 ("Vergelijking oneffenheden"),
+            // same real official CROW pavement survey source as Cracking, confirmed
+            // via the same server listing before writing this.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Hosted/Vergelijking_weginspecties/FeatureServer/103/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(20, 184, 166, 130)),
+                    Outline = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(20, 184, 166), 1.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_groningenUnevennessLayer != null) _map.Layers.Remove(_groningenUnevennessLayer);
+            _groningenUnevennessLayer = new MemoryLayer { Name = "Groningen Unevenness", Features = features, IsMapInfoLayer = true, Opacity = 0.7 };
+            _map.Layers.Add(_groningenUnevennessLayer);
+            var extent = _groningenUnevennessLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[GroningenUnevenness] Loaded {features.Count} segments from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GroningenUnevenness] Failed to load: {ex.Message}");
+        }
+    }
+    private async void OnGroningenRuttingToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkGroningenRutting.IsChecked != true)
+        {
+            if (_groningenRuttingLayer != null)
+            {
+                _map.Layers.Remove(_groningenRuttingLayer);
+                _groningenRuttingLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Hosted/Vergelijking_weginspecties, layer id=104 ("Vergelijking spoorvorming"),
+            // same real official CROW pavement survey source as Cracking, confirmed
+            // via the same server listing before writing this.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Hosted/Vergelijking_weginspecties/FeatureServer/104/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(236, 72, 153, 130)),
+                    Outline = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(236, 72, 153), 1.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_groningenRuttingLayer != null) _map.Layers.Remove(_groningenRuttingLayer);
+            _groningenRuttingLayer = new MemoryLayer { Name = "Groningen Rutting", Features = features, IsMapInfoLayer = true, Opacity = 0.7 };
+            _map.Layers.Add(_groningenRuttingLayer);
+            var extent = _groningenRuttingLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[GroningenRutting] Loaded {features.Count} segments from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GroningenRutting] Failed to load: {ex.Message}");
+        }
+    }
+    private async void OnGroningenLongEvennessToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkGroningenLongEvenness.IsChecked != true)
+        {
+            if (_groningenLongEvennessLayer != null)
+            {
+                _map.Layers.Remove(_groningenLongEvennessLayer);
+                _groningenLongEvennessLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Hosted/Vergelijking_weginspecties, layer id=105 ("Vergelijking langsonvlakheid"),
+            // same real official CROW pavement survey source as Cracking, confirmed
+            // via the same server listing before writing this.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Hosted/Vergelijking_weginspecties/FeatureServer/105/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(6, 182, 212, 130)),
+                    Outline = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(6, 182, 212), 1.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_groningenLongEvennessLayer != null) _map.Layers.Remove(_groningenLongEvennessLayer);
+            _groningenLongEvennessLayer = new MemoryLayer { Name = "Groningen LongEvenness", Features = features, IsMapInfoLayer = true, Opacity = 0.7 };
+            _map.Layers.Add(_groningenLongEvennessLayer);
+            var extent = _groningenLongEvennessLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[GroningenLongEvenness] Loaded {features.Count} segments from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GroningenLongEvenness] Failed to load: {ex.Message}");
+        }
+    }
+
+        private async void OnGroningenCrackingToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkGroningenCracking.IsChecked != true)
+        {
+            if (_groningenCrackingLayer != null)
+            {
+                _map.Layers.Remove(_groningenCrackingLayer);
+                _groningenCrackingLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Hosted/Vergelijking_weginspecties, layer id=102 ("Vergelijking
+            // scheurvorming" / Cracking Comparison) -- real official CROW-standard
+            // pavement condition survey data, confirmed live via curl before
+            // writing this. Polygon geometry, same pattern as Roads.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Hosted/Vergelijking_weginspecties/FeatureServer/102/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(249, 115, 22, 130)),
+                    Outline = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(249, 115, 22), 1.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_groningenCrackingLayer != null) _map.Layers.Remove(_groningenCrackingLayer);
+            _groningenCrackingLayer = new MemoryLayer { Name = "Groningen Road Cracking (official)", Features = features, IsMapInfoLayer = true, Opacity = 0.7 };
+            _map.Layers.Add(_groningenCrackingLayer);
+            var extent = _groningenCrackingLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[GroningenCracking] Loaded {features.Count} cracking-comparison segments from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GroningenCracking] Failed to load: {ex.Message}");
         }
     }
 }

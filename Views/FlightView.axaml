@@ -40,10 +40,34 @@
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
       <Button Name="BtnMapToggle" Background="#1a2637" Foreground="#94a3b8"
               BorderBrush="#2d3f52" Click="OnMapToggle">🗺 Street</Button>
-      <Button Name="BtnLoadGroningenRoads" Background="#1a2637" Foreground="#94a3b8"
-              BorderBrush="#2d3f52" Click="OnLoadGroningenRoads">🏛 Groningen Roads</Button>
-      <Button Name="BtnLoadGroningenBridges" Background="#1a2637" Foreground="#94a3b8"
-              BorderBrush="#2d3f52" Click="OnLoadGroningenBridges">🌉 Bridges</Button>
+      <Button Name="BtnInfraLayers" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52">
+        🏛 Infra Layers
+        <Button.Flyout>
+          <Flyout Placement="Bottom">
+            <StackPanel Spacing="8" Margin="6" MinWidth="180">
+              <TextBlock Text="PROVINCE OF GRONINGEN DATA" FontSize="9" FontWeight="Bold"
+                         Foreground="#4a5568" LetterSpacing="1"/>
+              <CheckBox Name="ChkGroningenRoads" Content="🏛 Roads (paving)" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRoadsToggled"/>
+              <CheckBox Name="ChkGroningenBridges" Content="🌉 Bridges" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenBridgesToggled"/>
+              <CheckBox Name="ChkGroningenGuardrails" Content="🚧 Guardrails" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenGuardrailsToggled"/>
+              <CheckBox Name="ChkGroningenCracking" Content="🩹 Cracking (official)" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenCrackingToggled"/>
+              <CheckBox Name="ChkGroningenRaveling" Content="🪨 Raveling (official)" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRavelingToggled"/>
+              <CheckBox Name="ChkGroningenUnevenness" Content="〰 Unevenness (official)" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenUnevennessToggled"/>
+              <CheckBox Name="ChkGroningenRutting" Content="🛞 Rutting (official)" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRuttingToggled"/>
+              <CheckBox Name="ChkGroningenLongEvenness" Content="📏 Long. Evenness (official)" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenLongEvennessToggled"/>
+            </StackPanel>
+          </Flyout>
+        </Button.Flyout>
+      </Button>
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
       <Button Name="BtnAddWpToggle" Background="#1a2637" Foreground="#94a3b8"
               BorderBrush="#2d3f52" Click="OnAddWpToggle">📍 Add WP: OFF</Button>
