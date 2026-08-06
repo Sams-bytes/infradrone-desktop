@@ -868,6 +868,7 @@ public partial class FlightView : UserControl
     private MemoryLayer? _groningenLongEvennessLayer;
     private MemoryLayer? _bagBuildingsLayer;
     private Mapsui.Layers.ImageLayer? _ahnElevationLayer;
+    private Mapsui.Layers.ImageLayer? _sentinelNdviLayer;
     private async void OnGroningenGuardrailsToggled(object? s, RoutedEventArgs e)
     {
         if (_map == null || _mapControl == null) return;
@@ -1279,6 +1280,95 @@ public partial class FlightView : UserControl
         catch (Exception ex)
         {
             Console.WriteLine($"[AhnElevation] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnSentinelNdviToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkSentinelNdvi.IsChecked != true)
+        {
+            if (_sentinelNdviLayer != null)
+            {
+                _map.Layers.Remove(_sentinelNdviLayer);
+                _sentinelNdviLayer = null;
+                NdviLegendCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Copernicus Data Space Ecosystem, Sentinel Hub WMS, real free account
+            // (30,000 processing units/month), confirmed live via curl before
+            // writing this -- correct CDSE base URL is sh.dataspace.copernicus.eu,
+            // NOT the legacy services.sentinel-hub.com (which returned "Invalid
+            // instance id" for the exact same instance ID). Config instance
+            // "Groningen Infrastructure Inspection" already has an NDVI layer
+            // predefined. EPSG:3857 confirmed supported, same as AHN. Unlike AHN,
+            // this is a real time series, so a TIME date range is required --
+            // using the last 60 days to maximise chance of a usable, low-cloud
+            // recent image without guessing an exact cloud-free date.
+            const string instanceId = "db16f964-34a8-4c4b-84a5-81fcc451e418";
+            var capUrl = $"https://sh.dataspace.copernicus.eu/ogc/wms/{instanceId}?REQUEST=GetCapabilities";
+            var xmlString = await _groningenHttp.GetStringAsync(capUrl);
+            var xmlDoc = new System.Xml.XmlDocument();
+            xmlDoc.LoadXml(xmlString);
+            Func<string, System.Threading.Tasks.Task<System.IO.Stream>> fetchFunc =
+                async (url) => await _groningenHttp.GetStreamAsync(url);
+            var provider = new Mapsui.Providers.Wms.WmsProvider(xmlDoc, fetchFunc, null);
+            provider.AddLayer("NDVI");
+            provider.SetImageFormat("image/png");
+            provider.CRS = "EPSG:3857";
+            var end = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            var start = DateTime.UtcNow.AddDays(-60).ToString("yyyy-MM-dd");
+            provider.ExtraParams = new System.Collections.Generic.Dictionary<string, string>
+            {
+                ["TIME"] = $"{start}/{end}"
+            };
+            _sentinelNdviLayer = new Mapsui.Layers.ImageLayer("Sentinel-2 NDVI")
+            {
+                DataSource = provider,
+                Opacity = 0.75
+            };
+            _map.Layers.Add(_sentinelNdviLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[SentinelNdvi] WMS layer added, time range {start}/{end} -- renders dynamically as the map is panned/zoomed");
+
+            // Real, documented default Sentinel Hub NDVI colour ramp (from their
+            // own published custom-scripts repository, matching this layer's
+            // exact formula) -- built ourselves since, unlike AHN, this server
+            // provides no LegendURL for this layer.
+            var ndviRamp = new (double Value, string Hex, string Label)[]
+            {
+                (-0.5, "#0c0c0c", "Water"),
+                (-0.2, "#bfbfbf", "Water/wet soil"),
+                (-0.1, "#dbdbdb", "Rock/bare"),
+                (0.0, "#eaeaea", "Bare soil"),
+                (0.05, "#ede8b5", "Very sparse veg."),
+                (0.1, "#ccc682", "Sparse veg."),
+                (0.15, "#afc160", "Sparse veg."),
+                (0.2, "#91bf51", "Grassland"),
+                (0.3, "#70a33f", "Shrubland"),
+                (0.4, "#4f892d", "Moderate veg."),
+                (0.5, "#306d1c", "Healthy veg."),
+                (0.6, "#0f540a", "Dense veg."),
+                (1.0, "#004400", "Very dense/forest")
+            };
+            NdviLegendPanel.Children.Clear();
+            NdviLegendPanel.Children.Add(new TextBlock { Text = "NDVI Legend", FontSize = 12, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#22c55e")), Margin = new Avalonia.Thickness(0,0,0,4) });
+            foreach (var (val, hex, label) in ndviRamp.Reverse())
+            {
+                var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 6 };
+                row.Children.Add(new Border { Width = 16, Height = 12, Background = new SolidColorBrush(Avalonia.Media.Color.Parse(hex)), BorderBrush = Brushes.White, BorderThickness = new Avalonia.Thickness(0.5) });
+                row.Children.Add(new TextBlock { Text = $"{val:0.00}  {label}", FontSize = 9, Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#e2e8f0")) });
+                NdviLegendPanel.Children.Add(row);
+            }
+            NdviLegendCard.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SentinelNdvi] Failed to load: {ex.Message}");
         }
     }
 
