@@ -722,7 +722,7 @@ public partial class FlightView : UserControl
     {
         var feature = e.MapInfo?.Feature;
         var layer = e.MapInfo?.Layer;
-        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer))
+        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer && layer != _bagBuildingsLayer))
         {
             GroningenInfoCard.IsVisible = false;
             return;
@@ -866,6 +866,8 @@ public partial class FlightView : UserControl
     private MemoryLayer? _groningenUnevennessLayer;
     private MemoryLayer? _groningenRuttingLayer;
     private MemoryLayer? _groningenLongEvennessLayer;
+    private MemoryLayer? _bagBuildingsLayer;
+    private Mapsui.Layers.ImageLayer? _ahnElevationLayer;
     private async void OnGroningenGuardrailsToggled(object? s, RoutedEventArgs e)
     {
         if (_map == null || _mapControl == null) return;
@@ -1157,7 +1159,130 @@ public partial class FlightView : UserControl
         }
     }
 
-        private async void OnGroningenCrackingToggled(object? s, RoutedEventArgs e)
+        private async void OnBagBuildingsToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkBagBuildings.IsChecked != true)
+        {
+            if (_bagBuildingsLayer != null)
+            {
+                _map.Layers.Remove(_bagBuildingsLayer);
+                _bagBuildingsLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // National PDOK BAG (Basisregistratie Adressen en Gebouwen) WFS,
+            // confirmed live via curl before writing this -- version=2.0.0 is
+            // required explicitly (server errors without it). This is a national
+            // dataset, not scoped to Groningen like the province server, so we
+            // fix a bounding box around Groningen city center by default --
+            // querying with no bbox would return buildings from anywhere in NL.
+            // bbox axis order confirmed via live test: lat,lon,lat,lon for
+            // EPSG:4326 here, even though the returned geometry itself is lon,lat.
+            var url = "https://service.pdok.nl/lv/bag/wfs/v2_0?service=WFS&version=2.0.0&request=GetFeature&typeName=bag:pand&count=2000&srsName=EPSG:4326&outputFormat=json&bbox=53.19,6.53,53.25,6.60,EPSG:4326";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(236, 72, 255, 160)),
+                    Outline = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(236, 72, 255), 2.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_bagBuildingsLayer != null) _map.Layers.Remove(_bagBuildingsLayer);
+            _bagBuildingsLayer = new MemoryLayer { Name = "BAG Buildings", Features = features, IsMapInfoLayer = true, Opacity = 0.6 };
+            _map.Layers.Add(_bagBuildingsLayer);
+            var extent = _bagBuildingsLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[BagBuildings] Loaded {features.Count} buildings from live national PDOK WFS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[BagBuildings] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnAhnElevationToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkAhnElevation.IsChecked != true)
+        {
+            if (_ahnElevationLayer != null)
+            {
+                _map.Layers.Remove(_ahnElevationLayer);
+                _ahnElevationLayer = null;
+                AhnLegendCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // AHN (Actueel Hoogtebestand Nederland) national elevation WMS,
+            // confirmed live via curl before writing this -- unlike everything
+            // else in this file, this is raster/imagery data (rendered elevation
+            // map), not vector features, so it uses Mapsui's WmsProvider + a
+            // dynamic ImageLayer instead of MemoryLayer/GeometryFeature.
+            // dtm_05m = Digital Terrain Model, bare ground elevation excluding
+            // buildings/trees -- confirmed EPSG:3857 is directly supported by
+            // this server, so no reprojection wrapper (ProjectingProvider) needed.
+            var capUrl = "https://service.pdok.nl/rws/ahn/wms/v1_0?SERVICE=WMS&request=GetCapabilities";
+            var xmlString = await _groningenHttp.GetStringAsync(capUrl);
+            var xmlDoc = new System.Xml.XmlDocument();
+            xmlDoc.LoadXml(xmlString);
+            Func<string, System.Threading.Tasks.Task<System.IO.Stream>> fetchFunc =
+                async (url) => await _groningenHttp.GetStreamAsync(url);
+            var provider = new Mapsui.Providers.Wms.WmsProvider(xmlDoc, fetchFunc, null);
+            provider.AddLayer("dtm_05m");
+            provider.SetImageFormat("image/png");
+            provider.CRS = "EPSG:3857";
+            _ahnElevationLayer = new Mapsui.Layers.ImageLayer("AHN Elevation (DTM)")
+            {
+                DataSource = provider,
+                Opacity = 0.65
+            };
+            _map.Layers.Add(_ahnElevationLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine("[AhnElevation] WMS layer added -- renders dynamically as the map is panned/zoomed");
+
+            // Real official legend graphic from the same server, confirmed
+            // present via curl before wiring this in.
+            var legendUrl = "https://service.pdok.nl/rws/actueel-hoogtebestand-nederland/wms/v1_0?language=dut&version=1.3.0&service=WMS&request=GetLegendGraphic&sld_version=1.1.0&layer=dtm_05m&format=image/png&STYLE=default&WIDTH=180&HEIGHT=1000";
+            var legendBytes = await _groningenHttp.GetByteArrayAsync(legendUrl);
+            using (var ms = new System.IO.MemoryStream(legendBytes))
+            {
+                AhnLegendImage.Source = new Avalonia.Media.Imaging.Bitmap(ms);
+            }
+            AhnLegendCard.IsVisible = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AhnElevation] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnGroningenCrackingToggled(object? s, RoutedEventArgs e)
     {
         if (_map == null || _mapControl == null) return;
         if (ChkGroningenCracking.IsChecked != true)

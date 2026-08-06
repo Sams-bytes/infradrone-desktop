@@ -64,6 +64,11 @@
                         Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRuttingToggled"/>
               <CheckBox Name="ChkGroningenLongEvenness" Content="📏 Long. Evenness (official)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnGroningenLongEvennessToggled"/>
+              <TextBlock Text="NATIONAL (PDOK)" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1" Margin="0,4,0,0"/>
+              <CheckBox Name="ChkBagBuildings" Content="🏢 Buildings (BAG)" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnBagBuildingsToggled"/>
+              <CheckBox Name="ChkAhnElevation" Content="🌋 Elevation (AHN DTM)" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnAhnElevationToggled"/>
             </StackPanel>
           </Flyout>
         </Button.Flyout>
@@ -95,6 +100,16 @@
         <TextBlock Text="🏛 Groningen Road Asset" FontSize="11" FontWeight="Bold" Foreground="#3b82f6"/>
         <TextBlock Name="GroningenInfoText" Text="" FontSize="11" Foreground="#e2e8f0" TextWrapping="Wrap" FontFamily="Consolas"/>
       </StackPanel>
+    </Border>
+    <Border Name="AhnLegendCard" Grid.Row="1" HorizontalAlignment="Right" VerticalAlignment="Stretch"
+            Margin="16" Background="#e0131f2e" CornerRadius="8" Padding="10"
+            BorderBrush="#3b82f6" BorderThickness="1" IsVisible="False" MaxWidth="220">
+      <Grid RowDefinitions="Auto,*">
+        <TextBlock Grid.Row="0" Text="AHN Elevation Legend (m)" FontSize="12" FontWeight="Bold" Foreground="#3b82f6" Margin="0,0,0,6"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <Image Name="AhnLegendImage" Stretch="Uniform" VerticalAlignment="Top"/>
+        </ScrollViewer>
+      </Grid>
     </Border>
 
     <Border Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16"
