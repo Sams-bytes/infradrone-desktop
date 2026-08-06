@@ -40,6 +40,12 @@
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
       <Button Name="BtnMapToggle" Background="#1a2637" Foreground="#94a3b8"
               BorderBrush="#2d3f52" Click="OnMapToggle">🗺 Street</Button>
+      <TextBox Name="LocationSearchBox" Width="180" FontSize="11" Watermark="Search address/road..."
+               Background="#0f1923" Foreground="#e2e8f0" BorderBrush="#2d3f52"
+               KeyDown="OnLocationSearchKeyDown"/>
+      <Button Name="BtnLocationSearch" Content="🔍" Click="OnLocationSearch"
+              Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52"/>
+      <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
       <Button Name="BtnInfraLayers" Background="#1a2637" Foreground="#94a3b8"
               BorderBrush="#2d3f52">
         🏛 Infra Layers

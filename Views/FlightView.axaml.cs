@@ -1372,6 +1372,49 @@ public partial class FlightView : UserControl
         }
     }
 
+    private void OnLocationSearchKeyDown(object? s, Avalonia.Input.KeyEventArgs e)
+    {
+        if (e.Key == Avalonia.Input.Key.Enter) _ = DoLocationSearchAsync();
+    }
+    private async void OnLocationSearch(object? s, RoutedEventArgs e) => await DoLocationSearchAsync();
+
+    private async System.Threading.Tasks.Task DoLocationSearchAsync()
+    {
+        var query = LocationSearchBox.Text?.Trim();
+        if (string.IsNullOrEmpty(query) || _map == null || _mapControl == null) return;
+        try
+        {
+            // Real, public, no-login PDOK Locatieserver (national geocoding
+            // service), confirmed live via curl before writing this. The
+            // suggest endpoint already includes a lat/lon centroid directly,
+            // no separate lookup call needed for simple search-and-jump.
+            var url = $"https://api.pdok.nl/bzk/locatieserver/search/v3_1/suggest?q={Uri.EscapeDataString(query)}&fl=id,weergavenaam,centroide_ll&rows=1";
+            var json = await _groningenHttp.GetStringAsync(url);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var docs = doc.RootElement.GetProperty("response").GetProperty("docs");
+            if (docs.GetArrayLength() == 0)
+            {
+                MissionStatusText.Text = $"No location found for '{query}'.";
+                return;
+            }
+            var first = docs[0];
+            var name = first.GetProperty("weergavenaam").GetString();
+            var pointStr = first.GetProperty("centroide_ll").GetString(); // "POINT(lon lat)"
+            var inner = pointStr!.Substring(pointStr.IndexOf('(') + 1).TrimEnd(')');
+            var parts = inner.Split(' ');
+            double lon = double.Parse(parts[0], System.Globalization.CultureInfo.InvariantCulture);
+            double lat = double.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture);
+            var (x, y) = SphericalMercator.FromLonLat(lon, lat);
+            _map.Navigator.CenterOnAndZoomTo(new MPoint(x, y), _map.Navigator.Resolutions[14]);
+            _mapControl.Map.Refresh();
+            MissionStatusText.Text = $"Jumped to: {name}";
+        }
+        catch (Exception ex)
+        {
+            MissionStatusText.Text = $"Search failed: {ex.Message}";
+        }
+    }
+
     private async void OnGroningenCrackingToggled(object? s, RoutedEventArgs e)
     {
         if (_map == null || _mapControl == null) return;
