@@ -722,7 +722,7 @@ public partial class FlightView : UserControl
     {
         var feature = e.MapInfo?.Feature;
         var layer = e.MapInfo?.Layer;
-        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer && layer != _bagBuildingsLayer))
+        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer && layer != _bagBuildingsLayer && layer != _bermconditiesLayer && layer != _duikersLayer && layer != _geluidsschermenLayer))
         {
             GroningenInfoCard.IsVisible = false;
             return;
@@ -867,6 +867,9 @@ public partial class FlightView : UserControl
     private MemoryLayer? _groningenRuttingLayer;
     private MemoryLayer? _groningenLongEvennessLayer;
     private MemoryLayer? _bagBuildingsLayer;
+    private MemoryLayer? _bermconditiesLayer;
+    private MemoryLayer? _duikersLayer;
+    private MemoryLayer? _geluidsschermenLayer;
     private Mapsui.Layers.ImageLayer? _ahnElevationLayer;
     private Mapsui.Layers.ImageLayer? _sentinelNdviLayer;
     private async void OnGroningenGuardrailsToggled(object? s, RoutedEventArgs e)
@@ -1415,7 +1418,176 @@ public partial class FlightView : UserControl
         }
     }
 
-    private async void OnGroningenCrackingToggled(object? s, RoutedEventArgs e)
+    private async void OnBermconditiesToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkBermcondities.IsChecked != true)
+        {
+            if (_bermconditiesLayer != null)
+            {
+                _map.Layers.Remove(_bermconditiesLayer);
+                _bermconditiesLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Mobiliteit/Bermcondities, layer id=15, confirmed live via curl
+            // before writing this -- polyline geometry, same pattern as Guardrails.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Mobiliteit/Bermcondities/MapServer/15/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Line = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(234, 88, 12), 2.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_bermconditiesLayer != null) _map.Layers.Remove(_bermconditiesLayer);
+            _bermconditiesLayer = new MemoryLayer { Name = "Groningen Bermcondities", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_bermconditiesLayer);
+            var extent = _bermconditiesLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[Bermcondities] Loaded {features.Count} segments from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Bermcondities] Failed to load: {ex.Message}");
+        }
+    }
+    private async void OnDuikersToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkDuikers.IsChecked != true)
+        {
+            if (_duikersLayer != null)
+            {
+                _map.Layers.Remove(_duikersLayer);
+                _duikersLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Mobiliteit/Duikers, layer id=1, confirmed live via curl
+            // before writing this -- polyline geometry, same pattern as Guardrails.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Mobiliteit/Duikers/MapServer/1/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Line = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(6, 182, 212), 2.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_duikersLayer != null) _map.Layers.Remove(_duikersLayer);
+            _duikersLayer = new MemoryLayer { Name = "Groningen Duikers", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_duikersLayer);
+            var extent = _duikersLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[Duikers] Loaded {features.Count} segments from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Duikers] Failed to load: {ex.Message}");
+        }
+    }
+    private async void OnGeluidsschermenToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkGeluidsschermen.IsChecked != true)
+        {
+            if (_geluidsschermenLayer != null)
+            {
+                _map.Layers.Remove(_geluidsschermenLayer);
+                _geluidsschermenLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Mobiliteit/Geluidsschermen, layer id=1, confirmed live via curl
+            // before writing this -- polyline geometry, same pattern as Guardrails.
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Mobiliteit/Geluidsschermen/MapServer/1/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Line = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(168, 85, 247), 2.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_geluidsschermenLayer != null) _map.Layers.Remove(_geluidsschermenLayer);
+            _geluidsschermenLayer = new MemoryLayer { Name = "Groningen Geluidsschermen", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_geluidsschermenLayer);
+            var extent = _geluidsschermenLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[Geluidsschermen] Loaded {features.Count} segments from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Geluidsschermen] Failed to load: {ex.Message}");
+        }
+    }
+
+        private async void OnGroningenCrackingToggled(object? s, RoutedEventArgs e)
     {
         if (_map == null || _mapControl == null) return;
         if (ChkGroningenCracking.IsChecked != true)

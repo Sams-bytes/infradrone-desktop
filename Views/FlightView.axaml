@@ -70,6 +70,12 @@
                         Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRuttingToggled"/>
               <CheckBox Name="ChkGroningenLongEvenness" Content="📏 Long. Evenness (official)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnGroningenLongEvennessToggled"/>
+              <CheckBox Name="ChkBermcondities" Content="🌾 Verge Conditions" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnBermconditiesToggled"/>
+              <CheckBox Name="ChkDuikers" Content="🕳 Culverts" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnDuikersToggled"/>
+              <CheckBox Name="ChkGeluidsschermen" Content="🔇 Noise Barriers" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGeluidsschermenToggled"/>
               <TextBlock Text="NATIONAL (PDOK)" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1" Margin="0,4,0,0"/>
               <CheckBox Name="ChkBagBuildings" Content="🏢 Buildings (BAG)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnBagBuildingsToggled"/>
