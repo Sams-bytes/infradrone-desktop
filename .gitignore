@@ -11,3 +11,4 @@ mav.tlog.raw
 *.parm
 __pycache__/
 *.pyc
+change_detection_env/

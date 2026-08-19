@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.AssetIntelligenceView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Background="#1a2637" Padding="16,12"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="10">
+        <TextBlock Text="📈 Asset Intelligence — Time-Lapse Change Detection" FontSize="16" FontWeight="Bold" Foreground="#e2e8f0"/>
+        <TextBlock Text="Compare two orthomosaics of the same location, taken at different times, to highlight real physical change."
+                   FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button Name="BtnSelectBefore" Content="📁 Select 'Before' Image" Click="OnSelectBefore"
+                  Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52" BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSelectAfter" Content="📁 Select 'After' Image" Click="OnSelectAfter"
+                  Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52" BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnCompare" Content="🔍 Compare" Click="OnCompare" IsEnabled="False"
+                  Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75" BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+        </StackPanel>
+        <TextBlock Name="StatusText" Text="Select two images to begin." FontSize="11" Foreground="#64748b"/>
+      </StackPanel>
+    </Border>
+    <ScrollViewer Grid.Row="1">
+      <Image Name="ResultImage" Stretch="Uniform" Margin="16"/>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

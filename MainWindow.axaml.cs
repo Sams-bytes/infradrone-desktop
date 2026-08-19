@@ -208,6 +208,12 @@ public partial class MainWindow : Window
     private DjiView? _djiView;
     private SequoiaView? _sequoiaView;
     private ProcessingView? _processingView;
+    private Views.AssetIntelligenceView? _assetIntelligenceView;
+    private void OnAssetIntelligenceView(object? sender, RoutedEventArgs e)
+    {
+        if (_assetIntelligenceView == null) _assetIntelligenceView = new Views.AssetIntelligenceView();
+        ContentArea.Child = _assetIntelligenceView;
+    }
     private AiView? _aiView;
     private void OnAiView(object? sender, RoutedEventArgs e)
     {
