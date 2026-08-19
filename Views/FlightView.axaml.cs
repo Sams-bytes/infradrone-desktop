@@ -756,6 +756,75 @@ public partial class FlightView : UserControl
     private string _lastClickedLayerName = "";
     private double _lastClickedLat, _lastClickedLon;
 
+    private void OnPredictTrend(object? s, RoutedEventArgs e)
+    {
+        if (_lastClickedFields == null)
+        {
+            TrendText.Text = "Click a CROW pavement-condition asset first.";
+            return;
+        }
+        // Find real dated survey pairs, e.g. crow_inp_date_2021 / crow_inp_date_2023.
+        // Only uses years actually present on this feature -- doesn't assume 2021/2023
+        // specifically, since different segments may have been surveyed in different years.
+        var dateFields = _lastClickedFields.Keys
+            .Where(k => k.StartsWith("crow_inp_date_"))
+            .Select(k => k.Substring("crow_inp_date_".Length))
+            .OrderBy(y => y)
+            .ToList();
+        if (dateFields.Count < 2)
+        {
+            TrendText.Text = "No paired survey dates found on this asset -- trend prediction needs at least two dated CROW measurements.";
+            return;
+        }
+        var yearA = dateFields[0];
+        var yearB = dateFields[dateFields.Count - 1];
+        if (!DateTime.TryParse(_lastClickedFields[$"crow_inp_date_{yearA}"], out var dateA) ||
+            !DateTime.TryParse(_lastClickedFields[$"crow_inp_date_{yearB}"], out var dateB))
+        {
+            TrendText.Text = "Could not parse survey dates.";
+            return;
+        }
+        var yearsElapsed = (dateB - dateA).TotalDays / 365.25;
+        if (yearsElapsed <= 0)
+        {
+            TrendText.Text = "Survey dates invalid (non-positive time span).";
+            return;
+        }
+
+        var metricPrefixes = _lastClickedFields.Keys
+            .Where(k => k.StartsWith("crow_") && k.EndsWith($"_{yearB}") && !k.StartsWith("crow_inp_date") && !k.StartsWith("crow_alg_"))
+            .Select(k => k.Substring("crow_".Length, k.Length - "crow_".Length - $"_{yearB}".Length))
+            .Distinct()
+            .OrderBy(m => m)
+            .ToList();
+
+        var lines = new System.Collections.Generic.List<string>();
+        lines.Add($"Real survey dates used: {dateA:yyyy-MM-dd} -> {dateB:yyyy-MM-dd} ({yearsElapsed:0.0} years)");
+        lines.Add("");
+        foreach (var metric in metricPrefixes)
+        {
+            var keyA = $"crow_{metric}_{yearA}";
+            var keyB = $"crow_{metric}_{yearB}";
+            if (!_lastClickedFields.TryGetValue(keyA, out var strA) || !_lastClickedFields.TryGetValue(keyB, out var strB)) continue;
+            if (!double.TryParse(strA, System.Globalization.CultureInfo.InvariantCulture, out var valA)) continue;
+            if (!double.TryParse(strB, System.Globalization.CultureInfo.InvariantCulture, out var valB)) continue;
+
+            var ratePerYear = (valB - valA) / yearsElapsed;
+            var trend = ratePerYear > 0.01 ? "worsening" : ratePerYear < -0.01 ? "improving" : "stable";
+            var proj3 = valB + ratePerYear * 3;
+            var proj5 = valB + ratePerYear * 5;
+            lines.Add($"{metric}: {valA:0.##} -> {valB:0.##} ({trend}, {ratePerYear:+0.##;-0.##;0}/yr)");
+            lines.Add($"  projected in 3yr: {proj3:0.##}  |  5yr: {proj5:0.##}");
+        }
+        if (lines.Count <= 2)
+        {
+            lines.Add("No paired numeric CROW metrics found for this asset.");
+        }
+        lines.Add("");
+        lines.Add("Linear projection from measured rate -- not an official CROW maintenance-trigger threshold. For guidance only.");
+        TrendText.Text = string.Join("\n", lines);
+    }
+
     private async void OnGenerateTicket(object? s, RoutedEventArgs e)
     {
         if (_lastClickedFields == null)

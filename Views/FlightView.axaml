@@ -110,7 +110,7 @@
     <Border Name="GroningenInfoCard" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Bottom"
             Margin="16" MaxWidth="320" MaxHeight="500" Background="#e0131f2e" CornerRadius="8" Padding="12"
             BorderBrush="#3b82f6" BorderThickness="1" IsVisible="False">
-      <Grid RowDefinitions="Auto,*,Auto">
+      <Grid RowDefinitions="Auto,*,Auto,Auto">
         <TextBlock Grid.Row="0" Text="🏛 Groningen Road Asset" FontSize="11" FontWeight="Bold" Foreground="#3b82f6" Margin="0,0,0,4"/>
         <ScrollViewer Grid.Row="1" MaxHeight="220" VerticalScrollBarVisibility="Auto">
           <TextBlock Name="GroningenInfoText" Text="" FontSize="11" Foreground="#e2e8f0" TextWrapping="Wrap" FontFamily="Consolas"/>
@@ -131,6 +131,16 @@
                     Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
                     BorderThickness="0.5" Padding="8,5" CornerRadius="6" FontSize="11" HorizontalAlignment="Stretch"/>
             <TextBlock Name="TicketStatusText" Text="" FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Row="3" Background="#1a2637" CornerRadius="6" Padding="8" BorderBrush="#f59e0b" BorderThickness="0.5" Margin="0,8,0,0">
+          <StackPanel Spacing="6">
+            <Button Name="BtnPredictTrend" Content="📊 Predict Trend (from real CROW data)" Click="OnPredictTrend"
+                    Background="#3d2e0d" Foreground="#f59e0b" BorderBrush="#f59e0b"
+                    BorderThickness="0.5" Padding="8,5" CornerRadius="6" FontSize="11" HorizontalAlignment="Stretch"/>
+            <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+              <TextBlock Name="TrendText" Text="" FontSize="10" Foreground="#e2e8f0" TextWrapping="Wrap" FontFamily="Consolas"/>
+            </ScrollViewer>
           </StackPanel>
         </Border>
       </Grid>
