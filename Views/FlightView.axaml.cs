@@ -728,15 +728,108 @@ public partial class FlightView : UserControl
             return;
         }
         var lines = new System.Collections.Generic.List<string>();
+        _lastClickedFields = new System.Collections.Generic.Dictionary<string, string>();
         foreach (var field in feature.Fields)
         {
             if (field == "SHAPE.STArea()" || field == "SHAPE.STLength()") continue;
             var val = feature[field];
             if (val == null || string.IsNullOrEmpty(val.ToString())) continue;
             lines.Add($"{field}: {val}");
+            _lastClickedFields[field] = val.ToString()!;
+        }
+        _lastClickedLayerName = layer?.Name ?? "Unknown layer";
+        var worldPos = e.MapInfo?.WorldPosition;
+        if (worldPos != null)
+        {
+            var (lon, lat) = SphericalMercator.ToLonLat(worldPos.X, worldPos.Y);
+            _lastClickedLat = lat;
+            _lastClickedLon = lon;
         }
         GroningenInfoText.Text = string.Join("\n", lines);
+        TicketStatusText.Text = "";
+        TicketDescriptionBox.Text = "";
         GroningenInfoCard.IsVisible = true;
+        TicketDescriptionBox.InvalidateVisual();
+        TicketSeverityCombo.InvalidateVisual();
+    }
+    private System.Collections.Generic.Dictionary<string, string>? _lastClickedFields;
+    private string _lastClickedLayerName = "";
+    private double _lastClickedLat, _lastClickedLon;
+
+    private async void OnGenerateTicket(object? s, RoutedEventArgs e)
+    {
+        if (_lastClickedFields == null)
+        {
+            TicketStatusText.Text = "Click an asset on the map first.";
+            return;
+        }
+        var description = TicketDescriptionBox.Text?.Trim();
+        if (string.IsNullOrEmpty(description))
+        {
+            TicketStatusText.Text = "Enter a description of the finding first.";
+            return;
+        }
+        var severity = (TicketSeverityCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Medium";
+
+        BtnGenerateTicket.IsEnabled = false;
+        TicketStatusText.Text = "Generating ticket...";
+        try
+        {
+            var inputData = new
+            {
+                layer_name = _lastClickedLayerName,
+                fields = _lastClickedFields,
+                description,
+                severity,
+                lat = _lastClickedLat,
+                lon = _lastClickedLon,
+                timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+            };
+            var inputJson = System.Text.Json.JsonSerializer.Serialize(inputData);
+            var inputPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"ticket_input_{DateTime.Now.Ticks}.json");
+            await System.IO.File.WriteAllTextAsync(inputPath, inputJson);
+
+            var downloadsDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+            System.IO.Directory.CreateDirectory(downloadsDir);
+            var outPdf = System.IO.Path.Combine(downloadsDir, $"maintenance_ticket_{DateTime.Now:yyyyMMdd_HHmmss}.pdf");
+
+            var scriptPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "infradrone-desktop", "generate_maintenance_ticket.py");
+
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "/usr/bin/python3",
+                Arguments = "\"" + scriptPath + "\" \"" + inputPath + "\" \"" + outPdf + "\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            var proc = System.Diagnostics.Process.Start(psi);
+            var stderr = await proc!.StandardError.ReadToEndAsync();
+            await proc.WaitForExitAsync();
+            if (proc.ExitCode == 0 && System.IO.File.Exists(outPdf))
+            {
+                TicketStatusText.Text = $"Saved: {outPdf}";
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = outPdf,
+                    UseShellExecute = true
+                });
+            }
+            else
+            {
+                TicketStatusText.Text = $"Failed: {stderr.Substring(0, Math.Min(200, stderr.Length))}";
+            }
+        }
+        catch (Exception ex)
+        {
+            TicketStatusText.Text = $"Failed: {ex.Message}";
+        }
+        finally
+        {
+            BtnGenerateTicket.IsEnabled = true;
+        }
     }
     private async void OnGroningenRoadsToggled(object? s, RoutedEventArgs e)
     {
