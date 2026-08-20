@@ -722,7 +722,7 @@ public partial class FlightView : UserControl
     {
         var feature = e.MapInfo?.Feature;
         var layer = e.MapInfo?.Layer;
-        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer && layer != _bagBuildingsLayer && layer != _bermconditiesLayer && layer != _duikersLayer && layer != _geluidsschermenLayer))
+        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer && layer != _bagBuildingsLayer && layer != _bermconditiesLayer && layer != _duikersLayer && layer != _geluidsschermenLayer && layer != _fietspadenLayer && layer != _cameramastenLayer && layer != _gladheidLayer))
         {
             GroningenInfoCard.IsVisible = false;
             return;
@@ -1176,6 +1176,9 @@ public partial class FlightView : UserControl
     private MemoryLayer? _bermconditiesLayer;
     private MemoryLayer? _duikersLayer;
     private MemoryLayer? _geluidsschermenLayer;
+    private MemoryLayer? _fietspadenLayer;
+    private MemoryLayer? _cameramastenLayer;
+    private MemoryLayer? _gladheidLayer;
     private Mapsui.Layers.ImageLayer? _ahnElevationLayer;
     private Mapsui.Layers.ImageLayer? _sentinelNdviLayer;
     private async void OnGroningenGuardrailsToggled(object? s, RoutedEventArgs e)
@@ -1890,6 +1893,173 @@ public partial class FlightView : UserControl
         catch (Exception ex)
         {
             Console.WriteLine($"[Geluidsschermen] Failed to load: {ex.Message}");
+        }
+    }
+
+        private async void OnFietspadenToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkFietspaden.IsChecked != true)
+        {
+            if (_fietspadenLayer != null)
+            {
+                _map.Layers.Remove(_fietspadenLayer);
+                _fietspadenLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Mobiliteit/FietspadenAslijnen/MapServer/1/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new VectorStyle
+                {
+                    Line = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(34, 197, 94), 2.5f)
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_fietspadenLayer != null) _map.Layers.Remove(_fietspadenLayer);
+            _fietspadenLayer = new MemoryLayer { Name = "Groningen Fietspaden", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_fietspadenLayer);
+            var extent = _fietspadenLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[Fietspaden] Loaded {features.Count} from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Fietspaden] Failed to load: {ex.Message}");
+        }
+    }
+    private async void OnCameramastenToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkCameramasten.IsChecked != true)
+        {
+            if (_cameramastenLayer != null)
+            {
+                _map.Layers.Remove(_cameramastenLayer);
+                _cameramastenLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Mobiliteit/Cameramasten/MapServer/1/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new SymbolStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(251, 146, 60)),
+                    Outline = new Mapsui.Styles.Pen(Mapsui.Styles.Color.White, 1.5f),
+                    SymbolScale = 0.6
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_cameramastenLayer != null) _map.Layers.Remove(_cameramastenLayer);
+            _cameramastenLayer = new MemoryLayer { Name = "Groningen Cameramasten", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_cameramastenLayer);
+            var extent = _cameramastenLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[Cameramasten] Loaded {features.Count} from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Cameramasten] Failed to load: {ex.Message}");
+        }
+    }
+    private async void OnGladheidToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkGladheid.IsChecked != true)
+        {
+            if (_gladheidLayer != null)
+            {
+                _map.Layers.Remove(_gladheidLayer);
+                _gladheidLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            var url = "https://geoservices.provinciegroningen.nl/server/rest/services/Mobiliteit/Gladheidsmeetstations/MapServer/1/query?where=1%3D1&outFields=*&f=geojson&resultRecordCount=2000";
+            var json = await _groningenHttp.GetStringAsync(url);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new SymbolStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(56, 189, 248)),
+                    Outline = new Mapsui.Styles.Pen(Mapsui.Styles.Color.White, 1.5f),
+                    SymbolScale = 0.6
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_gladheidLayer != null) _map.Layers.Remove(_gladheidLayer);
+            _gladheidLayer = new MemoryLayer { Name = "Groningen Gladheid", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_gladheidLayer);
+            var extent = _gladheidLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[Gladheid] Loaded {features.Count} from live province ArcGIS server");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Gladheid] Failed to load: {ex.Message}");
         }
     }
 

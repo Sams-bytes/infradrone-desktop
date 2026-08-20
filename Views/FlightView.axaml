@@ -79,6 +79,12 @@
                         Foreground="#e2e8f0" IsCheckedChanged="OnDuikersToggled"/>
               <CheckBox Name="ChkGeluidsschermen" Content="🔇 Noise Barriers" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnGeluidsschermenToggled"/>
+              <CheckBox Name="ChkFietspaden" Content="🚲 Cycle Paths" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnFietspadenToggled"/>
+              <CheckBox Name="ChkCameramasten" Content="📷 Camera Masts" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnCameramastenToggled"/>
+              <CheckBox Name="ChkGladheid" Content="❄ Ice Sensors" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGladheidToggled"/>
               <TextBlock Text="NATIONAL (PDOK)" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1" Margin="0,4,0,0"/>
               <CheckBox Name="ChkBagBuildings" Content="🏢 Buildings (BAG)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnBagBuildingsToggled"/>
