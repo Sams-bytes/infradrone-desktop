@@ -2,11 +2,25 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="InfraDroneDesktop.Views.AssetIntelligenceView"
              Background="#0f1923">
-  <Grid RowDefinitions="Auto,*">
+  <Grid RowDefinitions="Auto,Auto,*">
     <Border Grid.Row="0" Background="#1a2637" Padding="16,12"
             BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="📈 Asset Intelligence" FontSize="16" FontWeight="Bold" Foreground="#e2e8f0"/>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Name="BtnSubChangeDetection" Content="🔀 Change Detection" Click="OnSubNav"
+                  Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubHealthPassport" Content="🪪 Health Passport" Click="OnSubNav"
+                  Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Change Detection subtab -->
+    <Border Name="ChangeDetectionPanel" Grid.Row="1" Background="#0f1923" Padding="16,10" IsVisible="True">
       <StackPanel Spacing="10">
-        <TextBlock Text="📈 Asset Intelligence — Time-Lapse Change Detection" FontSize="16" FontWeight="Bold" Foreground="#e2e8f0"/>
         <TextBlock Text="Compare two orthomosaics of the same location, taken at different times, to highlight real physical change."
                    FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
         <StackPanel Orientation="Horizontal" Spacing="10">
@@ -20,8 +34,18 @@
         <TextBlock Name="StatusText" Text="Select two images to begin." FontSize="11" Foreground="#64748b"/>
       </StackPanel>
     </Border>
-    <ScrollViewer Grid.Row="1">
-      <Image Name="ResultImage" Stretch="Uniform" Margin="16"/>
+
+    <!-- Health Passport subtab -->
+    <Border Name="HealthPassportPanel" Grid.Row="1" Background="#0f1923" Padding="16,10" IsVisible="False">
+      <TextBlock Name="PassportHeaderText" Text="Click an asset on the map in Flight View, then 'View Health Passport'."
+                 FontSize="12" Foreground="#94a3b8" TextWrapping="Wrap"/>
+    </Border>
+
+    <ScrollViewer Grid.Row="2">
+      <StackPanel>
+        <Image Name="ResultImage" Stretch="Uniform" Margin="16"/>
+        <StackPanel Name="PassportContentPanel" Margin="16" IsVisible="False"/>
+      </StackPanel>
     </ScrollViewer>
   </Grid>
 </UserControl>

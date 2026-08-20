@@ -144,6 +144,9 @@
             <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
               <TextBlock Name="TrendText" Text="" FontSize="10" Foreground="#e2e8f0" TextWrapping="Wrap" FontFamily="Consolas"/>
             </ScrollViewer>
+            <Button Name="BtnViewHealthPassport" Content="🪪 View Health Passport" Click="OnViewHealthPassport"
+                    Background="#2e0d3d" Foreground="#a855f7" BorderBrush="#a855f7"
+                    BorderThickness="0.5" Padding="8,5" CornerRadius="6" FontSize="11" HorizontalAlignment="Stretch"/>
           </StackPanel>
         </Border>
       </Grid>

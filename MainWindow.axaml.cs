@@ -22,6 +22,20 @@ public partial class MainWindow : Window
         _mav.TelemetryUpdated += OnTelemetry;
         _mav.TelemetryUpdated += (t) => _batteryHealth.OnTelemetryUpdate(t);
         _mav.SafetyAlert += OnSafetyAlert;
+
+        // A "View Health Passport" click anywhere in the app (currently only
+        // Flight View's map click-info card) navigates here to Asset
+        // Intelligence's Health Passport section, creating that view first
+        // if it hasn't been opened yet this session.
+        Services.SelectedAssetContext.NavigateToHealthPassportRequested += () =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (_assetIntelligenceView == null) _assetIntelligenceView = new Views.AssetIntelligenceView();
+                ContentArea.Child = _assetIntelligenceView;
+                _assetIntelligenceView.ShowHealthPassport();
+            });
+        };
     }
 
     private void OnTelemetry(AsvTelemetryData t)

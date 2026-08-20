@@ -756,6 +756,32 @@ public partial class FlightView : UserControl
     private string _lastClickedLayerName = "";
     private double _lastClickedLat, _lastClickedLon;
 
+    // Resolves a stable identifier for a physical asset across the different
+    // government field-naming conventions seen today (iassetid on the CROW
+    // survey layers, IassetId/Objectnummer on the Areaalviewer-based layers).
+    // Falls back to a rounded lat/lon if none of those fields exist, so every
+    // clicked asset always has SOME usable key for history tracking, rather
+    // than silently failing to log anything.
+    public static string ResolveAssetKey(System.Collections.Generic.Dictionary<string, string> fields)
+    {
+        foreach (var candidate in new[] { "iassetid", "IassetId", "Objectnummer", "OBJECTID" })
+        {
+            if (fields.TryGetValue(candidate, out var val) && !string.IsNullOrWhiteSpace(val))
+                return val;
+        }
+        return "unknown_asset";
+    }
+
+    private void OnViewHealthPassport(object? s, RoutedEventArgs e)
+    {
+        if (_lastClickedFields == null)
+        {
+            TrendText.Text = "Click an asset on the map first.";
+            return;
+        }
+        SelectedAssetContext.SetAndNavigate(_lastClickedFields, _lastClickedLayerName);
+    }
+
     private void SpeakAsync(string text)
     {
         try
@@ -988,6 +1014,16 @@ public partial class FlightView : UserControl
             if (proc.ExitCode == 0 && System.IO.File.Exists(outPdf))
             {
                 TicketStatusText.Text = $"Saved: {outPdf}";
+                AssetHistoryStore.AppendEvent(
+                    ResolveAssetKey(_lastClickedFields),
+                    new AssetHistoryEntry
+                    {
+                        Date = DateTime.Now,
+                        Type = "ticket",
+                        Severity = severity,
+                        Description = description,
+                        LayerName = _lastClickedLayerName
+                    });
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = outPdf,
