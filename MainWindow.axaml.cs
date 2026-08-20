@@ -353,6 +353,25 @@ public partial class MainWindow : Window
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[MainWindow] BCube/v1 connection not available: {ex.Message}");
+                    // Only speak/alert if BCube's port genuinely exists but something
+                    // real went wrong opening it -- if the port simply doesn't exist,
+                    // that just means BCube isn't plugged in right now, which is
+                    // normal/expected (this button tries both vehicles automatically
+                    // every time) and shouldn't sound a false alarm.
+                    if (System.IO.File.Exists("/dev/bcube"))
+                    {
+                        try
+                        {
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                            {
+                                FileName = "espeak-ng",
+                                Arguments = "\"BCube connection error\"",
+                                UseShellExecute = false,
+                                CreateNoWindow = true
+                            });
+                        }
+                        catch { }
+                    }
                     _v1 = null;
                 }
             }
