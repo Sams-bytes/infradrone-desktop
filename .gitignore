@@ -12,3 +12,5 @@ mav.tlog.raw
 __pycache__/
 *.pyc
 change_detection_env/
+voice_env/
+*.npy

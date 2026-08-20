@@ -9,6 +9,26 @@ namespace InfraDroneDesktop.Views
 {
     public partial class FailsafeMonitorView : UserControl
     {
+        private static void SpeakAlert(string title)
+        {
+            // Speaks safety-critical alerts out loud -- link loss, battery,
+            // GPS, geofence -- so they're noticed even when looking at the
+            // sky rather than the screen. Fire-and-forget; if espeak-ng
+            // isn't installed, fails silently and the on-screen alert
+            // (already shown via RefreshAlertHistory) still works normally.
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "espeak-ng",
+                    Arguments = "\"" + title + "\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                });
+            }
+            catch { }
+        }
+
         private AsvMavLinkService? _mav;
         private Mavlink1SerialService? _v1;
         private DispatcherTimer? _refreshTimer;
@@ -21,7 +41,7 @@ namespace InfraDroneDesktop.Views
         public void SetMavLink(AsvMavLinkService mav)
         {
             _mav = mav;
-            _mav.SafetyAlert += (title, message) => Dispatcher.UIThread.Post(RefreshAlertHistory);
+            _mav.SafetyAlert += (title, message) => { Dispatcher.UIThread.Post(RefreshAlertHistory); SpeakAlert(title); };
             EnsureTimer();
         }
 
@@ -29,7 +49,7 @@ namespace InfraDroneDesktop.Views
         {
             if (_v1 == v1) return;
             _v1 = v1;
-            _v1.SafetyAlert += (title, message) => Dispatcher.UIThread.Post(RefreshAlertHistory);
+            _v1.SafetyAlert += (title, message) => { Dispatcher.UIThread.Post(RefreshAlertHistory); SpeakAlert(title); };
             EnsureTimer();
         }
 

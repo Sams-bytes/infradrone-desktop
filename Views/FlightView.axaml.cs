@@ -756,6 +756,114 @@ public partial class FlightView : UserControl
     private string _lastClickedLayerName = "";
     private double _lastClickedLat, _lastClickedLon;
 
+    private void SpeakAsync(string text)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "espeak-ng",
+                Arguments = $"\"{text}\"",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+        }
+        catch { /* espeak-ng not available -- fail silently, text status still shows */ }
+    }
+
+    private async void OnVoiceCommand(object? s, RoutedEventArgs e)
+    {
+        BtnVoiceCommand.IsEnabled = false;
+        MissionStatusText.Text = "🎤 Starting...";
+        try
+        {
+            var venvPython = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "infradrone-desktop", "voice_env", "bin", "python3");
+            var scriptPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "infradrone-desktop", "voice_command.py");
+
+            var psi = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = venvPython,
+                Arguments = $"\"{scriptPath}\" 4",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            var proc = new System.Diagnostics.Process { StartInfo = psi, EnableRaisingEvents = true };
+            string? recognizedText = null;
+
+            proc.OutputDataReceived += (sender, args) =>
+            {
+                if (string.IsNullOrEmpty(args.Data)) return;
+                var line = args.Data;
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (line == "STAGE:GET_READY")
+                        MissionStatusText.Text = "🎤 Get ready...";
+                    else if (line == "STAGE:LISTENING")
+                        MissionStatusText.Text = "🎤 Listening now -- speak your command...";
+                    else if (line == "STAGE:PROCESSING")
+                        MissionStatusText.Text = "🎤 Processing...";
+                    else if (line == "STAGE:REJECTED")
+                        MissionStatusText.Text = "🔒 Voice not recognized -- command rejected.";
+                    else if (line == "STAGE:NO_SPEECH")
+                        MissionStatusText.Text = "🎤 No speech detected.";
+                    else if (line.StartsWith("STAGE:RESULT:"))
+                        recognizedText = line.Substring("STAGE:RESULT:".Length);
+                });
+            };
+            proc.Start();
+            proc.BeginOutputReadLine();
+            await proc.WaitForExitAsync();
+
+            if (recognizedText != null)
+            {
+                var lower = recognizedText.ToLowerInvariant();
+                string? matchedAction = null;
+
+                if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"\barm the drone\b|\barm now\b|\bconfirm arm\b"))
+                { matchedAction = "ARM"; OnArm(null, new RoutedEventArgs()); }
+                else if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"\bdisarm\b"))
+                { matchedAction = "DISARM"; OnDisarm(null, new RoutedEventArgs()); }
+                else if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"\btake ?off\b"))
+                { matchedAction = "TAKEOFF"; OnTakeoff(null, new RoutedEventArgs()); }
+                else if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"\bland\b"))
+                { matchedAction = "LAND"; OnLand(null, new RoutedEventArgs()); }
+                else if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"\breturn to launch\b|\breturn home\b|\brtl\b"))
+                { matchedAction = "RTL"; OnRtl(null, new RoutedEventArgs()); }
+                else if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"\bloiter\b"))
+                { matchedAction = "LOITER"; OnLoiter(null, new RoutedEventArgs()); }
+                else if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"\bguided\b"))
+                { matchedAction = "GUIDED"; OnGuided(null, new RoutedEventArgs()); }
+                else if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"\bauto mode\b|\bswitch to auto\b"))
+                { matchedAction = "AUTO"; OnAuto(null, new RoutedEventArgs()); }
+
+                if (matchedAction != null)
+                {
+                    MissionStatusText.Text = $"🎤 Heard: \"{recognizedText}\" -> executed {matchedAction}";
+                    SpeakAsync($"Command received: {matchedAction}");
+                }
+                else
+                {
+                    MissionStatusText.Text = $"🎤 Heard: \"{recognizedText}\" -> no matching command recognized";
+                    SpeakAsync("Command not recognized. Please try again.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MissionStatusText.Text = $"Voice command failed: {ex.Message}";
+            SpeakAsync("Voice command failed.");
+        }
+        finally
+        {
+            BtnVoiceCommand.IsEnabled = true;
+        }
+    }
+
     private void OnPredictTrend(object? s, RoutedEventArgs e)
     {
         if (_lastClickedFields == null)
