@@ -14,3 +14,5 @@ __pycache__/
 change_detection_env/
 voice_env/
 *.npy
+filter_env/
+groningen_traffic_signs.geojson

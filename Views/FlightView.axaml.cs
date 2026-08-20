@@ -722,7 +722,7 @@ public partial class FlightView : UserControl
     {
         var feature = e.MapInfo?.Feature;
         var layer = e.MapInfo?.Layer;
-        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer && layer != _bagBuildingsLayer && layer != _bermconditiesLayer && layer != _duikersLayer && layer != _geluidsschermenLayer && layer != _fietspadenLayer && layer != _cameramastenLayer && layer != _gladheidLayer))
+        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer && layer != _bagBuildingsLayer && layer != _bermconditiesLayer && layer != _duikersLayer && layer != _geluidsschermenLayer && layer != _fietspadenLayer && layer != _cameramastenLayer && layer != _gladheidLayer && layer != _trafficSignsLayer))
         {
             GroningenInfoCard.IsVisible = false;
             return;
@@ -1179,6 +1179,7 @@ public partial class FlightView : UserControl
     private MemoryLayer? _fietspadenLayer;
     private MemoryLayer? _cameramastenLayer;
     private MemoryLayer? _gladheidLayer;
+    private MemoryLayer? _trafficSignsLayer;
     private Mapsui.Layers.ImageLayer? _ahnElevationLayer;
     private Mapsui.Layers.ImageLayer? _sentinelNdviLayer;
     private async void OnGroningenGuardrailsToggled(object? s, RoutedEventArgs e)
@@ -2063,7 +2064,81 @@ public partial class FlightView : UserControl
         }
     }
 
-        private async void OnGroningenCrackingToggled(object? s, RoutedEventArgs e)
+        private async void OnTrafficSignsToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkTrafficSigns.IsChecked != true)
+        {
+            if (_trafficSignsLayer != null)
+            {
+                _map.Layers.Remove(_trafficSignsLayer);
+                _trafficSignsLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // Real NDW (Nationaal Dataportaal Wegverkeer) national traffic
+            // sign dataset -- confirmed live, but the source file is 1.18GB
+            // nationwide, so it was pre-filtered ONCE offline (via
+            // filter_signs_to_groningen.py, a streaming ijson parser) down
+            // to 118,484 signs within Groningen province's bounding box.
+            // This checkbox loads that already-filtered LOCAL file, same
+            // pattern as the existing airspace_nl.geojson loading -- not a
+            // live API call, since the real national source is far too
+            // large to fetch on every toggle.
+            var geojsonPath = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                "agri_drone", "groningen_traffic_signs.geojson");
+            if (!System.IO.File.Exists(geojsonPath))
+            {
+                Console.WriteLine("[TrafficSigns] File not found: " + geojsonPath);
+                return;
+            }
+            StatusBanner_SetLoading: ;
+            var json = await System.IO.File.ReadAllTextAsync(geojsonPath);
+            var reader = new NetTopologySuite.IO.GeoJsonReader();
+            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var f in fc)
+            {
+                if (f.Geometry == null) continue;
+                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+                mf.Styles.Add(new SymbolStyle
+                {
+                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color(250, 204, 21)),
+                    Outline = new Mapsui.Styles.Pen(Mapsui.Styles.Color.Black, 1.0f),
+                    SymbolScale = 0.3
+                });
+                if (f.Attributes != null)
+                {
+                    foreach (var attrName in f.Attributes.GetNames())
+                        mf[attrName] = f.Attributes[attrName];
+                }
+                features.Add(mf);
+            }
+            if (_trafficSignsLayer != null) _map.Layers.Remove(_trafficSignsLayer);
+            _trafficSignsLayer = new MemoryLayer { Name = "Groningen Traffic Signs", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_trafficSignsLayer);
+            var extent = _trafficSignsLayer.Extent;
+            if (extent != null) _map.Navigator.ZoomToBox(extent, MBoxFit.Fit);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[TrafficSigns] Loaded {features.Count} signs from local pre-filtered file");
+            if (!_groningenInfoWired)
+            {
+                _groningenInfoWired = true;
+                _map.Info += OnGroningenMapInfo;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[TrafficSigns] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnGroningenCrackingToggled(object? s, RoutedEventArgs e)
     {
         if (_map == null || _mapControl == null) return;
         if (ChkGroningenCracking.IsChecked != true)

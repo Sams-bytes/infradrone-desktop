@@ -222,6 +222,12 @@ public partial class MainWindow : Window
     private DjiView? _djiView;
     private SequoiaView? _sequoiaView;
     private ProcessingView? _processingView;
+    private Views.LandEnvironmentView? _landEnvironmentView;
+    private void OnLandEnvironmentView(object? sender, RoutedEventArgs e)
+    {
+        if (_landEnvironmentView == null) _landEnvironmentView = new Views.LandEnvironmentView();
+        ContentArea.Child = _landEnvironmentView;
+    }
     private Views.AssetIntelligenceView? _assetIntelligenceView;
     private void OnAssetIntelligenceView(object? sender, RoutedEventArgs e)
     {

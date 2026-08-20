@@ -1,0 +1,36 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:maps="clr-namespace:Mapsui.UI.Avalonia;assembly=Mapsui.UI.Avalonia"
+             x:Class="InfraDroneDesktop.Views.LandEnvironmentView">
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Background="#1a2637" Padding="16,12"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="🌍 Land &amp; Environment" FontSize="16" FontWeight="Bold" Foreground="#e2e8f0"/>
+        <TextBlock Text="Official Province of Groningen land-use, ecology, and water data (Omgevingsvisie / BasisdataGroningen)."
+                   FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+        <Button Name="BtnLayersMenu" Content="🗂 Select Layers" Background="#0d3d2e" Foreground="#0d9e75"
+                BorderBrush="#0d9e75" BorderThickness="0.5" Padding="10,6" CornerRadius="6" HorizontalAlignment="Left">
+          <Button.Flyout>
+            <Flyout Placement="Bottom">
+              <ScrollViewer MaxHeight="560" VerticalScrollBarVisibility="Auto">
+                <StackPanel Name="LayerCheckboxPanel" Spacing="6" Margin="8" MinWidth="260"/>
+              </ScrollViewer>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+      </StackPanel>
+    </Border>
+    <maps:MapControl Grid.Row="1" Name="MapControl"/>
+    <Border Name="InfoCard" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+            Margin="16" MaxWidth="340" MaxHeight="400" Background="#e0131f2e" CornerRadius="8" Padding="12"
+            BorderBrush="#22c55e" BorderThickness="1" IsVisible="False">
+      <ScrollViewer MaxHeight="380">
+        <StackPanel Spacing="4">
+          <TextBlock Text="🌍 Land &amp; Environment Asset" FontSize="11" FontWeight="Bold" Foreground="#22c55e"/>
+          <TextBlock Name="InfoText" Text="" FontSize="11" Foreground="#e2e8f0" TextWrapping="Wrap" FontFamily="Consolas"/>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</UserControl>

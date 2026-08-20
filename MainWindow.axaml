@@ -69,6 +69,7 @@
 
         <Expander Header="INFRASTRUCTURE" Classes="navgroup" IsExpanded="True">
           <StackPanel>
+            <Button Content="🌍  Land &amp; Environment" Classes="nav" Click="OnLandEnvironmentView"/>
             <Button Content="📈  Asset Intelligence" Classes="nav" Click="OnAssetIntelligenceView"/>
             <Button Content="🤖  AI" Classes="nav" Click="OnAiView"/>
             <Button Content="📐  Survey Grid" Classes="nav" Click="OnSurveyGridView"/>

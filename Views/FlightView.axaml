@@ -54,15 +54,13 @@
         🏛 Infra Layers
         <Button.Flyout>
           <Flyout Placement="Bottom">
-            <StackPanel Spacing="8" Margin="6" MinWidth="180">
-              <TextBlock Text="PROVINCE OF GRONINGEN DATA" FontSize="9" FontWeight="Bold"
-                         Foreground="#4a5568" LetterSpacing="1"/>
+            <ScrollViewer MaxHeight="520" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="6" Margin="8" MinWidth="220">
+
+              <TextBlock Text="🛣 ROAD &amp; PAVEMENT" FontSize="10" FontWeight="Bold"
+                         Foreground="#0d9e75" LetterSpacing="1" Margin="0,0,0,2"/>
               <CheckBox Name="ChkGroningenRoads" Content="🏛 Roads (paving)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRoadsToggled"/>
-              <CheckBox Name="ChkGroningenBridges" Content="🌉 Bridges" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenBridgesToggled"/>
-              <CheckBox Name="ChkGroningenGuardrails" Content="🚧 Guardrails" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenGuardrailsToggled"/>
               <CheckBox Name="ChkGroningenCracking" Content="🩹 Cracking (official)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnGroningenCrackingToggled"/>
               <CheckBox Name="ChkGroningenRaveling" Content="🪨 Raveling (official)" FontSize="12"
@@ -71,28 +69,47 @@
                         Foreground="#e2e8f0" IsCheckedChanged="OnGroningenUnevennessToggled"/>
               <CheckBox Name="ChkGroningenRutting" Content="🛞 Rutting (official)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRuttingToggled"/>
-              <CheckBox Name="ChkGroningenLongEvenness" Content="📏 Long. Evenness (official)" FontSize="12"
+              <CheckBox Name="ChkGroningenLongEvenness" Content="📏 Long. evenness (official)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnGroningenLongEvennessToggled"/>
-              <CheckBox Name="ChkBermcondities" Content="🌾 Verge Conditions" FontSize="12"
+              <CheckBox Name="ChkBermcondities" Content="🌾 Verge conditions" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnBermconditiesToggled"/>
+
+              <TextBlock Text="🌉 STRUCTURES" FontSize="10" FontWeight="Bold"
+                         Foreground="#3b82f6" LetterSpacing="1" Margin="0,10,0,2"/>
+              <CheckBox Name="ChkGroningenBridges" Content="🌉 Bridges" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenBridgesToggled"/>
+              <CheckBox Name="ChkGroningenGuardrails" Content="🚧 Guardrails" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenGuardrailsToggled"/>
               <CheckBox Name="ChkDuikers" Content="🕳 Culverts" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnDuikersToggled"/>
-              <CheckBox Name="ChkGeluidsschermen" Content="🔇 Noise Barriers" FontSize="12"
+              <CheckBox Name="ChkGeluidsschermen" Content="🔇 Noise barriers" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnGeluidsschermenToggled"/>
-              <CheckBox Name="ChkFietspaden" Content="🚲 Cycle Paths" FontSize="12"
+
+              <TextBlock Text="🚦 TRAFFIC &amp; SAFETY" FontSize="10" FontWeight="Bold"
+                         Foreground="#eab308" LetterSpacing="1" Margin="0,10,0,2"/>
+              <CheckBox Name="ChkFietspaden" Content="🚲 Cycle paths" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnFietspadenToggled"/>
-              <CheckBox Name="ChkCameramasten" Content="📷 Camera Masts" FontSize="12"
+              <CheckBox Name="ChkCameramasten" Content="📷 Camera masts" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnCameramastenToggled"/>
-              <CheckBox Name="ChkGladheid" Content="❄ Ice Sensors" FontSize="12"
+              <CheckBox Name="ChkGladheid" Content="❄ Ice sensors" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnGladheidToggled"/>
-              <TextBlock Text="NATIONAL (PDOK)" FontSize="9" FontWeight="Bold" Foreground="#4a5568" LetterSpacing="1" Margin="0,4,0,0"/>
+
+              <TextBlock Text="🇳🇱 NATIONAL DATA" FontSize="10" FontWeight="Bold"
+                         Foreground="#a855f7" LetterSpacing="1" Margin="0,10,0,2"/>
               <CheckBox Name="ChkBagBuildings" Content="🏢 Buildings (BAG)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnBagBuildingsToggled"/>
-              <CheckBox Name="ChkAhnElevation" Content="🌋 Elevation (AHN DTM)" FontSize="12"
+              <CheckBox Name="ChkAhnElevation" Content="🌋 Elevation (AHN)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnAhnElevationToggled"/>
+              <CheckBox Name="ChkTrafficSigns" Content="🚸 Traffic signs (large, may be slow)" FontSize="12"
+                        Foreground="#e2e8f0" IsCheckedChanged="OnTrafficSignsToggled"/>
+
+              <TextBlock Text="🛰 SATELLITE &amp; EU" FontSize="10" FontWeight="Bold"
+                         Foreground="#22c55e" LetterSpacing="1" Margin="0,10,0,2"/>
               <CheckBox Name="ChkSentinelNdvi" Content="🌱 NDVI (Sentinel-2)" FontSize="12"
                         Foreground="#e2e8f0" IsCheckedChanged="OnSentinelNdviToggled"/>
+
             </StackPanel>
+            </ScrollViewer>
           </Flyout>
         </Button.Flyout>
       </Button>
