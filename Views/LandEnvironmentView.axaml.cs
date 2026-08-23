@@ -96,26 +96,54 @@ public partial class LandEnvironmentView : UserControl
         _map.Info += OnMapInfo;
     }
 
+    private static readonly Dictionary<string, string> CategoryColors = new()
+    {
+        ["Nature & Ecology"] = "#22c55e",
+        ["Quiet & Dark Sky"] = "#818cf8",
+        ["Water"] = "#38bdf8",
+        ["Ground / Subsidence"] = "#d97706",
+        ["Development & Energy"] = "#a855f7",
+        ["Infrastructure Planning"] = "#ea580c",
+        ["Named Regional Landscapes"] = "#94a3b8",
+    };
+
     private void BuildCheckboxes()
     {
         string? currentCategory = null;
+        StackPanel? currentCardStack = null;
         foreach (var layer in Layers)
         {
             if (layer.Cat != currentCategory)
             {
                 currentCategory = layer.Cat;
-                LayerCheckboxPanel.Children.Add(new TextBlock
+                var accent = CategoryColors.TryGetValue(currentCategory, out var c) ? c : "#94a3b8";
+
+                var card = new Border
+                {
+                    Background = new SolidColorBrush(Avalonia.Media.Color.Parse(accent + "14")),
+                    CornerRadius = new Avalonia.CornerRadius(6),
+                    Padding = new Avalonia.Thickness(10, 8),
+                    Margin = new Avalonia.Thickness(0, 0, 0, 10)
+                };
+                currentCardStack = new StackPanel { Spacing = 6 };
+
+                var headerRow = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 6 };
+                headerRow.Children.Add(new Border { Background = new SolidColorBrush(Avalonia.Media.Color.Parse(accent)), Width = 3, CornerRadius = new Avalonia.CornerRadius(2) });
+                headerRow.Children.Add(new TextBlock
                 {
                     Text = currentCategory.ToUpperInvariant(),
                     FontSize = 10, FontWeight = FontWeight.Bold,
-                    Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse("#22c55e")),
-                    Margin = new Avalonia.Thickness(0, 10, 0, 2)
+                    Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse(accent)),
+                    LetterSpacing = 1
                 });
+                currentCardStack.Children.Add(headerRow);
+                card.Child = currentCardStack;
+                LayerCheckboxPanel.Children.Add(card);
             }
             var cb = new CheckBox { Content = layer.Label, FontSize = 12, Foreground = Brushes.White };
             var capturedLayer = layer;
             cb.IsCheckedChanged += async (s, e) => await ToggleLayer(capturedLayer, cb.IsChecked == true);
-            LayerCheckboxPanel.Children.Add(cb);
+            currentCardStack!.Children.Add(cb);
         }
     }
 
