@@ -57,10 +57,9 @@
         <!-- Nav -->
         <Expander Header="FLIGHT OPS" Classes="navgroup" IsExpanded="True">
           <StackPanel>
-            <Button Content="✈  Flight view" Classes="nav" Click="OnFlightView"/>
+            <Button Content="✈  Mission Planner" Classes="nav" Click="OnFlightView"/>
             <Button Content="🧪  MAVLink Test" Classes="nav" Click="OnMavLinkTestView"/>
             <Button Content="🛡  Failsafe Monitor" Classes="nav" Click="OnFailsafeMonitorView"/>
-            <Button Content="🗺  Mission planner" Classes="nav" Click="OnMissionView"/>
             <Button Content="☑  Pre-flight check" Classes="nav" Click="OnPreflightView"/>
             <Button Content="🎯  Calibration" Classes="nav" Click="OnCalibrationView"/>
             <Button Content="🌤  Weather" Classes="nav" Click="OnWeatherView"/>
@@ -71,9 +70,9 @@
           <StackPanel>
             <Button Content="🌍  Land &amp; Environment" Classes="nav" Click="OnLandEnvironmentView"/>
             <Button Content="📈  Asset Intelligence" Classes="nav" Click="OnAssetIntelligenceView"/>
+            <Button Content="☀  Solar Inspection" Classes="nav" Click="OnSolarInspectionView"/>
             <Button Content="🤖  AI" Classes="nav" Click="OnAiView"/>
-            <Button Content="📐  Survey Grid" Classes="nav" Click="OnSurveyGridView"/>
-            <Button Content="🗺  Processing" Classes="nav" Click="OnProcessingView"/>
+            <Button Content="🗺  Survey &amp; Processing" Classes="nav" Click="OnSurveyAndProcessingView"/>
             <Button Content="🎬  Traffic Replay" Classes="nav" Click="OnTrafficPlayerView"/>
             <Button Content="🚦  Traffic Hub" Classes="nav" Click="OnTrafficHubView"/>
             <Button Content="🚁  Aerial Detection" Classes="nav" Click="OnAerialDetectionView"/>

@@ -77,6 +77,60 @@ public partial class AssetIntelligenceView : UserControl
         }
         PassportContentPanel.Children.Add(statRow);
 
+        // Real validation check: does the operator's own logged inspection
+        // severity (from generated tickets) agree with the direction/magnitude
+        // of the official CROW measured trend for this same asset? This is
+        // the actual differentiator over just displaying two data sources
+        // side by side -- an honest cross-check, not a fabricated precision
+        // claim. Framed so a mismatch reads as "worth a look" either
+        // direction, not simply "wrong" -- catching something before the
+        // next official survey is a genuine strength, not an error.
+        if (trendInfo != null && history.Count > 0)
+        {
+            var lastTicket = history.FindLast(h => h.Type == "ticket");
+            if (lastTicket != null)
+            {
+                var severityScore = lastTicket.Severity switch
+                {
+                    "Low" => 1, "Medium" => 2, "High" => 3, "Critical" => 4, _ => 2
+                };
+                var rate = trendInfo.Value.RawRate;
+                string verdict, detail, color;
+                if (rate > 0.5 && severityScore >= 3)
+                {
+                    verdict = "✅ Agrees with official trend";
+                    detail = $"Official data shows {trendInfo.Value.Metric} worsening at {trendInfo.Value.RateText}. Your logged '{lastTicket.Severity}' severity finding is consistent with this.";
+                    color = "#0d9e75";
+                }
+                else if (rate > 0.5 && severityScore < 3)
+                {
+                    verdict = "⚠ Lower than official trend suggests";
+                    detail = $"Official data shows {trendInfo.Value.Metric} worsening at {trendInfo.Value.RateText}, but your logged finding was only '{lastTicket.Severity}'. Worth a re-check.";
+                    color = "#eab308";
+                }
+                else if (rate <= 0.5 && severityScore >= 3)
+                {
+                    verdict = "⚠ Higher than official trend shows";
+                    detail = $"Official data shows {trendInfo.Value.Metric} as stable/improving, but your logged finding was '{lastTicket.Severity}'. May reflect a real, recent change not yet in the official survey -- genuinely useful early detection if confirmed.";
+                    color = "#eab308";
+                }
+                else
+                {
+                    verdict = "✅ Agrees with official trend";
+                    detail = $"Official data shows {trendInfo.Value.Metric} as stable. Your logged '{lastTicket.Severity}' finding is consistent with this.";
+                    color = "#0d9e75";
+                }
+
+                var valCard = new Border { Background = new SolidColorBrush(Color.Parse("#1a2637")), CornerRadius = new CornerRadius(6), Padding = new Thickness(12), Margin = new Thickness(0, 0, 0, 16), BorderBrush = new SolidColorBrush(Color.Parse(color)), BorderThickness = new Thickness(1) };
+                var valStack = new StackPanel { Spacing = 4 };
+                valStack.Children.Add(new TextBlock { Text = "🎯 Inspection vs. Official Data", FontSize = 10, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Color.Parse("#94a3b8")) });
+                valStack.Children.Add(new TextBlock { Text = verdict, FontSize = 13, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Color.Parse(color)) });
+                valStack.Children.Add(new TextBlock { Text = detail, FontSize = 11, Foreground = Brushes.White, TextWrapping = Avalonia.Media.TextWrapping.Wrap });
+                valCard.Child = valStack;
+                PassportContentPanel.Children.Add(valCard);
+            }
+        }
+
         // Timeline: combine real government survey dates + local ticket history,
         // sorted chronologically.
         var events = new List<(DateTime Date, string Label, string Detail, string IconColor)>();
@@ -127,7 +181,7 @@ public partial class AssetIntelligenceView : UserControl
         return card;
     }
 
-    private static (string Metric, string RateText, string Proj5Text)? ComputeSimpleTrend(Dictionary<string, string> fields)
+    private static (string Metric, string RateText, string Proj5Text, double RawRate)? ComputeSimpleTrend(Dictionary<string, string> fields)
     {
         var dateFields = fields.Keys.Where(k => k.StartsWith("crow_inp_date_"))
             .Select(k => k.Substring("crow_inp_date_".Length)).OrderBy(y => y).ToList();
@@ -150,7 +204,7 @@ public partial class AssetIntelligenceView : UserControl
             var rate = (valB - valA) / yearsElapsed;
             if (Math.Abs(rate) < 0.01) continue;
             var proj = valB + rate * 3;
-            return (metric, $"{rate:+0.##;-0.##}/yr", $"~{proj:0.##}");
+            return (metric, $"{rate:+0.##;-0.##}/yr", $"~{proj:0.##}", rate);
         }
         return null;
     }

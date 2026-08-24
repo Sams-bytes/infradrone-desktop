@@ -16,3 +16,5 @@ voice_env/
 *.npy
 filter_env/
 groningen_traffic_signs.geojson
+solar_train_env/
+semantic_search_env/

@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.SurveyAndProcessingView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Background="#1a2637" Padding="16,12"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="🗺 Survey &amp; Processing" FontSize="16" FontWeight="Bold" Foreground="#e2e8f0"/>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Name="BtnSubPlan" Content="📐 Plan Survey" Click="OnSubNav"
+                  Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubProcess" Content="🗺 Process Photos" Click="OnSubNav"
+                  Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+    <Grid Grid.Row="1" Name="ContentHost"/>
+  </Grid>
+</UserControl>

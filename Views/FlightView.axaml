@@ -5,11 +5,10 @@
   <Grid RowDefinitions="Auto,*,Auto,Auto">
 
     <!-- Toolbar -->
-    <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Background="#0f1923">
-    <StackPanel Orientation="Horizontal" Spacing="6"
-                Background="#0f1923" Margin="0"
-                HorizontalAlignment="Left">
-      <StackPanel.Styles>
+    <Border Grid.Row="0" Background="#0f1923" Padding="10,6" BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+    <WrapPanel Orientation="Horizontal"
+                Background="#0f1923">
+      <WrapPanel.Styles>
         <Style Selector="Button">
           <Setter Property="Padding" Value="10,6"/>
           <Setter Property="FontSize" Value="11"/>
@@ -18,7 +17,7 @@
           <Setter Property="BorderThickness" Value="0.5"/>
           <Setter Property="Margin" Value="2,4"/>
         </Style>
-      </StackPanel.Styles>
+      </WrapPanel.Styles>
       <Button Name="BtnArm" Background="#3d1515" Foreground="#ef4444"
               BorderBrush="#ef4444" Click="OnArm">ARM</Button>
       <Button Name="BtnDisarm" Background="#1a2637" Foreground="#94a3b8"
@@ -31,21 +30,31 @@
       <Button Name="BtnRtl" Background="#3d2e0d" Foreground="#f59e0b"
               BorderBrush="#f59e0b" Click="OnRtl">RTL</Button>
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
-      <Button Name="BtnLoiter" Background="#1a2637" Foreground="#94a3b8"
-              BorderBrush="#2d3f52" Click="OnLoiter">LOITER</Button>
-      <Button Name="BtnGuided" Background="#1a2637" Foreground="#94a3b8"
-              BorderBrush="#2d3f52" Click="OnGuided">GUIDED</Button>
-      <Button Name="BtnAuto" Background="#1a2637" Foreground="#94a3b8"
-              BorderBrush="#2d3f52" Click="OnAuto">AUTO</Button>
+      <Button Name="BtnModeMenu" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52">
+        Mode ▾
+        <Button.Flyout>
+          <Flyout Placement="Bottom">
+            <StackPanel Spacing="4" Margin="6" MinWidth="120">
+              <Button Name="BtnLoiter" HorizontalAlignment="Stretch" Background="#1a2637" Foreground="#94a3b8"
+                      BorderBrush="#2d3f52" Click="OnLoiter">LOITER</Button>
+              <Button Name="BtnGuided" HorizontalAlignment="Stretch" Background="#1a2637" Foreground="#94a3b8"
+                      BorderBrush="#2d3f52" Click="OnGuided">GUIDED</Button>
+              <Button Name="BtnAuto" HorizontalAlignment="Stretch" Background="#1a2637" Foreground="#94a3b8"
+                      BorderBrush="#2d3f52" Click="OnAuto">AUTO</Button>
+            </StackPanel>
+          </Flyout>
+        </Button.Flyout>
+      </Button>
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
       <Button Name="BtnMapToggle" Background="#1a2637" Foreground="#94a3b8"
               BorderBrush="#2d3f52" Click="OnMapToggle">🗺 Street</Button>
-      <TextBox Name="LocationSearchBox" Width="180" FontSize="11" Watermark="Search address/road..."
-               Background="#0f1923" Foreground="#e2e8f0" BorderBrush="#2d3f52"
-               KeyDown="OnLocationSearchKeyDown"/>
       <Button Name="BtnVoiceCommand" Content="🎤 Voice" Click="OnVoiceCommand"
               Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52" BorderThickness="0.5" Padding="8,6" CornerRadius="6"/>
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
+      <TextBox Name="LocationSearchBox" Width="170" FontSize="11" Watermark="Search address/road..."
+               Background="#0f1923" Foreground="#e2e8f0" BorderBrush="#2d3f52"
+               KeyDown="OnLocationSearchKeyDown"/>
       <Button Name="BtnLocationSearch" Content="🔍" Click="OnLocationSearch"
               Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52"/>
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
@@ -54,59 +63,70 @@
         🏛 Infra Layers
         <Button.Flyout>
           <Flyout Placement="Bottom">
-            <ScrollViewer MaxHeight="520" VerticalScrollBarVisibility="Auto">
-            <StackPanel Spacing="6" Margin="8" MinWidth="220">
+            <ScrollViewer MaxHeight="560" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="10" Margin="10" MinWidth="240">
 
-              <TextBlock Text="🛣 ROAD &amp; PAVEMENT" FontSize="10" FontWeight="Bold"
-                         Foreground="#0d9e75" LetterSpacing="1" Margin="0,0,0,2"/>
-              <CheckBox Name="ChkGroningenRoads" Content="🏛 Roads (paving)" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRoadsToggled"/>
-              <CheckBox Name="ChkGroningenCracking" Content="🩹 Cracking (official)" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenCrackingToggled"/>
-              <CheckBox Name="ChkGroningenRaveling" Content="🪨 Raveling (official)" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRavelingToggled"/>
-              <CheckBox Name="ChkGroningenUnevenness" Content="〰 Unevenness (official)" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenUnevennessToggled"/>
-              <CheckBox Name="ChkGroningenRutting" Content="🛞 Rutting (official)" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRuttingToggled"/>
-              <CheckBox Name="ChkGroningenLongEvenness" Content="📏 Long. evenness (official)" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenLongEvennessToggled"/>
-              <CheckBox Name="ChkBermcondities" Content="🌾 Verge conditions" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnBermconditiesToggled"/>
+              <Border Background="#0d9e7514" BorderBrush="#0d9e75" BorderThickness="0,0,0,0" CornerRadius="6" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Background="#0d9e75" Width="3" CornerRadius="2"/>
+                    <TextBlock Text="ROAD &amp; PAVEMENT" FontSize="10" FontWeight="Bold" Foreground="#0d9e75" LetterSpacing="1"/>
+                  </StackPanel>
+                  <CheckBox Name="ChkGroningenRoads" Content="🏛 Roads (paving)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRoadsToggled"/>
+                  <CheckBox Name="ChkGroningenCracking" Content="🩹 Cracking (official)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnGroningenCrackingToggled"/>
+                  <CheckBox Name="ChkGroningenRaveling" Content="🪨 Raveling (official)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRavelingToggled"/>
+                  <CheckBox Name="ChkGroningenUnevenness" Content="〰 Unevenness (official)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnGroningenUnevennessToggled"/>
+                  <CheckBox Name="ChkGroningenRutting" Content="🛞 Rutting (official)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnGroningenRuttingToggled"/>
+                  <CheckBox Name="ChkGroningenLongEvenness" Content="📏 Long. evenness (official)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnGroningenLongEvennessToggled"/>
+                  <CheckBox Name="ChkBermcondities" Content="🌾 Verge conditions" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnBermconditiesToggled"/>
+                </StackPanel>
+              </Border>
 
-              <TextBlock Text="🌉 STRUCTURES" FontSize="10" FontWeight="Bold"
-                         Foreground="#3b82f6" LetterSpacing="1" Margin="0,10,0,2"/>
-              <CheckBox Name="ChkGroningenBridges" Content="🌉 Bridges" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenBridgesToggled"/>
-              <CheckBox Name="ChkGroningenGuardrails" Content="🚧 Guardrails" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGroningenGuardrailsToggled"/>
-              <CheckBox Name="ChkDuikers" Content="🕳 Culverts" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnDuikersToggled"/>
-              <CheckBox Name="ChkGeluidsschermen" Content="🔇 Noise barriers" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGeluidsschermenToggled"/>
+              <Border Background="#3b82f614" CornerRadius="6" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Background="#3b82f6" Width="3" CornerRadius="2"/>
+                    <TextBlock Text="STRUCTURES" FontSize="10" FontWeight="Bold" Foreground="#3b82f6" LetterSpacing="1"/>
+                  </StackPanel>
+                  <CheckBox Name="ChkGroningenBridges" Content="🌉 Bridges" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnGroningenBridgesToggled"/>
+                  <CheckBox Name="ChkGroningenGuardrails" Content="🚧 Guardrails" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnGroningenGuardrailsToggled"/>
+                  <CheckBox Name="ChkDuikers" Content="🕳 Culverts" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnDuikersToggled"/>
+                  <CheckBox Name="ChkGeluidsschermen" Content="🔇 Noise barriers" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnGeluidsschermenToggled"/>
+                </StackPanel>
+              </Border>
 
-              <TextBlock Text="🚦 TRAFFIC &amp; SAFETY" FontSize="10" FontWeight="Bold"
-                         Foreground="#eab308" LetterSpacing="1" Margin="0,10,0,2"/>
-              <CheckBox Name="ChkFietspaden" Content="🚲 Cycle paths" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnFietspadenToggled"/>
-              <CheckBox Name="ChkCameramasten" Content="📷 Camera masts" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnCameramastenToggled"/>
-              <CheckBox Name="ChkGladheid" Content="❄ Ice sensors" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnGladheidToggled"/>
+              <Border Background="#eab30814" CornerRadius="6" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Background="#eab308" Width="3" CornerRadius="2"/>
+                    <TextBlock Text="TRAFFIC &amp; SAFETY" FontSize="10" FontWeight="Bold" Foreground="#eab308" LetterSpacing="1"/>
+                  </StackPanel>
+                  <CheckBox Name="ChkFietspaden" Content="🚲 Cycle paths" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnFietspadenToggled"/>
+                  <CheckBox Name="ChkGladheid" Content="❄ Ice sensors" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnGladheidToggled"/>
+                </StackPanel>
+              </Border>
 
-              <TextBlock Text="🇳🇱 NATIONAL DATA" FontSize="10" FontWeight="Bold"
-                         Foreground="#a855f7" LetterSpacing="1" Margin="0,10,0,2"/>
-              <CheckBox Name="ChkBagBuildings" Content="🏢 Buildings (BAG)" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnBagBuildingsToggled"/>
-              <CheckBox Name="ChkAhnElevation" Content="🌋 Elevation (AHN)" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnAhnElevationToggled"/>
-              <CheckBox Name="ChkTrafficSigns" Content="🚸 Traffic signs (large, may be slow)" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnTrafficSignsToggled"/>
+              <Border Background="#a855f714" CornerRadius="6" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Background="#a855f7" Width="3" CornerRadius="2"/>
+                    <TextBlock Text="NATIONAL DATA" FontSize="10" FontWeight="Bold" Foreground="#a855f7" LetterSpacing="1"/>
+                  </StackPanel>
+                  <CheckBox Name="ChkBagBuildings" Content="🏢 Buildings (BAG)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnBagBuildingsToggled"/>
+                  <CheckBox Name="ChkAhnElevation" Content="🌋 Elevation (AHN)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnAhnElevationToggled"/>
+                  <CheckBox Name="ChkTrafficSigns" Content="🚸 Traffic signs (large, may be slow)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnTrafficSignsToggled"/>
+                </StackPanel>
+              </Border>
 
-              <TextBlock Text="🛰 SATELLITE &amp; EU" FontSize="10" FontWeight="Bold"
-                         Foreground="#22c55e" LetterSpacing="1" Margin="0,10,0,2"/>
-              <CheckBox Name="ChkSentinelNdvi" Content="🌱 NDVI (Sentinel-2)" FontSize="12"
-                        Foreground="#e2e8f0" IsCheckedChanged="OnSentinelNdviToggled"/>
+              <Border Background="#22c55e14" CornerRadius="6" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Background="#22c55e" Width="3" CornerRadius="2"/>
+                    <TextBlock Text="SATELLITE &amp; EU" FontSize="10" FontWeight="Bold" Foreground="#22c55e" LetterSpacing="1"/>
+                  </StackPanel>
+                  <CheckBox Name="ChkSentinelNdvi" Content="🌱 NDVI (Sentinel-2)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnSentinelNdviToggled"/>
+                </StackPanel>
+              </Border>
 
             </StackPanel>
             </ScrollViewer>
@@ -114,22 +134,34 @@
         </Button.Flyout>
       </Button>
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
-      <Button Name="BtnAddWpToggle" Background="#1a2637" Foreground="#94a3b8"
-              BorderBrush="#2d3f52" Click="OnAddWpToggle">📍 Add WP: OFF</Button>
-      <Button Name="BtnClearWp" Background="#3d1515" Foreground="#ef4444"
-              BorderBrush="#ef4444" Click="OnClearWaypoints">🗑 Clear WP</Button>
-      <Button Name="BtnUploadMission" Background="#0d3d2e" Foreground="#0d9e75"
-              BorderBrush="#0d9e75" Click="OnUploadMission">⬆ Upload Mission</Button>
-      <Button Name="BtnViewFlightLog" Background="#1a2637" Foreground="#94a3b8"
-              BorderBrush="#2d3f52" Click="OnViewFlightLog">📋 View Flight Log</Button>
-      <TextBlock Text="Speed:" FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center" Margin="6,0,4,0"/>
-      <TextBox Name="SpeedInput" Width="45" FontSize="11" Watermark="m/s"
-                Background="#f8fafc" Foreground="#0f1923" BorderBrush="#0d9e75"
-                BorderThickness="1.5" FontWeight="Bold" Padding="6,4" VerticalContentAlignment="Center"/>
+      <Button Name="BtnWaypointsMenu" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52">
+        📍 Waypoints ▾
+        <Button.Flyout>
+          <Flyout Placement="Bottom">
+            <StackPanel Spacing="6" Margin="8" MinWidth="180">
+              <Button Name="BtnAddWpToggle" HorizontalAlignment="Stretch" Background="#1a2637" Foreground="#94a3b8"
+                      BorderBrush="#2d3f52" Click="OnAddWpToggle">📍 Add WP: OFF</Button>
+              <Button Name="BtnClearWp" HorizontalAlignment="Stretch" Background="#3d1515" Foreground="#ef4444"
+                      BorderBrush="#ef4444" Click="OnClearWaypoints">🗑 Clear WP</Button>
+              <Button Name="BtnUploadMission" HorizontalAlignment="Stretch" Background="#0d3d2e" Foreground="#0d9e75"
+                      BorderBrush="#0d9e75" Click="OnUploadMission">⬆ Upload Mission</Button>
+              <Button Name="BtnViewFlightLog" HorizontalAlignment="Stretch" Background="#1a2637" Foreground="#94a3b8"
+                      BorderBrush="#2d3f52" Click="OnViewFlightLog">📋 View Flight Log</Button>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="Speed:" FontSize="11" Foreground="#94a3b8" VerticalAlignment="Center"/>
+                <TextBox Name="SpeedInput" Width="45" FontSize="11" Watermark="m/s"
+                          Background="#f8fafc" Foreground="#0f1923" BorderBrush="#0d9e75"
+                          BorderThickness="1.5" FontWeight="Bold" Padding="6,4" VerticalContentAlignment="Center"/>
+              </StackPanel>
+            </StackPanel>
+          </Flyout>
+        </Button.Flyout>
+      </Button>
       <TextBlock Name="MissionStatusText" Text="" FontSize="11" Foreground="#64748b"
                  VerticalAlignment="Center" Margin="10,0,0,0"/>
-    </StackPanel>
-    </ScrollViewer>
+    </WrapPanel>
+    </Border>
 
     <!-- Map -->
     <maps:MapControl Grid.Row="1" Name="MapControl"/>

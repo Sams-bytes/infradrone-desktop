@@ -72,7 +72,12 @@ public class WebOdmService
         var resp = await _http.GetStringAsync($"{BASE}/api/projects/?format=json");
         var doc = JsonDocument.Parse(resp);
         var projects = new List<OdmProject>();
-        var results = doc.RootElement.TryGetProperty("results", out var r) ? r : doc.RootElement;
+        // TryGetProperty THROWS (not returns false) when called on a JSON
+        // element that isn't an Object -- so it can't be used to safely probe
+        // for a "results" wrapper on a response that might be a bare array.
+        // Must check ValueKind explicitly first.
+        var results = doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("results", out var r)
+            ? r : doc.RootElement;
         foreach (var p in results.EnumerateArray())
             projects.Add(new OdmProject
             {
@@ -87,7 +92,8 @@ public class WebOdmService
         var resp = await _http.GetStringAsync($"{BASE}/api/projects/{projectId}/tasks/?format=json");
         var doc = JsonDocument.Parse(resp);
         var tasks = new List<OdmTask>();
-        var results = doc.RootElement.TryGetProperty("results", out var r) ? r : doc.RootElement;
+        var results = doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("results", out var r)
+            ? r : doc.RootElement;
         foreach (var t in results.EnumerateArray())
             tasks.Add(new OdmTask
             {

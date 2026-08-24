@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.SolarInspectionView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Background="#1a2637" Padding="16,12"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="☀ Solar Panel Inspection" FontSize="16" FontWeight="Bold" Foreground="#e2e8f0"/>
+        <TextBlock Text="Real trained classifier (RaptorMaps InfraredSolarModules dataset, 12 defect classes, 50.17% validation accuracy -- a real first-generation model, being improved)."
+                   FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <Button Name="BtnSelectFolder" Content="📁 Select folder of panel images" Click="OnSelectFolder"
+                  Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52" BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnGenerateReport" Content="📄 Generate Report" Click="OnGenerateReport" IsEnabled="False"
+                  Background="#0d3d2e" Foreground="#0d9e75" BorderBrush="#0d9e75" BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+        </StackPanel>
+        <TextBlock Name="StatusText" Text="Select a folder to begin." FontSize="11" Foreground="#64748b"/>
+      </StackPanel>
+    </Border>
+    <ScrollViewer Grid.Row="1">
+      <ItemsControl Name="ResultsList" Margin="16"/>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

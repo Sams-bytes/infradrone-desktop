@@ -234,6 +234,12 @@ public partial class MainWindow : Window
         if (_assetIntelligenceView == null) _assetIntelligenceView = new Views.AssetIntelligenceView();
         ContentArea.Child = _assetIntelligenceView;
     }
+    private Views.SolarInspectionView? _solarInspectionView;
+    private void OnSolarInspectionView(object? sender, RoutedEventArgs e)
+    {
+        if (_solarInspectionView == null) _solarInspectionView = new Views.SolarInspectionView();
+        ContentArea.Child = _solarInspectionView;
+    }
     private AiView? _aiView;
     private void OnAiView(object? sender, RoutedEventArgs e)
     {
@@ -241,38 +247,41 @@ public partial class MainWindow : Window
         ContentArea.Child = _aiView;
     }
 
-    private SurveyGridView? _surveyGridView;
-    private void OnSurveyGridView(object? sender, RoutedEventArgs e)
+    private SurveyAndProcessingView? _surveyAndProcessingView;
+    private void OnSurveyAndProcessingView(object? sender, RoutedEventArgs e)
     {
-        if (_surveyGridView == null)
+        if (_surveyAndProcessingView == null)
         {
-            _surveyGridView = new SurveyGridView();
-            _surveyGridView.SendToMissionRequested += () =>
+            _surveyAndProcessingView = new SurveyAndProcessingView();
+            _surveyAndProcessingView.SendToMissionRequested += () =>
             {
-                var wps = _surveyGridView.GetGeneratedWaypoints();
-                if (wps != null && _missionView != null)
+                var wps = _surveyAndProcessingView.GetGeneratedWaypoints();
+                if (_flightView == null)
                 {
-                    _missionView._waypoints.Clear();
+                    _flightView = new FlightView();
+                    _flightView.SetMavLink(_mav);
+                }
+                if (_v1 != null) _flightView.SetMavlinkV1(_v1);
+                if (wps != null)
+                {
+                    _flightView._waypoints.Clear();
                     int n = 1;
                     foreach (var (lat, lon, alt) in wps)
-                        _missionView._waypoints.Add(new Waypoint { Number = n++, Lat = lat, Lon = lon, AltM = alt });
+                        _flightView._waypoints.Add(new Waypoint { Number = n++, Lat = lat, Lon = lon, AltM = alt });
+                    _flightView.RefreshWpMap();
+                    _flightView.RefreshWaypointList();
                 }
-                OnMissionView(this, new RoutedEventArgs());
+                OnFlightView(this, new RoutedEventArgs());
             };
         }
-        ContentArea.Child = _surveyGridView;
-    }
-    private void OnProcessingView(object? sender, RoutedEventArgs e)
-    {
-        if (_processingView == null) _processingView = new ProcessingView();
         if (_flightView == null)
         {
             _flightView = new FlightView();
             _flightView.SetMavLink(_mav);
         }
         if (_v1 != null) _flightView.SetMavlinkV1(_v1);
-        _processingView.SetFlightView(_flightView);
-        ContentArea.Child = _processingView;
+        _surveyAndProcessingView.SetFlightView(_flightView);
+        ContentArea.Child = _surveyAndProcessingView;
     }
     private void OnSequoiaView(object? sender, RoutedEventArgs e)
     {
