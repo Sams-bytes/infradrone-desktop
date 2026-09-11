@@ -1,0 +1,12 @@
+/home/sam/infradrone-desktop/InfraDroneDesktop.csproj : warning NU1603: InfraDroneDesktop depends on MAVLink (>= 0.1.0) but MAVLink 0.1.0 was not found. An approximate best match of MAVLink 1.0.0 was resolved.
+/home/sam/infradrone-desktop/InfraDroneDesktop.csproj : warning NU1603: InfraDroneDesktop depends on MAVLink (>= 0.1.0) but MAVLink 0.1.0 was not found. An approximate best match of MAVLink 1.0.0 was resolved.
+[Airspace] Loaded 109 zones
+[OverijsselWegen] Fetching full city road network via WFS -- this may take a moment (~35MB, ~19k features)...
+[OverijsselWegen] Loaded 18984 road features
+[OverijsselHectometer] Loaded 969 features
+[OverijsselRotondes] Loaded 3 features
+[OverijsselKunstwerken] Loaded 0 features
+[OverijsselKunstwerken] Loaded 0 features
+[ADS-B] Poll failed: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.
+[ADS-B] Rate limited (429) -- daily credit quota likely exhausted, backing off.
+[ADS-B] Rate limited (429) -- daily credit quota likely exhausted, backing off.

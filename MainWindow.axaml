@@ -5,13 +5,13 @@
         Width="1600" Height="960"
         MinWidth="1000" MinHeight="600"
         WindowStartupLocation="CenterScreen"
-        Background="#0f1923">
+        Background="{DynamicResource AppWindowBg}">
 
   <Grid ColumnDefinitions="180,*">
 
     <!-- Sidebar -->
-    <Border Grid.Column="0" Background="#1a2637"
-            BorderBrush="#2d3f52" BorderThickness="0,0,1,0">
+    <Border Grid.Column="0" Background="{DynamicResource AppSidebarBg}"
+            BorderBrush="{DynamicResource AppSidebarBorder}" BorderThickness="0,0,1,0">
       <DockPanel>
         <Button DockPanel.Dock="Bottom" Content="🔌  Connect" Classes="nav-connect" Click="OnConnect"
                 Margin="8" HorizontalAlignment="Stretch"/>
@@ -21,9 +21,18 @@
         <!-- Brand -->
         <StackPanel Margin="10,10,10,8">
           <TextBlock Text="✈ InfraDrone" FontSize="14" FontWeight="Bold"
-                     Foreground="#e2e8f0"/>
+                     Foreground="{DynamicResource AppBrandFg}"/>
           <TextBlock Text="DAMbv GCS" FontSize="11" Foreground="#64748b"/>
         </StackPanel>
+        <Button Name="BtnPrepareDemo" Content="🚀  Prepare Demo" Click="OnPrepareDemo"
+                Margin="8,0,8,10" HorizontalAlignment="Stretch"
+                Background="#0d3d2e" Foreground="#0d9e75" BorderThickness="0.5"
+                BorderBrush="#0d9e75" Padding="8,6" CornerRadius="6"/>
+        <Button Name="BtnToggleTheme" Content="☀ Light mode" Click="OnToggleTheme"
+                Margin="8,0,8,10" HorizontalAlignment="Stretch"
+                Background="Transparent" Foreground="{DynamicResource AppNavFg}"
+                BorderThickness="0.5" BorderBrush="{DynamicResource AppSidebarBorder}"
+                Padding="8,6" CornerRadius="6"/>
 
         <!-- Status Panel -->
         <Border Margin="6" Background="#0f1923" CornerRadius="6" Padding="8">
@@ -71,13 +80,10 @@
             <Button Content="🌍  Land &amp; Environment" Classes="nav" Click="OnLandEnvironmentView"/>
             <Button Content="📈  Asset Intelligence" Classes="nav" Click="OnAssetIntelligenceView"/>
             <Button Content="☀  Solar Inspection" Classes="nav" Click="OnSolarInspectionView"/>
+            <Button Content="🦌  Wildlife Survey" Classes="nav" Click="OnWildlifeSurveyView"/>
             <Button Content="🤖  AI" Classes="nav" Click="OnAiView"/>
             <Button Content="🗺  Survey &amp; Processing" Classes="nav" Click="OnSurveyAndProcessingView"/>
-            <Button Content="🎬  Traffic Replay" Classes="nav" Click="OnTrafficPlayerView"/>
-            <Button Content="🚦  Traffic Hub" Classes="nav" Click="OnTrafficHubView"/>
-            <Button Content="🚁  Aerial Detection" Classes="nav" Click="OnAerialDetectionView"/>
-
-            <Button Content="📖  Story Mode" Classes="nav" Click="OnStoryModeView"/>
+            <Button Content="🚦  Traffic Intelligence" Classes="nav" Click="OnTrafficIntelligenceView"/>
           </StackPanel>
         </Expander>
 
@@ -94,6 +100,7 @@
             <Button Content="🏔  Terrain" Classes="nav" Click="OnTerrainView"/>
             <Button Content="⬡  Geofence" Classes="nav" Click="OnGeofenceView"/>
             <Button Content="⚙  Parameters" Classes="nav" Click="OnParamsView"/>
+            <Button Content="🚁  Bluegrass Params" Classes="nav" Click="OnBluegrassParamsView"/>
             <Button Content="📋  Audit log" Classes="nav" Click="OnAuditView"/>
             <Button Content="🚁  DJI Tools" Classes="nav" Click="OnDjiView"/>
             <Button Content="🔑  License" Classes="nav" Click="OnParamsViewLicense"/>

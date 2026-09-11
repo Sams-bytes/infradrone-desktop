@@ -1,0 +1,5 @@
+/home/sam/infradrone-desktop/InfraDroneDesktop.csproj : warning NU1603: InfraDroneDesktop depends on MAVLink (>= 0.1.0) but MAVLink 0.1.0 was not found. An approximate best match of MAVLink 1.0.0 was resolved.
+/home/sam/infradrone-desktop/InfraDroneDesktop.csproj : warning NU1603: InfraDroneDesktop depends on MAVLink (>= 0.1.0) but MAVLink 0.1.0 was not found. An approximate best match of MAVLink 1.0.0 was resolved.
+[1;31m2026-08-30 18:37:47.270909201 [E:onnxruntime:CSharpOnnxRuntime, provider_bridge_ort.cc:2137 Create] /onnxruntime_src/onnxruntime/core/session/provider_bridge_ort.cc:1988 onnxruntime::Provider& onnxruntime::ProviderLibrary::Get() [ONNXRuntimeError] : 1 : FAIL : Failed to load library /home/sam/infradrone-desktop/bin/Debug/net8.0/runtimes/linux-x64/native/libonnxruntime_providers_cuda.so with error: libcublasLt.so.13: cannot open shared object file: No such file or directory
+[m
+[WildlifeDetection] CUDA unavailable, falling back to CPU: [ErrorCode:Fail] OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library

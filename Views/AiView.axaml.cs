@@ -30,6 +30,28 @@ public partial class AiView : UserControl
         InitializeComponent();
     }
 
+    // One-click demo prep: loads the model and runs batch detection against
+    // the fixed demo image folder, bypassing the file pickers entirely.
+    public async Task PreloadDemoAsync()
+    {
+        OnLoadModel(null, new RoutedEventArgs());
+        if (!_ai.IsLoaded) return;
+
+        var folderPath = "/home/sam/pothole_demo_images/Pothole Dataset";
+        if (!Directory.Exists(folderPath))
+        {
+            StatusText.Text = "Demo folder not found: " + folderPath;
+            return;
+        }
+        var exts = new[] { ".jpg", ".jpeg", ".png", ".tif" };
+        var imagePaths = Directory.GetFiles(folderPath)
+            .Where(p => exts.Contains(Path.GetExtension(p).ToLower()))
+            .OrderBy(p => p)
+            .ToList();
+        if (imagePaths.Count == 0) return;
+        await RunBatchDetection(imagePaths);
+    }
+
     private void OnLoadModel(object? s, RoutedEventArgs e)
     {
         var modelPath = "/home/sam/infradrone-desktop/models/pothole_detector.onnx";

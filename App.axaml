@@ -2,11 +2,55 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="InfraDroneDesktop.App"
              RequestedThemeVariant="Dark">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="AppWindowBg" Color="#0f1923"/>
+          <SolidColorBrush x:Key="AppSidebarBg" Color="#1a2637"/>
+          <SolidColorBrush x:Key="AppSidebarBorder" Color="#2d3f52"/>
+          <SolidColorBrush x:Key="AppNavFg" Color="#94a3b8"/>
+          <SolidColorBrush x:Key="AppNavHoverBg" Color="#1e3a5f"/>
+          <SolidColorBrush x:Key="AppGroupHeaderFg" Color="#64748b"/>
+          <SolidColorBrush x:Key="AppGroupHeaderHoverBg" Color="#152238"/>
+          <SolidColorBrush x:Key="AppAccentBg" Color="#0d3d2e"/>
+          <SolidColorBrush x:Key="AppAccentFg" Color="#0d9e75"/>
+          <SolidColorBrush x:Key="AppBrandFg" Color="#e2e8f0"/>
+          <SolidColorBrush x:Key="AppContentBg" Color="#0f1923"/>
+          <SolidColorBrush x:Key="AppPanelBg" Color="#1a2637"/>
+          <SolidColorBrush x:Key="AppPanelBg2" Color="#131f2e"/>
+          <SolidColorBrush x:Key="AppPanelBorder" Color="#1e3a5f"/>
+          <SolidColorBrush x:Key="AppTextPrimary" Color="#e2e8f0"/>
+          <SolidColorBrush x:Key="AppTextMuted" Color="#94a3b8"/>
+          <SolidColorBrush x:Key="AppTextSubtle" Color="#64748b"/>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="AppWindowBg" Color="#f8f9fb"/>
+          <SolidColorBrush x:Key="AppSidebarBg" Color="#ffffff"/>
+          <SolidColorBrush x:Key="AppSidebarBorder" Color="#e5e7eb"/>
+          <SolidColorBrush x:Key="AppNavFg" Color="#475569"/>
+          <SolidColorBrush x:Key="AppNavHoverBg" Color="#f1f5f9"/>
+          <SolidColorBrush x:Key="AppGroupHeaderFg" Color="#94a3b8"/>
+          <SolidColorBrush x:Key="AppGroupHeaderHoverBg" Color="#f8fafc"/>
+          <SolidColorBrush x:Key="AppAccentBg" Color="#ecfdf5"/>
+          <SolidColorBrush x:Key="AppAccentFg" Color="#059669"/>
+          <SolidColorBrush x:Key="AppBrandFg" Color="#0f172a"/>
+          <SolidColorBrush x:Key="AppContentBg" Color="#f8f9fb"/>
+          <SolidColorBrush x:Key="AppPanelBg" Color="#ffffff"/>
+          <SolidColorBrush x:Key="AppPanelBg2" Color="#f1f5f9"/>
+          <SolidColorBrush x:Key="AppPanelBorder" Color="#e5e7eb"/>
+          <SolidColorBrush x:Key="AppTextPrimary" Color="#0f172a"/>
+          <SolidColorBrush x:Key="AppTextMuted" Color="#475569"/>
+          <SolidColorBrush x:Key="AppTextSubtle" Color="#94a3b8"/>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
   <Application.Styles>
     <FluentTheme />
     <Style Selector="Button.nav">
       <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Foreground" Value="#94a3b8"/>
+      <Setter Property="Foreground" Value="{DynamicResource AppNavFg}"/>
       <Setter Property="FontSize" Value="11"/>
       <Setter Property="Padding" Value="8,4"/>
       <Setter Property="HorizontalAlignment" Value="Stretch"/>
@@ -16,9 +60,8 @@
       <Setter Property="BorderThickness" Value="0"/>
     </Style>
     <Style Selector="Button.nav:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#1e3a5f"/>
+      <Setter Property="Background" Value="{DynamicResource AppNavHoverBg}"/>
     </Style>
-
     <Style Selector="Expander.navgroup">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Margin" Value="4,2"/>
@@ -26,7 +69,7 @@
     </Style>
     <Style Selector="Expander.navgroup /template/ ToggleButton#ExpanderHeader">
       <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Foreground" Value="#64748b"/>
+      <Setter Property="Foreground" Value="{DynamicResource AppGroupHeaderFg}"/>
       <Setter Property="FontSize" Value="10"/>
       <Setter Property="FontWeight" Value="Bold"/>
       <Setter Property="Padding" Value="8,4"/>
@@ -38,12 +81,11 @@
       <Setter Property="Padding" Value="0"/>
     </Style>
     <Style Selector="Expander.navgroup /template/ ToggleButton#ExpanderHeader:pointerover">
-      <Setter Property="Background" Value="#152238"/>
+      <Setter Property="Background" Value="{DynamicResource AppGroupHeaderHoverBg}"/>
     </Style>
-
     <Style Selector="Button.nav-connect">
-      <Setter Property="Background" Value="#0d3d2e"/>
-      <Setter Property="Foreground" Value="#0d9e75"/>
+      <Setter Property="Background" Value="{DynamicResource AppAccentBg}"/>
+      <Setter Property="Foreground" Value="{DynamicResource AppAccentFg}"/>
       <Setter Property="FontSize" Value="11"/>
       <Setter Property="Padding" Value="8,4"/>
       <Setter Property="HorizontalAlignment" Value="Stretch"/>

@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:InfraDroneDesktop.Views"
+             x:Class="InfraDroneDesktop.Views.ConflictDetectionView"
+             Background="{DynamicResource AppContentBg}">
+  <Grid RowDefinitions="Auto,Auto,*">
+
+    <Border Grid.Row="0" Background="{DynamicResource AppPanelBg}" Padding="14,12" BorderBrush="{DynamicResource AppPanelBorder}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <TextBlock Grid.Column="0" Text="Conflict Detection" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource AppTextPrimary}" VerticalAlignment="Center"/>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <ComboBox Name="RoundaboutFilter" Width="160" SelectionChanged="OnFilterChanged"/>
+          <ComboBox Name="SeverityFilter" Width="140" SelectionChanged="OnFilterChanged">
+            <ComboBoxItem Content="All severities"/>
+            <ComboBoxItem Content="High only"/>
+            <ComboBoxItem Content="Medium only"/>
+          </ComboBox>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,*,*,*" Background="{DynamicResource AppPanelBorder}">
+      <Border Grid.Column="0" Background="{DynamicResource AppPanelBg2}" Padding="12">
+        <StackPanel>
+          <TextBlock Text="Conflicts found" Foreground="{DynamicResource AppTextMuted}" FontSize="11"/>
+          <TextBlock Name="TxtTotal" Text="--" Foreground="{DynamicResource AppTextPrimary}" FontSize="20" FontWeight="Medium"/>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Background="{DynamicResource AppPanelBg2}" Padding="12">
+        <StackPanel>
+          <TextBlock Text="High severity" Foreground="{DynamicResource AppTextMuted}" FontSize="11"/>
+          <TextBlock Name="TxtHigh" Text="--" Foreground="#e2854a" FontSize="20" FontWeight="Medium"/>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="2" Background="{DynamicResource AppPanelBg2}" Padding="12">
+        <StackPanel>
+          <TextBlock Text="Avg min TTC" Foreground="{DynamicResource AppTextMuted}" FontSize="11"/>
+          <TextBlock Name="TxtAvgTtc" Text="--" Foreground="{DynamicResource AppTextPrimary}" FontSize="20" FontWeight="Medium"/>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="3" Background="{DynamicResource AppPanelBg2}" Padding="12">
+        <StackPanel>
+          <TextBlock Text="Recordings scanned" Foreground="{DynamicResource AppTextMuted}" FontSize="11"/>
+          <TextBlock Name="TxtRecordings" Text="--" Foreground="{DynamicResource AppTextPrimary}" FontSize="20" FontWeight="Medium"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <ListBox Grid.Row="2" Name="EventsList" Background="Transparent" Padding="12" SelectionMode="Single">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="views:ConflictEventRow">
+          <Border Background="{DynamicResource AppPanelBg}" CornerRadius="6" Padding="10" Margin="0,0,0,6"
+                  BorderThickness="3,0,0,0" BorderBrush="{Binding BorderBrush}">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <Border Grid.Column="0" CornerRadius="10" Padding="7,2" VerticalAlignment="Center" Background="{Binding BadgeBg}">
+                <TextBlock Text="{Binding BadgeText}" FontSize="10" Foreground="{Binding BadgeFg}"/>
+              </Border>
+              <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                <TextBlock Text="{Binding Line1}" Foreground="{DynamicResource AppTextPrimary}" FontSize="13"/>
+                <TextBlock Text="{Binding Line2}" Foreground="{DynamicResource AppTextSubtle}" FontSize="11"/>
+              </StackPanel>
+              <Button Grid.Column="2" Content="Play" Click="OnPlayClicked" Tag="{Binding}"
+                      Background="{DynamicResource AppAccentBg}" Foreground="{DynamicResource AppAccentFg}" BorderThickness="0" Padding="10,5" CornerRadius="5"/>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+  </Grid>
+</UserControl>

@@ -70,8 +70,26 @@ public partial class SolarInspectionView : UserControl
         if (top == null) return;
         var folders = await top.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Select folder of panel images" });
         if (folders.Count == 0) return;
-        var folderPath = folders[0].Path.LocalPath;
+        await ClassifyFolderAsync(folders[0].Path.LocalPath);
+    }
 
+    // One-click demo prep: classifies the fixed demo panel-image folder,
+    // bypassing the file picker entirely. Model already auto-loads in the
+    // constructor, so this just needs to run the classification.
+    public async Task PreloadDemoAsync()
+    {
+        if (!_solar.IsLoaded) return;
+        var folderPath = "/home/sam/solar_dataset/InfraredSolarModules/InfraredSolarModules/images";
+        if (!Directory.Exists(folderPath))
+        {
+            StatusText.Text = "Demo folder not found: " + folderPath;
+            return;
+        }
+        await ClassifyFolderAsync(folderPath);
+    }
+
+    private async Task ClassifyFolderAsync(string folderPath)
+    {
         var imageFiles = Directory.GetFiles(folderPath, "*.*")
             .Where(f => f.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
             .Take(200) // reasonable batch cap so this stays responsive

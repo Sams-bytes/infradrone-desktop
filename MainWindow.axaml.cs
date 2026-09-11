@@ -8,6 +8,7 @@ using InfraDroneDesktop.Services;
 using System.Threading.Tasks;
 using System.Linq;
 
+using System.Net.Http;
 namespace InfraDroneDesktop;
 
 public partial class MainWindow : Window
@@ -22,6 +23,9 @@ public partial class MainWindow : Window
         _mav.TelemetryUpdated += OnTelemetry;
         _mav.TelemetryUpdated += (t) => _batteryHealth.OnTelemetryUpdate(t);
         _mav.SafetyAlert += OnSafetyAlert;
+        _bluegrass.TelemetryUpdated += OnBluegrassTelemetrySidebar;
+
+        // A "View Health Passport" click anywhere in the app (currently only
 
         // A "View Health Passport" click anywhere in the app (currently only
         // Flight View's map click-info card) navigates here to Asset
@@ -45,7 +49,7 @@ public partial class MainWindow : Window
             // Cube Orange takes priority for the sidebar if it's actually connected,
             // same priority pattern as Flight View's CubeOrangeConnected -- avoids the
             // two controllers fighting over the same display if both are plugged in.
-            if (_v1 != null && _v1.Telemetry.Connected && !t.Connected) return;
+            if (((_v1 != null && _v1.Telemetry.Connected) || (_bluegrass != null && _bluegrass.IsConnected)) && !t.Connected) return;
             ConnDot.Fill = t.Connected
                 ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75"))
                 : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444"));
@@ -53,6 +57,22 @@ public partial class MainWindow : Window
             ModeText.Text = t.FlightMode;
             BattText.Text = t.Connected ? $"{t.BatteryPct}%" : "—";
             GpsText.Text = t.Connected ? $"{t.GpsSats} sat / fix {t.GpsFix}" : "—";
+        });
+    }
+
+    private void OnBluegrassTelemetrySidebar(BluegrassTelemetry t)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Lowest priority: defers to Cube Orange or BCube if either is connected.
+            if ((_mav != null && _mav.Telemetry.Connected) || (_v1 != null && _v1.Telemetry.Connected)) return;
+            ConnDot.Fill = t.Connected
+                ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75"))
+                : new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#ef4444"));
+            ConnText.Text = t.Connected ? "Online" : "Offline";
+            ModeText.Text = t.Connected ? t.FlyingState : "—";
+            BattText.Text = t.Connected && t.BatteryPct.HasValue ? $"{t.BatteryPct}%" : "—";
+            GpsText.Text = t.Connected ? $"fix={t.GpsFixed}" : "—";
         });
     }
 
@@ -74,6 +94,7 @@ public partial class MainWindow : Window
 
     private FlightView? _flightView;
     private Mavlink1SerialService? _v1;
+    private readonly BluegrassVehicleService _bluegrass = new BluegrassVehicleService();
     private CalibrationView? _calibrationView;
 
     private void OnCalibrationView(object? sender, RoutedEventArgs e)
@@ -206,10 +227,18 @@ public partial class MainWindow : Window
     }
 
     private ParamsView? _paramsView;
+    private BluegrassParamsView? _bluegrassParamsView;
     private void OnParamsView(object? sender, RoutedEventArgs e)
     {
         if (_paramsView == null) _paramsView = new ParamsView();
         ContentArea.Child = _paramsView;
+    }
+
+    private void OnBluegrassParamsView(object? sender, RoutedEventArgs e)
+    {
+        if (_bluegrassParamsView == null) _bluegrassParamsView = new BluegrassParamsView();
+        _bluegrassParamsView.SetBluegrass(_bluegrass);
+        ContentArea.Child = _bluegrassParamsView;
     }
     private FlightLogView? _flightLogView;
     private void OnAuditView(object? sender, RoutedEventArgs e)
@@ -235,10 +264,16 @@ public partial class MainWindow : Window
         ContentArea.Child = _assetIntelligenceView;
     }
     private Views.SolarInspectionView? _solarInspectionView;
+    private Views.WildlifeSurveyView? _wildlifeSurveyView;
     private void OnSolarInspectionView(object? sender, RoutedEventArgs e)
     {
         if (_solarInspectionView == null) _solarInspectionView = new Views.SolarInspectionView();
         ContentArea.Child = _solarInspectionView;
+    }
+    private void OnWildlifeSurveyView(object? sender, RoutedEventArgs e)
+    {
+        if (_wildlifeSurveyView == null) _wildlifeSurveyView = new Views.WildlifeSurveyView();
+        ContentArea.Child = _wildlifeSurveyView;
     }
     private AiView? _aiView;
     private void OnAiView(object? sender, RoutedEventArgs e)
@@ -295,6 +330,47 @@ public partial class MainWindow : Window
     private Views.MavLinkTestView? _mavLinkTestView;
     private Views.FailsafeMonitorView? _failsafeMonitorView;
     private Views.StoryModeView? _storyModeView;
+    private Views.TrafficIntelligenceView? _trafficIntelligenceView;
+    private void OnTrafficIntelligenceView(object? sender, RoutedEventArgs e)
+    {
+        if (_trafficIntelligenceView == null) _trafficIntelligenceView = new Views.TrafficIntelligenceView();
+        ContentArea.Child = _trafficIntelligenceView;
+    }
+
+    // One-click demo prep: eagerly creates and preloads AI, Solar Inspection,
+    // and Aerial Detection (via Traffic Intelligence) so navigating to any of
+    // them during the actual demo is instant -- no file pickers, no waiting.
+    private async void OnPrepareDemo(object? sender, RoutedEventArgs e)
+    {
+        BtnPrepareDemo.IsEnabled = false;
+        var originalContent = BtnPrepareDemo.Content;
+
+        BtnPrepareDemo.Content = "Preparing AI...";
+        if (_aiView == null) _aiView = new AiView();
+        await _aiView.PreloadDemoAsync();
+
+        BtnPrepareDemo.Content = "Preparing Solar...";
+        if (_solarInspectionView == null) _solarInspectionView = new Views.SolarInspectionView();
+        await _solarInspectionView.PreloadDemoAsync();
+
+        BtnPrepareDemo.Content = "Preparing Aerial...";
+        if (_trafficIntelligenceView == null) _trafficIntelligenceView = new Views.TrafficIntelligenceView();
+        await _trafficIntelligenceView.PreloadAerialDemoAsync();
+
+        BtnPrepareDemo.Content = "✓  Demo Ready";
+        await Task.Delay(1500);
+        BtnPrepareDemo.Content = originalContent;
+        BtnPrepareDemo.IsEnabled = true;
+    }
+
+    private void OnToggleTheme(object? sender, RoutedEventArgs e)
+    {
+        var app = Avalonia.Application.Current;
+        if (app == null) return;
+        bool goingLight = app.RequestedThemeVariant != Avalonia.Styling.ThemeVariant.Light;
+        app.RequestedThemeVariant = goingLight ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+        BtnToggleTheme.Content = goingLight ? "🌙  Dark mode" : "☀  Light mode";
+    }
 
     private void OnNitrogenZonesView(object? sender, RoutedEventArgs e)
     {
@@ -353,7 +429,7 @@ public partial class MainWindow : Window
         ContentArea.Child = _licenseView;
     }
 
-    private void OnConnect(object? sender, RoutedEventArgs e)
+    private async void OnConnect(object? sender, RoutedEventArgs e)
     {
         if (!_mavRunning)
         {
@@ -405,12 +481,27 @@ public partial class MainWindow : Window
                 }
             }
 
+            // Bluegrass path -- separate bridge process (bluegrass_bridge.py must
+            // already be running). Fails silently (logged only) if the bridge or
+            // drone isn't reachable, same as the BCube path above.
+            try
+            {
+                bool bgOk = await _bluegrass.ConnectAsync();
+                if (!bgOk)
+                    Console.WriteLine("[MainWindow] Bluegrass connection not available.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MainWindow] Bluegrass connection error: {ex.Message}");
+            }
+
             ConnText.Text = "Connecting...";
         }
         else
         {
             _mav.Stop();
             _mavRunning = false;
+            _ = _bluegrass.DisconnectAsync();
             ConnText.Text = "Offline";
         }
     }

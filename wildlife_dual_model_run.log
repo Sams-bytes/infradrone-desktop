@@ -1,0 +1,36 @@
+/home/sam/infradrone-desktop/InfraDroneDesktop.csproj : warning NU1603: InfraDroneDesktop depends on MAVLink (>= 0.1.0) but MAVLink 0.1.0 was not found. An approximate best match of MAVLink 1.0.0 was resolved.
+/home/sam/infradrone-desktop/InfraDroneDesktop.csproj : warning NU1603: InfraDroneDesktop depends on MAVLink (>= 0.1.0) but MAVLink 0.1.0 was not found. An approximate best match of MAVLink 1.0.0 was resolved.
+/home/sam/infradrone-desktop/MainWindow.axaml.cs(7,7): warning CS0105: The using directive for 'InfraDroneDesktop.Services' appeared previously in this namespace [/home/sam/infradrone-desktop/InfraDroneDesktop.csproj]
+/home/sam/infradrone-desktop/Views/PreflightView.axaml.cs(27,77): warning CS0108: 'PreflightView.Template' hides inherited member 'TemplatedControl.Template'. Use the new keyword if hiding was intended. [/home/sam/infradrone-desktop/InfraDroneDesktop.csproj]
+/home/sam/infradrone-desktop/Views/FlightView.axaml.cs(518,13): warning CS8602: Dereference of a possibly null reference. [/home/sam/infradrone-desktop/InfraDroneDesktop.csproj]
+/home/sam/infradrone-desktop/Views/FlightView.axaml.cs(523,13): warning CS8602: Dereference of a possibly null reference. [/home/sam/infradrone-desktop/InfraDroneDesktop.csproj]
+/home/sam/infradrone-desktop/Views/FlightView.axaml.cs(2409,13): warning CS0164: This label has not been referenced [/home/sam/infradrone-desktop/InfraDroneDesktop.csproj]
+/home/sam/infradrone-desktop/Services/AsvMavLinkService.cs(96,46): warning CS0067: The event 'AsvMavLinkService.SafetyAlert' is never used [/home/sam/infradrone-desktop/InfraDroneDesktop.csproj]
+/home/sam/infradrone-desktop/MainWindow.axaml.cs(194,24): warning CS0169: The field 'MainWindow._notamView' is never used [/home/sam/infradrone-desktop/InfraDroneDesktop.csproj]
+/home/sam/infradrone-desktop/Views/FlightView.axaml.cs(1545,26): warning CS0649: Field 'FlightView._cameramastenLayer' is never assigned to, and will always have its default value null [/home/sam/infradrone-desktop/InfraDroneDesktop.csproj]
+/home/sam/infradrone-desktop/MainWindow.axaml.cs(227,29): warning CS0169: The field 'MainWindow._processingView' is never used [/home/sam/infradrone-desktop/InfraDroneDesktop.csproj]
+/home/sam/infradrone-desktop/Views/SequoiaView.axaml.cs(26,18): warning CS0414: The field 'SequoiaView._connected' is assigned but its value is never used [/home/sam/infradrone-desktop/InfraDroneDesktop.csproj]
+[1;31m2026-08-31 13:40:36.170352448 [E:onnxruntime:CSharpOnnxRuntime, provider_bridge_ort.cc:2137 Create] /onnxruntime_src/onnxruntime/core/session/provider_bridge_ort.cc:1988 onnxruntime::Provider& onnxruntime::ProviderLibrary::Get() [ONNXRuntimeError] : 1 : FAIL : Failed to load library /home/sam/infradrone-desktop/bin/Debug/net8.0/runtimes/linux-x64/native/libonnxruntime_providers_cuda.so with error: libcublasLt.so.13: cannot open shared object file: No such file or directory
+[m
+[BigBirdDetection] CUDA unavailable, falling back to CPU: [ErrorCode:Fail] OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library
+[1;31m2026-08-31 13:42:27.162263364 [E:onnxruntime:CSharpOnnxRuntime, provider_bridge_ort.cc:2137 Create] /onnxruntime_src/onnxruntime/core/session/provider_bridge_ort.cc:1988 onnxruntime::Provider& onnxruntime::ProviderLibrary::Get() [ONNXRuntimeError] : 1 : FAIL : Failed to load library /home/sam/infradrone-desktop/bin/Debug/net8.0/runtimes/linux-x64/native/libonnxruntime_providers_cuda.so with error: libcublasLt.so.13: cannot open shared object file: No such file or directory
+[m
+[WildlifeDetection] CUDA unavailable, falling back to CPU: [ErrorCode:Fail] OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library
+[Airspace] Loaded 109 zones
+[GroningenBridges] Loaded 174 bridges from live province ArcGIS server
+[Airspace] Loaded 109 zones
+[Geluidsschermen] Loaded 69 segments from live province ArcGIS server
+[Geluidsschermen] Loaded 69 segments from live province ArcGIS server
+[Geluidsschermen] Loaded 69 segments from live province ArcGIS server
+[Geluidsschermen] Loaded 69 segments from live province ArcGIS server
+[AhnElevation] WMS layer added -- renders dynamically as the map is panned/zoomed
+[LandEnv] Natura 2000 areas: loaded 9 from live province server
+[LandEnv] NNN management areas: loaded 127 from live province server
+[Airspace] Loaded 109 zones
+[Airspace] Loaded 109 zones
+[1;31m2026-08-31 14:04:33.842793411 [E:onnxruntime:CSharpOnnxRuntime, provider_bridge_ort.cc:2137 Create] /onnxruntime_src/onnxruntime/core/session/provider_bridge_ort.cc:1988 onnxruntime::Provider& onnxruntime::ProviderLibrary::Get() [ONNXRuntimeError] : 1 : FAIL : Failed to load library /home/sam/infradrone-desktop/bin/Debug/net8.0/runtimes/linux-x64/native/libonnxruntime_providers_cuda.so with error: libcublasLt.so.13: cannot open shared object file: No such file or directory
+[m
+[BigBirdDetection] CUDA unavailable, falling back to CPU: [ErrorCode:Fail] OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library
+[1;31m2026-08-31 14:07:16.807630938 [E:onnxruntime:CSharpOnnxRuntime, provider_bridge_ort.cc:2137 Create] /onnxruntime_src/onnxruntime/core/session/provider_bridge_ort.cc:1988 onnxruntime::Provider& onnxruntime::ProviderLibrary::Get() [ONNXRuntimeError] : 1 : FAIL : Failed to load library /home/sam/infradrone-desktop/bin/Debug/net8.0/runtimes/linux-x64/native/libonnxruntime_providers_cuda.so with error: libcublasLt.so.13: cannot open shared object file: No such file or directory
+[m
+[AerialDetection] CUDA unavailable, falling back to CPU: [ErrorCode:Fail] OrtSessionOptionsAppendExecutionProvider_Cuda: Failed to load shared library

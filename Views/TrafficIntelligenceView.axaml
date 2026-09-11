@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.TrafficIntelligenceView"
+             Background="{DynamicResource AppContentBg}">
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Background="{DynamicResource AppPanelBg}" Padding="16,12"
+            BorderBrush="{DynamicResource AppPanelBorder}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="🚦 Traffic Intelligence" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AppTextPrimary}"/>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Name="BtnSubAerial" Content="🚁 Aerial Detection" Click="OnSubNav"
+                  Background="{DynamicResource AppAccentBg}" Foreground="{DynamicResource AppAccentFg}" BorderBrush="{DynamicResource AppAccentFg}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubReplay" Content="🎬 Traffic Replay" Click="OnSubNav"
+                  Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubHub" Content="🚦 Traffic Hub" Click="OnSubNav"
+                  Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubStory" Content="📖 Story Mode" Click="OnSubNav"
+                  Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubConflict" Content="⚠ Conflict Detection" Click="OnSubNav"
+                  Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+    <Grid Grid.Row="1" Name="ContentHost"/>
+  </Grid>
+</UserControl>

@@ -32,6 +32,7 @@ public partial class FlightView : UserControl
 {
     private AsvMavLinkService? _mav;
     private Mavlink1SerialService? _v1;
+    private BluegrassVehicleService? _bluegrass;
 
     public void SetMavlinkV1(Mavlink1SerialService v1)
     {
@@ -39,6 +40,13 @@ public partial class FlightView : UserControl
         _v1 = v1;
         _v1.TelemetryUpdated += OnV1Telemetry;
         _v1.StatusTextReceived += (severity, text) => ShowStatusBanner(text);
+    }
+
+    public void SetBluegrass(BluegrassVehicleService bluegrass)
+    {
+        if (_bluegrass == bluegrass) return;
+        _bluegrass = bluegrass;
+        _bluegrass.TelemetryUpdated += OnBluegrassTelemetry;
     }
 
     private void ShowStatusBanner(string text)
@@ -102,6 +110,22 @@ public partial class FlightView : UserControl
                 if (t.Lat != 0 && t.Lon != 0)
                     UpdateDroneMarker(t.Lat, t.Lon, t.Heading);
             }
+        });
+    }
+
+    private void OnBluegrassTelemetry(BluegrassTelemetry t)
+    {
+        // Lowest priority: only drives the HUD if neither Cube Orange nor
+        // BCube is the one actually connected.
+        if (CubeOrangeConnected) return;
+        if (_v1 != null && _v1.Telemetry.Connected) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            HudBatt.Text = t.Connected && t.BatteryPct.HasValue ? $"{t.BatteryPct}%" : "—";
+            HudAlt.Text = t.Connected && t.Altitude.HasValue ? $"{t.Altitude:F1}m" : "—";
+            HudMode.Text = t.Connected ? t.FlyingState : "—";
+            HudGps.Text = t.Connected ? $"fix={t.GpsFixed}" : "—";
         });
     }
     private MemoryLayer? _droneLayer;
@@ -238,6 +262,8 @@ public partial class FlightView : UserControl
 
         var groningen = SphericalMercator.FromLonLat(6.5665, 53.2194);
         map.Home = n => n.CenterOnAndZoomTo(new MPoint(groningen.x, groningen.y), 5);
+        // Enschede center, same PDOK-confirmed coordinates used in OverijsselGeoService.cs
+        var enschede = SphericalMercator.FromLonLat(6.89156908, 52.22295793);
         _map = map;
         _mapControl!.Map = map;
     }
@@ -447,6 +473,7 @@ public partial class FlightView : UserControl
     // checking Telemetry.Connected, not just whether the object exists,
     // since _mav always exists as an object even with no real vehicle.
     private bool CubeOrangeConnected => _mav != null && _mav.Telemetry.Connected;
+    private bool BluegrassConnected => _bluegrass != null && _bluegrass.IsConnected;
 
     private async void OnArm(object? s, RoutedEventArgs e)
     {
@@ -718,11 +745,374 @@ public partial class FlightView : UserControl
     private MemoryLayer? _groningenBridgeLayer;
     private bool _groningenInfoWired = false;
     private static readonly System.Net.Http.HttpClient _groningenHttp = new System.Net.Http.HttpClient();
+    private static readonly InfraDroneDesktop.Services.OverijsselGeoService _overijsselGeoService = new(_groningenHttp);
+    private MemoryLayer? _overijsselHectometerLayer;
+    private MemoryLayer? _overijsselMaxSnelhedenLayer;
+    private MemoryLayer? _overijsselVriLayer;
+    private MemoryLayer? _overijsselKunstwerkenLayer;
+    private MemoryLayer? _overijsselFietsLayer;
+    private MemoryLayer? _overijsselVerlichtingLayer;
+    private MemoryLayer? _overijsselRotondesLayer;
+    private MemoryLayer? _overijsselVerkeersintensiteitLayer;
+    // ===== Overijssel / Enschede layers =====
+    // Wegen (roads) is WMS at city scale -- confirmed 2026-08-28 that the full-city WFS
+    // response is 18,984 features / ~35MB, too heavy to parse client-side. WMS renders
+    // server-side and returns a small PNG tile instead.
+    // SWITCHED FROM WMS TO WFS 2026-08-28: tested all 3 published WMS styles for this
+    // layer (default, _AVO, _SQL) via curl + pixel analysis -- default renders as a pale
+    // gray hairline (178,178,178) barely visible against most basemaps, _AVO is even
+    // lighter (225,225,225) with a wide fill instead of a clean line, and _SQL renders
+    // completely blank. None of the server's built-in styles work as a standalone bold
+    // road layer. Falling back to WFS + our own bold VectorStyle, same as every other
+    // layer in this integration. This does mean paying the ~35MB/19k-feature client-side
+    // parse cost -- acceptable for a one-time demo load, not something to repeat live.
+    private MemoryLayer? _overijsselWegenVectorLayer;
+    private async void OnOverijsselWegenToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkOverijsselWegen.IsChecked != true)
+        {
+            if (_overijsselWegenVectorLayer != null)
+            {
+                _map.Layers.Remove(_overijsselWegenVectorLayer);
+                _overijsselWegenVectorLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            Console.WriteLine("[OverijsselWegen] Fetching full city road network via WFS -- this may take a moment (~35MB, ~19k features)...");
+            var features = await LoadOverijsselVectorFeaturesAsync(
+                InfraDroneDesktop.Services.OverijsselGeoService.Layers.Wegen,
+                20000, new Mapsui.Styles.Color(220, 38, 38)); // bold red, high contrast against any basemap
+            if (_overijsselWegenVectorLayer != null) _map.Layers.Remove(_overijsselWegenVectorLayer);
+            _overijsselWegenVectorLayer = new MemoryLayer { Name = "Overijssel Roads (Enschede)", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_overijsselWegenVectorLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[OverijsselWegen] Loaded {features.Count} road features");
+            if (!_groningenInfoWired) { _groningenInfoWired = true; _map.Info += OnGroningenMapInfo; }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OverijsselWegen] Failed to load: {ex.Message}");
+        }
+    }
+
+    // Shared helper for the four small vector layers below -- all follow the same
+    // fetch-GeoJSON -> parse -> ProjectGeometry -> style pattern as the existing
+    // Groningen/BAG loaders in this file.
+    private async Task<List<IFeature>> LoadOverijsselVectorFeaturesAsync(string typeName, int maxFeatures, Mapsui.Styles.Color color)
+    {
+        var json = await _overijsselGeoService.FetchLayerGeoJsonNearEnschedeAsync(typeName, maxFeatures);
+        var reader = new NetTopologySuite.IO.GeoJsonReader();
+        var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(json);
+        var features = new List<IFeature>();
+        foreach (var f in fc)
+        {
+            if (f.Geometry == null) continue;
+            var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
+            mf.Styles.Add(new VectorStyle
+            {
+                Fill = new Mapsui.Styles.Brush(color),
+                Outline = new Mapsui.Styles.Pen(color, 1.5f),
+                Line = new Mapsui.Styles.Pen(color, 2.5f)
+            });
+            if (f.Attributes != null)
+            {
+                foreach (var attr in f.Attributes.GetNames())
+                {
+                    var val = f.Attributes[attr];
+                    if (val != null) mf[attr] = val;
+                }
+            }
+            features.Add(mf);
+        }
+        return features;
+    }
+
+    private async void OnOverijsselHectometerToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkOverijsselHectometer.IsChecked != true)
+        {
+            if (_overijsselHectometerLayer != null)
+            {
+                _map.Layers.Remove(_overijsselHectometerLayer);
+                _overijsselHectometerLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            var features = await LoadOverijsselVectorFeaturesAsync(
+                InfraDroneDesktop.Services.OverijsselGeoService.Layers.Hectometerpunten,
+                2000, new Mapsui.Styles.Color(249, 115, 22));
+            if (_overijsselHectometerLayer != null) _map.Layers.Remove(_overijsselHectometerLayer);
+            _overijsselHectometerLayer = new MemoryLayer { Name = "Overijssel Hectometer Markers", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_overijsselHectometerLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[OverijsselHectometer] Loaded {features.Count} features");
+            if (!_groningenInfoWired) { _groningenInfoWired = true; _map.Info += OnGroningenMapInfo; }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OverijsselHectometer] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnOverijsselMaxSnelhedenToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkOverijsselMaxSnelheden.IsChecked != true)
+        {
+            if (_overijsselMaxSnelhedenLayer != null)
+            {
+                _map.Layers.Remove(_overijsselMaxSnelhedenLayer);
+                _overijsselMaxSnelhedenLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            var features = await LoadOverijsselVectorFeaturesAsync(
+                InfraDroneDesktop.Services.OverijsselGeoService.Layers.MaxSnelheden,
+                500, new Mapsui.Styles.Color(234, 179, 8));
+            if (_overijsselMaxSnelhedenLayer != null) _map.Layers.Remove(_overijsselMaxSnelhedenLayer);
+            _overijsselMaxSnelhedenLayer = new MemoryLayer { Name = "Overijssel Speed Limit Zones", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_overijsselMaxSnelhedenLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[OverijsselMaxSnelheden] Loaded {features.Count} features");
+            if (!_groningenInfoWired) { _groningenInfoWired = true; _map.Info += OnGroningenMapInfo; }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OverijsselMaxSnelheden] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnOverijsselVriToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkOverijsselVri.IsChecked != true)
+        {
+            if (_overijsselVriLayer != null)
+            {
+                _map.Layers.Remove(_overijsselVriLayer);
+                _overijsselVriLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // This layer also carries MAX_DOORRIJHOOGTE (clearance height) per feature --
+            // there is no separate Doorrijhoogte layer on this server, confirmed 2026-08-28.
+            var features = await LoadOverijsselVectorFeaturesAsync(
+                InfraDroneDesktop.Services.OverijsselGeoService.Layers.Verkeersregelinstallaties,
+                500, new Mapsui.Styles.Color(59, 130, 246));
+            if (_overijsselVriLayer != null) _map.Layers.Remove(_overijsselVriLayer);
+            _overijsselVriLayer = new MemoryLayer { Name = "Overijssel Traffic Installations (VRI)", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_overijsselVriLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[OverijsselVri] Loaded {features.Count} features");
+            if (!_groningenInfoWired) { _groningenInfoWired = true; _map.Info += OnGroningenMapInfo; }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OverijsselVri] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnOverijsselKunstwerkenToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkOverijsselKunstwerken.IsChecked != true)
+        {
+            if (_overijsselKunstwerkenLayer != null)
+            {
+                _map.Layers.Remove(_overijsselKunstwerkenLayer);
+                _overijsselKunstwerkenLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            // NOTE: confirmed 2026-08-28 that only 3 of these exist in the entire
+            // province, and 0 fall within Enschede's municipal boundary -- toggling
+            // this on will very likely show nothing near Enschede. That is correct,
+            // not a bug.
+            var features = await LoadOverijsselVectorFeaturesAsync(
+                InfraDroneDesktop.Services.OverijsselGeoService.Layers.Kunstwerken,
+                500, new Mapsui.Styles.Color(168, 85, 247));
+            if (_overijsselKunstwerkenLayer != null) _map.Layers.Remove(_overijsselKunstwerkenLayer);
+            _overijsselKunstwerkenLayer = new MemoryLayer { Name = "Overijssel Structures", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_overijsselKunstwerkenLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[OverijsselKunstwerken] Loaded {features.Count} features");
+            if (!_groningenInfoWired) { _groningenInfoWired = true; _map.Info += OnGroningenMapInfo; }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OverijsselKunstwerken] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnOverijsselFietsToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkOverijsselFiets.IsChecked != true)
+        {
+            if (_overijsselFietsLayer != null)
+            {
+                _map.Layers.Remove(_overijsselFietsLayer);
+                _overijsselFietsLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            var features = await LoadOverijsselVectorFeaturesAsync(
+                InfraDroneDesktop.Services.OverijsselGeoService.Layers.KernnetFiets,
+                2000, new Mapsui.Styles.Color(34, 197, 94));
+            if (_overijsselFietsLayer != null) _map.Layers.Remove(_overijsselFietsLayer);
+            _overijsselFietsLayer = new MemoryLayer { Name = "Overijssel Cycling Network", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_overijsselFietsLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[OverijsselFiets] Loaded {features.Count} features");
+            if (!_groningenInfoWired) { _groningenInfoWired = true; _map.Info += OnGroningenMapInfo; }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OverijsselFiets] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnOverijsselVerlichtingToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkOverijsselVerlichting.IsChecked != true)
+        {
+            if (_overijsselVerlichtingLayer != null)
+            {
+                _map.Layers.Remove(_overijsselVerlichtingLayer);
+                _overijsselVerlichtingLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            var features = await LoadOverijsselVectorFeaturesAsync(
+                InfraDroneDesktop.Services.OverijsselGeoService.Layers.OpenbareVerlichting,
+                500, new Mapsui.Styles.Color(250, 204, 21));
+            if (_overijsselVerlichtingLayer != null) _map.Layers.Remove(_overijsselVerlichtingLayer);
+            _overijsselVerlichtingLayer = new MemoryLayer { Name = "Overijssel Lighting Cabinets", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_overijsselVerlichtingLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[OverijsselVerlichting] Loaded {features.Count} features");
+            if (!_groningenInfoWired) { _groningenInfoWired = true; _map.Info += OnGroningenMapInfo; }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OverijsselVerlichting] Failed to load: {ex.Message}");
+        }
+    }
+
+    private void OnBtnGroningenLayersClick(object? sender, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        var groningen = SphericalMercator.FromLonLat(6.5665, 53.2194);
+        _mapControl.Map.Navigator.CenterOnAndZoomTo(new MPoint(groningen.x, groningen.y), _mapControl.Map.Navigator.Resolutions[5]);
+    }
+
+    private void OnBtnOverijsselLayersClick(object? sender, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        var enschede = SphericalMercator.FromLonLat(6.89156908, 52.22295793);
+        _mapControl.Map.Navigator.CenterOnAndZoomTo(new MPoint(enschede.x, enschede.y), _mapControl.Map.Navigator.Resolutions[9]);
+    }
+
+    private async void OnOverijsselRotondesToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkOverijsselRotondes.IsChecked != true)
+        {
+            if (_overijsselRotondesLayer != null)
+            {
+                _map.Layers.Remove(_overijsselRotondesLayer);
+                _overijsselRotondesLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            var features = await LoadOverijsselVectorFeaturesAsync(
+                InfraDroneDesktop.Services.OverijsselGeoService.Layers.Rotondes,
+                500, new Mapsui.Styles.Color(13, 158, 117));
+            if (_overijsselRotondesLayer != null) _map.Layers.Remove(_overijsselRotondesLayer);
+            _overijsselRotondesLayer = new MemoryLayer { Name = "Overijssel Roundabouts", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_overijsselRotondesLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[OverijsselRotondes] Loaded {features.Count} features");
+            if (!_groningenInfoWired) { _groningenInfoWired = true; _map.Info += OnGroningenMapInfo; }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OverijsselRotondes] Failed to load: {ex.Message}");
+        }
+    }
+
+    private async void OnOverijsselVerkeersintensiteitToggled(object? s, RoutedEventArgs e)
+    {
+        if (_map == null || _mapControl == null) return;
+        if (ChkOverijsselVerkeersintensiteit.IsChecked != true)
+        {
+            if (_overijsselVerkeersintensiteitLayer != null)
+            {
+                _map.Layers.Remove(_overijsselVerkeersintensiteitLayer);
+                _overijsselVerkeersintensiteitLayer = null;
+                GroningenInfoCard.IsVisible = false;
+                _mapControl.Map.Refresh();
+            }
+            return;
+        }
+        try
+        {
+            var features = await LoadOverijsselVectorFeaturesAsync(
+                InfraDroneDesktop.Services.OverijsselGeoService.Layers.Verkeersintensiteit,
+                500, new Mapsui.Styles.Color(234, 179, 8));
+            if (_overijsselVerkeersintensiteitLayer != null) _map.Layers.Remove(_overijsselVerkeersintensiteitLayer);
+            _overijsselVerkeersintensiteitLayer = new MemoryLayer { Name = "Overijssel Traffic Intensity", Features = features, IsMapInfoLayer = true };
+            _map.Layers.Add(_overijsselVerkeersintensiteitLayer);
+            _mapControl.Map.Refresh();
+            Console.WriteLine($"[OverijsselVerkeersintensiteit] Loaded {features.Count} features");
+            if (!_groningenInfoWired) { _groningenInfoWired = true; _map.Info += OnGroningenMapInfo; }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[OverijsselVerkeersintensiteit] Failed to load: {ex.Message}");
+        }
+    }
+
     private void OnGroningenMapInfo(object? sender, Mapsui.MapInfoEventArgs e)
     {
         var feature = e.MapInfo?.Feature;
         var layer = e.MapInfo?.Layer;
-        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer && layer != _bagBuildingsLayer && layer != _bermconditiesLayer && layer != _duikersLayer && layer != _geluidsschermenLayer && layer != _fietspadenLayer && layer != _cameramastenLayer && layer != _gladheidLayer && layer != _trafficSignsLayer))
+        if (feature == null || (layer != _groningenRoadLayer && layer != _groningenBridgeLayer && layer != _groningenGuardrailLayer && layer != _groningenCrackingLayer && layer != _groningenRavelingLayer && layer != _groningenUnevennessLayer && layer != _groningenRuttingLayer && layer != _groningenLongEvennessLayer && layer != _bagBuildingsLayer && layer != _bermconditiesLayer && layer != _duikersLayer && layer != _geluidsschermenLayer && layer != _fietspadenLayer && layer != _cameramastenLayer && layer != _gladheidLayer && layer != _trafficSignsLayer && layer != _overijsselHectometerLayer && layer != _overijsselMaxSnelhedenLayer && layer != _overijsselVriLayer && layer != _overijsselKunstwerkenLayer && layer != _overijsselFietsLayer && layer != _overijsselVerlichtingLayer && layer != _overijsselWegenVectorLayer && layer != _overijsselRotondesLayer && layer != _overijsselVerkeersintensiteitLayer))
         {
             GroningenInfoCard.IsVisible = false;
             return;

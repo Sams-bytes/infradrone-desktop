@@ -58,9 +58,9 @@
       <Button Name="BtnLocationSearch" Content="🔍" Click="OnLocationSearch"
               Background="#1a2637" Foreground="#94a3b8" BorderBrush="#2d3f52"/>
       <Separator Width="1" Background="#2d3f52" Margin="4,6"/>
-      <Button Name="BtnInfraLayers" Background="#1a2637" Foreground="#94a3b8"
-              BorderBrush="#2d3f52">
-        🏛 Infra Layers
+      <Button Name="BtnGroningenLayers" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnBtnGroningenLayersClick">
+        🏛 Groningen Layers
         <Button.Flyout>
           <Flyout Placement="Bottom">
             <ScrollViewer MaxHeight="560" VerticalScrollBarVisibility="Auto">
@@ -125,6 +125,65 @@
                     <TextBlock Text="SATELLITE &amp; EU" FontSize="10" FontWeight="Bold" Foreground="#22c55e" LetterSpacing="1"/>
                   </StackPanel>
                   <CheckBox Name="ChkSentinelNdvi" Content="🌱 NDVI (Sentinel-2)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnSentinelNdviToggled"/>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+            </ScrollViewer>
+          </Flyout>
+        </Button.Flyout>
+      </Button>
+
+      <Button Name="BtnOverijsselLayers" Background="#1a2637" Foreground="#94a3b8"
+              BorderBrush="#2d3f52" Click="OnBtnOverijsselLayersClick">
+        🛣 Overijssel Layers
+        <Button.Flyout>
+          <Flyout Placement="Bottom">
+            <ScrollViewer MaxHeight="560" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="10" Margin="10" MinWidth="240">
+
+              <Border Background="#0d9e7514" BorderBrush="#0d9e75" BorderThickness="0,0,0,0" CornerRadius="6" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Background="#0d9e75" Width="3" CornerRadius="2"/>
+                    <TextBlock Text="ROAD NETWORK" FontSize="10" FontWeight="Bold" Foreground="#0d9e75" LetterSpacing="1"/>
+                  </StackPanel>
+                  <CheckBox Name="ChkOverijsselWegen" Content="🛣 Roads (city-wide)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnOverijsselWegenToggled"/>
+                  <CheckBox Name="ChkOverijsselHectometer" Content="📍 Hectometer markers" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnOverijsselHectometerToggled"/>
+                  <CheckBox Name="ChkOverijsselRotondes" Content="⭕ Roundabouts" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnOverijsselRotondesToggled"/>
+                </StackPanel>
+              </Border>
+
+              <Border Background="#eab30814" CornerRadius="6" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Background="#eab308" Width="3" CornerRadius="2"/>
+                    <TextBlock Text="TRAFFIC &amp; SAFETY" FontSize="10" FontWeight="Bold" Foreground="#eab308" LetterSpacing="1"/>
+                  </StackPanel>
+                  <CheckBox Name="ChkOverijsselMaxSnelheden" Content="🚦 Speed limit zones" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnOverijsselMaxSnelhedenToggled"/>
+                  <CheckBox Name="ChkOverijsselVri" Content="🚥 Traffic installations (VRI)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnOverijsselVriToggled"/>
+                  <CheckBox Name="ChkOverijsselVerkeersintensiteit" Content="📊 Traffic intensity" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnOverijsselVerkeersintensiteitToggled"/>
+                </StackPanel>
+              </Border>
+
+              <Border Background="#3b82f614" CornerRadius="6" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Background="#3b82f6" Width="3" CornerRadius="2"/>
+                    <TextBlock Text="STRUCTURES &amp; UTILITIES" FontSize="10" FontWeight="Bold" Foreground="#3b82f6" LetterSpacing="1"/>
+                  </StackPanel>
+                  <CheckBox Name="ChkOverijsselKunstwerken" Content="🌉 Structures (bridges)" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnOverijsselKunstwerkenToggled"/>
+                  <CheckBox Name="ChkOverijsselVerlichting" Content="💡 Lighting cabinets" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnOverijsselVerlichtingToggled"/>
+                </StackPanel>
+              </Border>
+
+              <Border Background="#a855f714" CornerRadius="6" Padding="10,8">
+                <StackPanel Spacing="6">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Border Background="#a855f7" Width="3" CornerRadius="2"/>
+                    <TextBlock Text="CYCLING" FontSize="10" FontWeight="Bold" Foreground="#a855f7" LetterSpacing="1"/>
+                  </StackPanel>
+                  <CheckBox Name="ChkOverijsselFiets" Content="🚲 Cycling network" FontSize="12" Foreground="#e2e8f0" IsCheckedChanged="OnOverijsselFietsToggled"/>
                 </StackPanel>
               </Border>
 

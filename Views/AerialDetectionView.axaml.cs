@@ -89,7 +89,45 @@ namespace InfraDroneDesktop.Views
             var imagePaths = Directory.GetFiles(folderPath)
                 .Where(f => f.EndsWith(".jpg") || f.EndsWith(".jpeg") || f.EndsWith(".png"))
                 .ToList();
+            await RunBatchAsync(imagePaths);
+        }
 
+        // One-click demo prep: loads the model and runs batch detection against
+        // the fixed VisDrone demo folder, bypassing both file pickers entirely.
+        public async Task PreloadDemoAsync()
+        {
+            var modelPath = "/home/sam/infradrone-desktop/models/aerial_detector_visdrone_v1.onnx";
+            if (!File.Exists(modelPath))
+            {
+                StatusText.Text = "Demo model not found: " + modelPath;
+                return;
+            }
+            if (_ai.LoadModel(modelPath))
+            {
+                ModelStatusText.Text = $"Loaded: {_ai.ModelName}";
+                BtnRunDetection.IsEnabled = true;
+            }
+            else
+            {
+                ModelStatusText.Text = "Failed to load model.";
+                return;
+            }
+
+            var folderPath = "/home/sam/DAMbv_Data/01_Aerial_Detection_Dataset_VisDrone/VisDrone2019-DET-val/images";
+            if (!Directory.Exists(folderPath))
+            {
+                StatusText.Text = "Demo folder not found: " + folderPath;
+                return;
+            }
+            var imagePaths = Directory.GetFiles(folderPath)
+                .Where(f => f.EndsWith(".jpg") || f.EndsWith(".jpeg") || f.EndsWith(".png"))
+                .Take(200)
+                .ToList();
+            await RunBatchAsync(imagePaths);
+        }
+
+        private async Task RunBatchAsync(List<string> imagePaths)
+        {
             if (imagePaths.Count == 0)
             {
                 StatusText.Text = "No images found in that folder.";

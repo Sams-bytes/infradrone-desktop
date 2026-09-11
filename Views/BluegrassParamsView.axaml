@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.BluegrassParamsView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- Toolbar -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <TextBlock Text="Bluegrass Parameters" FontSize="14" FontWeight="Bold"
+                   Foreground="#e2e8f0" VerticalAlignment="Center"/>
+        <Button Grid.Column="1" Name="BtnRefresh" Content="⟳ Refresh" Click="OnRefresh"
+                Background="#0d3d2e" Foreground="#0d9e75"
+                BorderBrush="#0d9e75" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6" Margin="4,0"/>
+        <TextBlock Grid.Column="2" Name="StatusText" Text="Loading..."
+                   FontSize="11" Foreground="#64748b"
+                   VerticalAlignment="Center" Margin="8,0"/>
+      </Grid>
+    </Border>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel Margin="12" Spacing="16">
+
+        <!-- Calibration -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="CALIBRATION" FontSize="11" FontWeight="Bold"
+                     Foreground="#64748b" Margin="4,0,0,4"/>
+          <Border Background="#131f2e" CornerRadius="6" Padding="10"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="Flat trim (level reference) - drone stationary, flat surface, motors off"
+                           FontSize="12" Foreground="#94a3b8" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                <Button Grid.Column="1" Name="BtnFlatTrim" Content="Run Flat Trim" Click="OnFlatTrim"
+                        Background="#0d3d2e" Foreground="#0d9e75"
+                        BorderBrush="#0d9e75" BorderThickness="0.5"
+                        Padding="10,5" CornerRadius="6" Margin="8,0,0,0"/>
+              </Grid>
+              <TextBlock Name="MagnetoStatusText" Text="Compass calibration status: unknown"
+                         FontSize="11" Foreground="#64748b" TextWrapping="Wrap"/>
+              <TextBlock Text="Compass calibration itself must be done via the official FreeFlight Pro / AIRINOV app (rotate drone through Z/Y/X axes) - not available through this bridge."
+                         FontSize="10" Foreground="#4b5b6e" TextWrapping="Wrap" FontStyle="Italic"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Tunable settings -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="TUNABLE SETTINGS" FontSize="11" FontWeight="Bold"
+                     Foreground="#64748b" Margin="4,0,0,4"/>
+          <StackPanel Name="SettingsPanel" Spacing="8"/>
+        </StackPanel>
+
+        <!-- Live telemetry -->
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="LIVE TELEMETRY (ALL FIELDS)" FontSize="11" FontWeight="Bold"
+                       Foreground="#64748b" Margin="4,0,0,4"/>
+            <TextBlock Grid.Column="1" Name="TelemetryCountText" Text=""
+                       FontSize="11" Foreground="#64748b"/>
+          </Grid>
+          <Border Background="#131f2e" CornerRadius="6" Padding="8"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <ItemsControl Name="TelemetryList"/>
+          </Border>
+        </StackPanel>
+
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

@@ -13,8 +13,9 @@ namespace InfraDroneDesktop.Views
 {
     public partial class TrafficPlayerView : UserControl
     {
-        private const string JsonPath = "/home/sam/opendd_dataset/player_data.json";
-        private const string ImagePath = "/home/sam/opendd_dataset/example_data/geo-referenced_images_rdb1/rdb1.png";
+        // Instance fields (was const) so LoadRecording() can point at any recording
+        private string JsonPath = "/home/sam/opendd_dataset/player_data.json";
+        private string ImagePath = "/home/sam/opendd_dataset/example_data/geo-referenced_images_rdb1/rdb1.png";
 
         private List<string> _frameTimes = new();
         private Dictionary<string, List<PlayerObj>> _frames = new();
@@ -28,7 +29,7 @@ namespace InfraDroneDesktop.Views
             ["Bus"] = "#8b5cf6", ["Medium Vehicle"] = "#3E8E7E", ["Heavy Vehicle"] = "#3E8E7E",
             ["Motorcycle"] = "#eab308", ["Trailer"] = "#94a3b8",
         };
-        private static readonly HashSet<int> HighlightIds = new() { 910, 942 };
+        private HashSet<int> HighlightIds = new() { 910, 942 };
 
         private static readonly Dictionary<string, string[]> FilterGroups = new()
         {
@@ -69,6 +70,37 @@ namespace InfraDroneDesktop.Views
         {
             InitializeComponent();
             LoadData();
+        }
+
+        // Points the player at a different recording (any table/roundabout,
+        // not just the rdb1_4 default) and reloads. Caller is responsible for
+        // exporting jsonPath first (see export_player_data_generic.py).
+        public void LoadRecording(string jsonPath, string imagePath, HashSet<int>? highlightIds)
+        {
+            PausePlayback();
+            JsonPath = jsonPath;
+            ImagePath = imagePath;
+            HighlightIds = highlightIds ?? new HashSet<int>();
+            _frames.Clear();
+            _currentIndex = 0;
+            LoadData();
+        }
+
+        // Jumps the timeline to the frame nearest targetSeconds -- used by
+        // Conflict Detection's Play button to land on the actual conflict moment.
+        public void SeekToTime(double targetSeconds)
+        {
+            if (_frameTimes.Count == 0) return;
+            int bestIndex = 0;
+            double bestDiff = double.MaxValue;
+            for (int i = 0; i < _frameTimes.Count; i++)
+            {
+                double t = double.Parse(_frameTimes[i], System.Globalization.CultureInfo.InvariantCulture);
+                double diff = Math.Abs(t - targetSeconds);
+                if (diff < bestDiff) { bestDiff = diff; bestIndex = i; }
+            }
+            _currentIndex = bestIndex;
+            TimeSlider.Value = bestIndex;
         }
 
         private void LoadData()
