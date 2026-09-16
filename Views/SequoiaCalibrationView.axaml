@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.SequoiaCalibrationView"
+             Background="#0f1923">
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="16" Spacing="16" MaxWidth="600">
+
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="Sequoia Calibration" FontSize="16" FontWeight="Bold" Foreground="#e2e8f0"/>
+        <Button Grid.Column="1" Name="BtnCheckStatus" Content="⟳ Check status" Click="OnCheckStatus"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+      </Grid>
+
+      <!-- Status banner -->
+      <Border Name="StatusBanner" Background="#131f2e" CornerRadius="8" Padding="14"
+              BorderBrush="#1e3a5f" BorderThickness="0.5">
+        <StackPanel Spacing="6">
+          <TextBlock Name="StatusBannerTitle" Text="Checking..." FontSize="14" FontWeight="Bold" Foreground="#e2e8f0"/>
+          <TextBlock Name="StatusBannerDetail" Text="" FontSize="12" Foreground="#94a3b8" TextWrapping="Wrap"/>
+          <Button Name="BtnStartWizard" Content="Start Calibration Wizard" Click="OnStartWizard"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="12,6" CornerRadius="6" HorizontalAlignment="Left"
+                  IsVisible="False" Margin="0,4,0,0"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Wizard panel -->
+      <Border Name="WizardPanel" Background="#131f2e" CornerRadius="8" Padding="14"
+              BorderBrush="#0d9e75" BorderThickness="1" IsVisible="False">
+        <StackPanel Spacing="12">
+          <TextBlock Text="CALIBRATING" FontSize="10" FontWeight="Bold" Foreground="#0d9e75" LetterSpacing="1"/>
+
+          <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Center">
+            <StackPanel Spacing="4" HorizontalAlignment="Center">
+              <Border Name="YawDot" Width="14" Height="14" CornerRadius="7" Background="#2d3f52"/>
+              <TextBlock Text="YAW" FontSize="10" Foreground="#94a3b8" HorizontalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Spacing="4" HorizontalAlignment="Center">
+              <Border Name="PitchDot" Width="14" Height="14" CornerRadius="7" Background="#2d3f52"/>
+              <TextBlock Text="PITCH" FontSize="10" Foreground="#94a3b8" HorizontalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Spacing="4" HorizontalAlignment="Center">
+              <Border Name="RollDot" Width="14" Height="14" CornerRadius="7" Background="#2d3f52"/>
+              <TextBlock Text="ROLL" FontSize="10" Foreground="#94a3b8" HorizontalAlignment="Center"/>
+            </StackPanel>
+          </StackPanel>
+
+          <TextBlock Name="WizardCurrentStep" Text="Starting..." FontSize="18" FontWeight="Bold"
+                     Foreground="#e2e8f0" HorizontalAlignment="Center"/>
+          <TextBlock Name="WizardInstruction"
+                     Text="Slowly rotate the drone through yaw, pitch, and roll (motors off). Keep motion smooth and gradual."
+                     FontSize="12" Foreground="#94a3b8" TextWrapping="Wrap" HorizontalAlignment="Center" TextAlignment="Center"/>
+          <TextBlock Name="WizardRawStatus" Text="" FontSize="10" Foreground="#4b5b6e" HorizontalAlignment="Center"/>
+
+          <Button Name="BtnStopWizard" Content="Cancel" Click="OnStopWizard"
+                  Background="#3d0d0d" Foreground="#ef4444"
+                  BorderBrush="#ef4444" BorderThickness="0.5"
+                  Padding="10,5" CornerRadius="6" HorizontalAlignment="Center"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Completion panel -->
+      <Border Name="CompletePanel" Background="#0d3d2e" CornerRadius="8" Padding="14"
+              BorderBrush="#0d9e75" BorderThickness="1" IsVisible="False">
+        <StackPanel Spacing="6">
+          <TextBlock Text="✓ Calibration Complete" FontSize="16" FontWeight="Bold" Foreground="#0d9e75"/>
+          <TextBlock Name="CompleteCaptureCheck" Text="" FontSize="12" Foreground="#94a3b8" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

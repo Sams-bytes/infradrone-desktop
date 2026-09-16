@@ -22,6 +22,43 @@ namespace InfraDroneDesktop.Views
             InitializeComponent();
         }
 
+        private void SetActiveTab(string tab)
+        {
+            TabOverview.IsVisible = tab == "overview";
+            TabCalibration.IsVisible = tab == "calibration";
+            TabCamera.IsVisible = tab == "camera";
+            TabSequoiaCalibration.IsVisible = tab == "sequoiacal";
+            if (tab == "sequoiacal") SequoiaCalibrationViewInstance.RefreshOnOpen();
+
+            var active = new SolidColorBrush(Color.Parse("#0d3d2e"));
+            var inactive = new SolidColorBrush(Color.Parse("#1a2637"));
+            var activeFg = new SolidColorBrush(Color.Parse("#0d9e75"));
+            var inactiveFg = new SolidColorBrush(Color.Parse("#94a3b8"));
+            var activeBorder = new SolidColorBrush(Color.Parse("#0d9e75"));
+            var inactiveBorder = new SolidColorBrush(Color.Parse("#2d3f52"));
+
+            TabBtnOverview.Background = tab == "overview" ? active : inactive;
+            TabBtnOverview.Foreground = tab == "overview" ? activeFg : inactiveFg;
+            TabBtnOverview.BorderBrush = tab == "overview" ? activeBorder : inactiveBorder;
+
+            TabBtnCalibration.Background = tab == "calibration" ? active : inactive;
+            TabBtnCalibration.Foreground = tab == "calibration" ? activeFg : inactiveFg;
+            TabBtnCalibration.BorderBrush = tab == "calibration" ? activeBorder : inactiveBorder;
+
+            TabBtnCamera.Background = tab == "camera" ? active : inactive;
+            TabBtnCamera.Foreground = tab == "camera" ? activeFg : inactiveFg;
+            TabBtnCamera.BorderBrush = tab == "camera" ? activeBorder : inactiveBorder;
+
+            TabBtnSequoiaCalibration.Background = tab == "sequoiacal" ? active : inactive;
+            TabBtnSequoiaCalibration.Foreground = tab == "sequoiacal" ? activeFg : inactiveFg;
+            TabBtnSequoiaCalibration.BorderBrush = tab == "sequoiacal" ? activeBorder : inactiveBorder;
+        }
+
+        private void OnTabOverview(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => SetActiveTab("overview");
+        private void OnTabCalibration(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => SetActiveTab("calibration");
+        private void OnTabCamera(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => SetActiveTab("camera");
+        private void OnTabSequoiaCalibration(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => SetActiveTab("sequoiacal");
+
         public void SetBluegrass(BluegrassVehicleService bluegrass)
         {
             _bluegrass = bluegrass;

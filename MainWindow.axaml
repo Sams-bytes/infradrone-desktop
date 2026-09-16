@@ -66,6 +66,7 @@
         <!-- Nav -->
         <Expander Header="FLIGHT OPS" Classes="navgroup" IsExpanded="True">
           <StackPanel>
+            <Button Content="🚁  BlueDam" Classes="nav" Click="OnBluegrassParamsView"/>
             <Button Content="✈  Mission Planner" Classes="nav" Click="OnFlightView"/>
             <Button Content="🧪  MAVLink Test" Classes="nav" Click="OnMavLinkTestView"/>
             <Button Content="🛡  Failsafe Monitor" Classes="nav" Click="OnFailsafeMonitorView"/>
@@ -89,7 +90,6 @@
 
         <Expander Header="AGRICULTURE" Classes="navgroup" IsExpanded="True">
           <StackPanel>
-            <Button Content="🌿  Sequoia Capture" Classes="nav" Click="OnSequoiaView"/>
             <Button Content="🌱  Nitrogen Zones" Classes="nav" Click="OnNitrogenZonesView"/>
             <Button Content="🔬  Validation &amp; Evidence" Classes="nav" Click="OnValidationView"/>
           </StackPanel>
@@ -100,7 +100,6 @@
             <Button Content="🏔  Terrain" Classes="nav" Click="OnTerrainView"/>
             <Button Content="⬡  Geofence" Classes="nav" Click="OnGeofenceView"/>
             <Button Content="⚙  Parameters" Classes="nav" Click="OnParamsView"/>
-            <Button Content="🚁  Bluegrass Params" Classes="nav" Click="OnBluegrassParamsView"/>
             <Button Content="📋  Audit log" Classes="nav" Click="OnAuditView"/>
             <Button Content="🚁  DJI Tools" Classes="nav" Click="OnDjiView"/>
             <Button Content="🔑  License" Classes="nav" Click="OnParamsViewLicense"/>

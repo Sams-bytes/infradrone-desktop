@@ -26,6 +26,10 @@ namespace InfraDroneDesktop.Services
         public double? Longitude { get; set; }
         public double? Altitude { get; set; }
         public double? WifiRssi { get; set; }
+        public double? Speed { get; set; }
+        public double? Heading { get; set; }
+        public double? RollDeg { get; set; }
+        public double? PitchDeg { get; set; }
     }
 
     // Talks to the local Python bridge (bluegrass_bridge.py) over HTTP.
@@ -192,7 +196,11 @@ namespace InfraDroneDesktop.Services
                     Latitude = result.Telemetry?.Latitude,
                     Longitude = result.Telemetry?.Longitude,
                     Altitude = result.Telemetry?.Altitude,
-                    WifiRssi = result.Telemetry?.WifiRssi
+                    WifiRssi = result.Telemetry?.WifiRssi,
+                    Speed = result.Telemetry?.Speed,
+                    Heading = result.Telemetry?.Heading,
+                    RollDeg = result.Telemetry?.RollDeg,
+                    PitchDeg = result.Telemetry?.PitchDeg
                 };
                 TelemetryUpdated?.Invoke(Telemetry);
             }
@@ -229,9 +237,16 @@ namespace InfraDroneDesktop.Services
 
         public async Task<Dictionary<string, SettingSchema>?> GetSettingsSchemaAsync()
         {
-            var resp = await _http.GetAsync($"{BaseUrl}/settings");
-            if (!resp.IsSuccessStatusCode) return null;
-            return await resp.Content.ReadFromJsonAsync<Dictionary<string, SettingSchema>>();
+            try
+            {
+                var resp = await _http.GetAsync($"{BaseUrl}/settings");
+                if (!resp.IsSuccessStatusCode) return null;
+                return await resp.Content.ReadFromJsonAsync<Dictionary<string, SettingSchema>>();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public async Task<(bool Ok, string? Error)> SetSettingAsync(string name, Dictionary<string, object> args)
@@ -244,9 +259,16 @@ namespace InfraDroneDesktop.Services
 
         public async Task<Dictionary<string, object>?> GetFullTelemetryAsync()
         {
-            var resp = await _http.GetAsync($"{BaseUrl}/telemetry/full");
-            if (!resp.IsSuccessStatusCode) return null;
-            return await resp.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+            try
+            {
+                var resp = await _http.GetAsync($"{BaseUrl}/telemetry/full");
+                if (!resp.IsSuccessStatusCode) return null;
+                return await resp.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public async Task<bool> CameraPanTiltAsync(double tiltDegrees, double panDegrees)
@@ -261,6 +283,32 @@ namespace InfraDroneDesktop.Services
             var body = new { direction };
             var resp = await _http.PostAsJsonAsync($"{BaseUrl}/command/flip", body);
             return resp.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> StartVideoAsync()
+        {
+            var resp = await _http.PostAsync($"{BaseUrl}/video/start", null);
+            return resp.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> StopVideoAsync()
+        {
+            var resp = await _http.PostAsync($"{BaseUrl}/video/stop", null);
+            return resp.IsSuccessStatusCode;
+        }
+
+        public async Task<byte[]?> GetVideoFrameAsync()
+        {
+            try
+            {
+                var resp = await _http.GetAsync($"{BaseUrl}/video/snapshot");
+                if (!resp.IsSuccessStatusCode) return null;
+                return await resp.Content.ReadAsByteArrayAsync();
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         public async Task<bool> FlatTrimAsync()
@@ -302,6 +350,10 @@ namespace InfraDroneDesktop.Services
             [JsonPropertyName("longitude")] public double? Longitude { get; set; }
             [JsonPropertyName("altitude")] public double? Altitude { get; set; }
             [JsonPropertyName("wifi_rssi")] public double? WifiRssi { get; set; }
+            [JsonPropertyName("speed")] public double? Speed { get; set; }
+            [JsonPropertyName("heading")] public double? Heading { get; set; }
+            [JsonPropertyName("roll_deg")] public double? RollDeg { get; set; }
+            [JsonPropertyName("pitch_deg")] public double? PitchDeg { get; set; }
         }
     }
 }

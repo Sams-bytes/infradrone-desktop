@@ -39,6 +39,16 @@
                         Background="#1a2637" Foreground="#94a3b8"
                         BorderBrush="#2d3f52" BorderThickness="0.5"
                         Padding="8,5" CornerRadius="6"/>
+                <Button Name="BtnConnectDroneNetwork" Content="🚁 On Drone (192.168.42.2)"
+                        Click="OnConnectDroneNetwork"
+                        Background="#1a2637" Foreground="#94a3b8"
+                        BorderBrush="#2d3f52" BorderThickness="0.5"
+                        Padding="8,5" CornerRadius="6"/>
+                <Button Name="BtnOpenWebUi" Content="🌐 Open Camera Web UI"
+                        Click="OnOpenWebUi"
+                        Background="#1a2637" Foreground="#94a3b8"
+                        BorderBrush="#2d3f52" BorderThickness="0.5"
+                        Padding="8,5" CornerRadius="6"/>
               </StackPanel>
               <TextBlock Name="FwText" Text="" FontSize="10" Foreground="#64748b"/>
             </StackPanel>
@@ -52,6 +62,29 @@
                          Foreground="#4a5568" LetterSpacing="1"/>
               <TextBlock Name="CalibStatus" Text="Calibration: —"
                          FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+              <Border Background="#0f1923" CornerRadius="6" Padding="8"
+                      BorderBrush="#1e3a5f" BorderThickness="0.5">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="SUNSHINE CALIBRATION" FontSize="9" FontWeight="Bold"
+                             Foreground="#4a5568" LetterSpacing="1"/>
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Name="BtnStartSunshineCalib" Content="Start"
+                            Click="OnStartSunshineCalib"
+                            Background="#0d3d2e" Foreground="#0d9e75"
+                            BorderBrush="#0d9e75" BorderThickness="0.5"
+                            Padding="8,4" CornerRadius="6"/>
+                    <Button Name="BtnStopCalib" Content="Stop"
+                            Click="OnStopCalib"
+                            Background="#3d0d0d" Foreground="#ef4444"
+                            BorderBrush="#ef4444" BorderThickness="0.5"
+                            Padding="8,4" CornerRadius="6"/>
+                  </StackPanel>
+                  <TextBlock Name="LiveCalibStatus" Text="Not running"
+                             FontSize="11" Foreground="#94a3b8" TextWrapping="Wrap"/>
+                  <TextBlock Text="Start, then slowly rotate the drone through yaw, pitch, and roll (motors off) until sunshine reads Ok, then Stop."
+                             FontSize="10" Foreground="#4b5b6e" TextWrapping="Wrap" FontStyle="Italic"/>
+                </StackPanel>
+              </Border>
               <TextBlock Text="Internal storage" FontSize="10" Foreground="#64748b"/>
               <ProgressBar Name="StorageInternal" Minimum="0" Maximum="100" Value="0"
                            Height="6" CornerRadius="3"
@@ -213,6 +246,19 @@
                       BorderBrush="#0d9e75" BorderThickness="0.5"
                       Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"
                       IsEnabled="False"/>
+              <Button Name="BtnQuickPreview" Content="👁 Quick Preview (RGB)"
+                      Click="OnQuickPreview"
+                      Background="#1a2637" Foreground="#94a3b8"
+                      BorderBrush="#2d3f52" BorderThickness="0.5"
+                      Padding="8,5" CornerRadius="6" HorizontalAlignment="Stretch"
+                      IsEnabled="False"/>
+              <TextBlock Name="QuickPreviewStatus" Text=""
+                         FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+              <Border Name="QuickPreviewBorder" Background="#0f1923" CornerRadius="6"
+                      BorderBrush="#1e3a5f" BorderThickness="0.5" Padding="4"
+                      IsVisible="False">
+                <Image Name="QuickPreviewImage" Height="200" Stretch="UniformToFill"/>
+              </Border>
             </StackPanel>
           </Border>
 

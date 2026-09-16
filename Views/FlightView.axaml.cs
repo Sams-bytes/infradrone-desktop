@@ -33,6 +33,12 @@ public partial class FlightView : UserControl
     private AsvMavLinkService? _mav;
     private Mavlink1SerialService? _v1;
     private BluegrassVehicleService? _bluegrass;
+    private System.Timers.Timer? _videoPollTimer;
+    private bool _videoMaximized = false;
+    private Avalonia.Controls.Window? _floatingVideoWindow;
+    private Avalonia.Controls.Image? _floatingVideoImage;
+    private Avalonia.Media.RotateTransform? _floatingHorizonRotate;
+    private Avalonia.Media.TranslateTransform? _floatingHorizonTranslate;
 
     public void SetMavlinkV1(Mavlink1SerialService v1)
     {
@@ -44,9 +50,149 @@ public partial class FlightView : UserControl
 
     public void SetBluegrass(BluegrassVehicleService bluegrass)
     {
+        Console.WriteLine("[FlightView] SetBluegrass called");
         if (_bluegrass == bluegrass) return;
         _bluegrass = bluegrass;
         _bluegrass.TelemetryUpdated += OnBluegrassTelemetry;
+        Console.WriteLine("[FlightView] Bluegrass event subscribed");
+    }
+
+    private async void OnStartVideo(object? s, RoutedEventArgs e)
+    {
+        if (_bluegrass == null) { VideoStatusText.Text = "No Bluegrass connection"; return; }
+        VideoStatusText.Text = "Starting...";
+        var ok = await _bluegrass.StartVideoAsync();
+        if (!ok) { VideoStatusText.Text = "Failed to start"; return; }
+
+        VideoStatusText.Text = "Live";
+        _videoPollTimer?.Stop();
+        _videoPollTimer = new System.Timers.Timer(300);
+        _videoPollTimer.Elapsed += async (_, _) => await PollVideoFrame();
+        _videoPollTimer.Start();
+    }
+
+    private async void OnStopVideo(object? s, RoutedEventArgs e)
+    {
+        _videoPollTimer?.Stop();
+        if (_bluegrass != null) await _bluegrass.StopVideoAsync();
+        VideoStatusText.Text = "Stopped";
+        VideoFeedImage.Source = null;
+        if (_floatingVideoImage != null) _floatingVideoImage.Source = null;
+    }
+
+    private async Task PollVideoFrame()
+    {
+        if (_bluegrass == null) return;
+        var bytes = await _bluegrass.GetVideoFrameAsync();
+        if (bytes == null || bytes.Length == 0) return;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                using var stream = new System.IO.MemoryStream(bytes);
+                var bmp = new Avalonia.Media.Imaging.Bitmap(stream);
+                VideoFeedImage.Source = bmp;
+                if (_floatingVideoImage != null)
+                {
+                    stream.Position = 0;
+                    _floatingVideoImage.Source = new Avalonia.Media.Imaging.Bitmap(stream);
+                }
+            }
+            catch { /* transient partial-frame read, skip this poll */ }
+        });
+    }
+
+    private void OnMaximizeVideo(object? s, RoutedEventArgs e)
+    {
+        _videoMaximized = !_videoMaximized;
+        VideoContentBorder.Height = _videoMaximized ? 600 : 200;
+        BtnMaximizeVideo.Content = _videoMaximized ? "⛶ Restore" : "⛶ Maximize";
+    }
+
+    private bool _videoPanelExpanded = false;
+
+    private void OnToggleVideoPanel(object? s, RoutedEventArgs e)
+    {
+        _videoPanelExpanded = !_videoPanelExpanded;
+        VideoPanelTitle.IsVisible = _videoPanelExpanded;
+        VideoControlsBar.IsVisible = _videoPanelExpanded;
+        VideoContentBorder.IsVisible = _videoPanelExpanded;
+        VideoContentBorder.Height = _videoPanelExpanded ? 200 : double.NaN;
+        BtnToggleVideoPanel.Content = _videoPanelExpanded ? "▼ Camera" : "▶ Camera";
+    }
+
+    private void OnUnpinVideo(object? s, RoutedEventArgs e)
+    {
+        if (_floatingVideoWindow != null) { _floatingVideoWindow.Activate(); return; }
+
+        var img = new Avalonia.Controls.Image { Stretch = Avalonia.Media.Stretch.Uniform };
+        var rotate = new Avalonia.Media.RotateTransform(0);
+        var translate = new Avalonia.Media.TranslateTransform(0, 0);
+        var horizonLine = new Avalonia.Controls.Border
+        {
+            Height = 2, Width = 2000,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75")),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            IsHitTestVisible = false,
+            RenderTransform = new Avalonia.Media.TransformGroup
+            {
+                Children = { rotate, translate }
+            }
+        };
+        var centerDot = new Avalonia.Controls.Border
+        {
+            Width = 10, Height = 10, CornerRadius = new Avalonia.CornerRadius(5),
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75")),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            IsHitTestVisible = false
+        };
+        var pinBtn = new Avalonia.Controls.Button
+        {
+            Content = "📌 Pin back",
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d3d2e")),
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0d9e75")),
+            Padding = new Avalonia.Thickness(10, 5),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+            Margin = new Avalonia.Thickness(0, 0, 0, 6)
+        };
+        var content = new Avalonia.Controls.Grid { RowDefinitions = new Avalonia.Controls.RowDefinitions("Auto,*") };
+        Avalonia.Controls.Grid.SetRow(pinBtn, 0);
+        var videoArea = new Avalonia.Controls.Border
+        {
+            Background = Avalonia.Media.Brushes.Black,
+            Child = new Avalonia.Controls.Grid { Children = { img, horizonLine, centerDot } }
+        };
+        Avalonia.Controls.Grid.SetRow(videoArea, 1);
+        content.Children.Add(pinBtn);
+        content.Children.Add(videoArea);
+
+        var win = new Avalonia.Controls.Window
+        {
+            Title = "BlueDam Front Camera",
+            Width = 640,
+            Height = 480,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#0f1923")),
+            Content = content
+        };
+        pinBtn.Click += (_, _) => win.Close();
+        win.Closed += (_, _) =>
+        {
+            _floatingVideoWindow = null;
+            _floatingVideoImage = null;
+            _floatingHorizonRotate = null;
+            _floatingHorizonTranslate = null;
+        };
+
+        _floatingVideoWindow = win;
+        _floatingVideoImage = img;
+        _floatingHorizonRotate = rotate;
+        _floatingHorizonTranslate = translate;
+
+        var owner = TopLevel.GetTopLevel(this) as Avalonia.Controls.Window;
+        if (owner != null) win.Show(owner); else win.Show();
     }
 
     private void ShowStatusBanner(string text)
@@ -115,8 +261,7 @@ public partial class FlightView : UserControl
 
     private void OnBluegrassTelemetry(BluegrassTelemetry t)
     {
-        // Lowest priority: only drives the HUD if neither Cube Orange nor
-        // BCube is the one actually connected.
+        Console.WriteLine($"[FlightView] OnBluegrassTelemetry fired. Connected={t.Connected} CubeOrangeConnected={CubeOrangeConnected} v1Connected={(_v1 != null && _v1.Telemetry.Connected)}");
         if (CubeOrangeConnected) return;
         if (_v1 != null && _v1.Telemetry.Connected) return;
 
@@ -126,6 +271,51 @@ public partial class FlightView : UserControl
             HudAlt.Text = t.Connected && t.Altitude.HasValue ? $"{t.Altitude:F1}m" : "—";
             HudMode.Text = t.Connected ? t.FlyingState : "—";
             HudGps.Text = t.Connected ? $"fix={t.GpsFixed}" : "—";
+            HudSpeed.Text = t.Connected && t.Speed.HasValue ? $"{t.Speed:F1}m/s" : "—";
+            HudHeading.Text = t.Connected && t.Heading.HasValue ? $"{t.Heading:F0}°" : "—";
+
+            bool hasRealFix = t.Connected && t.GpsFixed == 1
+                && t.Latitude.HasValue && t.Latitude != 500
+                && t.Longitude.HasValue && t.Longitude != 500;
+            HudPos.Text = hasRealFix ? $"{t.Latitude:F5}, {t.Longitude:F5}" : "—";
+
+            if (t.Connected && t.RollDeg.HasValue && t.PitchDeg.HasValue)
+            {
+                AttitudeText.Text = $"R:{t.RollDeg:F0}° P:{t.PitchDeg:F0}°";
+                if (AttitudeCanvas.RenderTransform is Avalonia.Media.RotateTransform attRt)
+                    attRt.Angle = -t.RollDeg.Value;
+                Avalonia.Controls.Canvas.SetTop(AttitudeCanvas, (t.PitchDeg.Value * 3) - 75);
+            }
+            else
+            {
+                AttitudeText.Text = "R:0° P:0°";
+            }
+
+            if (t.Connected && t.RollDeg.HasValue && t.PitchDeg.HasValue)
+            {
+                if (HorizonLine.RenderTransform is Avalonia.Media.TransformGroup tg
+                    && tg.Children.Count >= 2
+                    && tg.Children[0] is Avalonia.Media.RotateTransform hRot
+                    && tg.Children[1] is Avalonia.Media.TranslateTransform hTrans)
+                {
+                    hRot.Angle = -t.RollDeg.Value;
+                    hTrans.Y = Math.Clamp(t.PitchDeg.Value * 3, -90, 90);
+                }
+                if (_floatingHorizonRotate != null && _floatingHorizonTranslate != null)
+                {
+                    _floatingHorizonRotate.Angle = -t.RollDeg.Value;
+                    _floatingHorizonTranslate.Y = Math.Clamp(t.PitchDeg.Value * 3, -90, 90);
+                }
+            }
+
+            if (t.Connected && t.Heading.HasValue)
+            {
+                CompassHeadingText.Text = $"{t.Heading:F0}°";
+                if (CompassNeedle.RenderTransform is Avalonia.Media.RotateTransform rt)
+                    rt.Angle = t.Heading.Value;
+                if (hasRealFix)
+                    UpdateDroneMarker(t.Latitude!.Value, t.Longitude!.Value, t.Heading.Value);
+            }
         });
     }
     private MemoryLayer? _droneLayer;

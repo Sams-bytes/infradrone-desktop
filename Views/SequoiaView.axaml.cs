@@ -28,6 +28,7 @@ public partial class SequoiaView : UserControl
     private string _lastLoadedFolder = "";
     private List<(DateTime dt, string path)> _sessionFiles = new();
     private Mapsui.Map? _nmeaMap;
+    private System.Timers.Timer? _calibPollTimer;
 
     public SequoiaView()
     {
@@ -44,6 +45,31 @@ public partial class SequoiaView : UserControl
     {
         _baseUrl = "http://192.168.47.1";
         await Connect();
+    }
+
+    private async void OnConnectDroneNetwork(object? s, RoutedEventArgs e)
+    {
+        _baseUrl = "http://192.168.42.2";
+        await Connect();
+    }
+
+    private void OnOpenWebUi(object? s, RoutedEventArgs e)
+    {
+        var url = string.IsNullOrEmpty(_baseUrl) ? "http://192.168.42.2" : _baseUrl;
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "xdg-open",
+                Arguments = url,
+                UseShellExecute = true
+            });
+            StatusText.Text = $"Opened {url} in browser - use the Calibration wizard there.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"Could not open browser: {ex.Message}";
+        }
     }
 
     private async Task Connect()
@@ -79,6 +105,7 @@ public partial class SequoiaView : UserControl
         BtnRefreshStatus.IsEnabled = en;
         BtnApplyConfig.IsEnabled = en;
         BtnCapture.IsEnabled = en;
+        BtnQuickPreview.IsEnabled = en;
         BtnListImages.IsEnabled = en;
         BtnDownload.IsEnabled = en;
         BtnSendToWebOdm.IsEnabled = en;
@@ -104,18 +131,62 @@ public partial class SequoiaView : UserControl
 
     private async void OnRefreshStatus(object? s, RoutedEventArgs e) => await RefreshStatus();
 
+    private async void OnStartSunshineCalib(object? s, RoutedEventArgs e)
+    {
+        try
+        {
+            LiveCalibStatus.Text = "Starting sunshine calibration...";
+            await _http.GetStringAsync($"{_baseUrl}/calibration/sunshine/start");
+
+            _calibPollTimer?.Stop();
+            _calibPollTimer = new System.Timers.Timer(1000);
+            _calibPollTimer.Elapsed += async (_, _) => await PollCalibration();
+            _calibPollTimer.Start();
+        }
+        catch (Exception ex) { LiveCalibStatus.Text = $"Start error: {ex.Message}"; }
+    }
+
+    private async Task PollCalibration()
+    {
+        try
+        {
+            var resp = await _http.GetStringAsync($"{_baseUrl}/calibration");
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                LiveCalibStatus.Text = resp;
+            });
+        }
+        catch { /* transient poll miss, keep previous text */ }
+    }
+
+    private async void OnStopCalib(object? s, RoutedEventArgs e)
+    {
+        try
+        {
+            _calibPollTimer?.Stop();
+            var resp = await _http.GetStringAsync($"{_baseUrl}/calibration/stop");
+            LiveCalibStatus.Text = $"Stopped. Final: {resp}";
+            await RefreshStatus();
+        }
+        catch (Exception ex) { LiveCalibStatus.Text = $"Stop error: {ex.Message}"; }
+    }
+
     private async Task RefreshStatus()
     {
         try
         {
-            // Calibration
+            // Calibration - firmware 1.7.1 returns "body" (main sensor state)
+            // and "sunshine" (external sunshine sensor calibration state)
+            // rather than a single calibration_status field.
             var cal = await _http.GetStringAsync($"{_baseUrl}/calibration");
             var calDoc = JsonDocument.Parse(cal);
-            var calStatus = calDoc.RootElement.TryGetProperty("calibration_status",
-                out var cs) ? cs.GetString() : "unknown";
-            CalibStatus.Text = $"Calibration: {calStatus}";
+            var bodyStatus = calDoc.RootElement.TryGetProperty("body", out var b) ? b.GetString() : "unknown";
+            var sunshineStatus = calDoc.RootElement.TryGetProperty("sunshine", out var sh) ? sh.GetString() : "unknown";
+            bool bodyOk = string.Equals(bodyStatus, "Ok", StringComparison.OrdinalIgnoreCase);
+            bool sunshineOk = string.Equals(sunshineStatus, "Ok", StringComparison.OrdinalIgnoreCase);
+            CalibStatus.Text = $"Calibration - Body: {bodyStatus} · Sunshine sensor: {sunshineStatus}";
             CalibStatus.Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse(
-                calStatus == "calibrated" ? "#0d9e75" : "#ef4444"));
+                (bodyOk && sunshineOk) ? "#0d9e75" : "#ef4444"));
 
             // Storage
             var stor = await _http.GetStringAsync($"{_baseUrl}/storage");
@@ -223,6 +294,59 @@ public partial class SequoiaView : UserControl
             StatusText.Text = "✓ Capture triggered.";
         }
         catch (Exception ex) { StatusText.Text = $"Capture error: {ex.Message}"; }
+    }
+
+    private async void OnQuickPreview(object? s, RoutedEventArgs e)
+    {
+        try
+        {
+            BtnQuickPreview.IsEnabled = false;
+            QuickPreviewStatus.Text = "Triggering capture...";
+            QuickPreviewBorder.IsVisible = false;
+            await _http.GetAsync($"{_baseUrl}/capture");
+
+            QuickPreviewStatus.Text = "Waiting for capture to finish writing...";
+            await Task.Delay(3000);
+
+            QuickPreviewStatus.Text = "Finding newest RGB image...";
+            var adbOut = await Task.Run(() =>
+                RunAdb("shell find /data/medias/DCIM/ -type f -iname \"*_RGB.JPG\""));
+            var files = adbOut.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(f => f.Trim())
+                .Where(f => f.Length > 0)
+                .ToList();
+            if (files.Count == 0)
+            {
+                QuickPreviewStatus.Text = "No RGB image found - check RGB band is enabled in config.";
+                return;
+            }
+            var newest = files.OrderByDescending(f => f).First();
+
+            QuickPreviewStatus.Text = "Pulling image...";
+            var localPath = Path.Combine(Path.GetTempPath(), "sequoia_quick_preview.jpg");
+            if (File.Exists(localPath)) File.Delete(localPath);
+            await Task.Run(() => RunAdb($"pull \"{newest}\" \"{localPath}\""));
+
+            if (File.Exists(localPath))
+            {
+                using var stream = File.OpenRead(localPath);
+                QuickPreviewImage.Source = new Avalonia.Media.Imaging.Bitmap(stream);
+                QuickPreviewBorder.IsVisible = true;
+                QuickPreviewStatus.Text = $"Preview from {Path.GetFileName(newest)}";
+            }
+            else
+            {
+                QuickPreviewStatus.Text = "Pull failed - image not found on device after capture.";
+            }
+        }
+        catch (Exception ex)
+        {
+            QuickPreviewStatus.Text = $"Preview error: {ex.Message}";
+        }
+        finally
+        {
+            BtnQuickPreview.IsEnabled = true;
+        }
     }
 
     private string RunAdb(string args)

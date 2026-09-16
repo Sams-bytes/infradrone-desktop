@@ -1,14 +1,15 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:InfraDroneDesktop.Views"
              x:Class="InfraDroneDesktop.Views.BluegrassParamsView"
              Background="#0f1923">
-  <Grid RowDefinitions="Auto,*">
+  <Grid RowDefinitions="Auto,Auto,*">
 
     <!-- Toolbar -->
     <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
             BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="*,Auto,Auto">
-        <TextBlock Text="Bluegrass Parameters" FontSize="14" FontWeight="Bold"
+        <TextBlock Text="BlueDam" FontSize="14" FontWeight="Bold"
                    Foreground="#e2e8f0" VerticalAlignment="Center"/>
         <Button Grid.Column="1" Name="BtnRefresh" Content="⟳ Refresh" Click="OnRefresh"
                 Background="#0d3d2e" Foreground="#0d9e75"
@@ -20,10 +21,58 @@
       </Grid>
     </Border>
 
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+    <!-- Sub-tabs -->
+    <Border Grid.Row="1" Background="#131f2e" Padding="8,6"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <Button Name="TabBtnOverview" Content="Overview" Click="OnTabOverview"
+                Background="#0d3d2e" Foreground="#0d9e75"
+                BorderBrush="#0d9e75" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <Button Name="TabBtnCalibration" Content="Calibration" Click="OnTabCalibration"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <Button Name="TabBtnCamera" Content="Camera" Click="OnTabCamera"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+        <Button Name="TabBtnSequoiaCalibration" Content="Sequoia Calibration" Click="OnTabSequoiaCalibration"
+                Background="#1a2637" Foreground="#94a3b8"
+                BorderBrush="#2d3f52" BorderThickness="0.5"
+                Padding="10,5" CornerRadius="6"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Overview tab: tunable settings + live telemetry -->
+    <ScrollViewer Grid.Row="2" Name="TabOverview" VerticalScrollBarVisibility="Auto" IsVisible="True">
       <StackPanel Margin="12" Spacing="16">
 
-        <!-- Calibration -->
+        <StackPanel Spacing="6">
+          <TextBlock Text="TUNABLE SETTINGS" FontSize="11" FontWeight="Bold"
+                     Foreground="#64748b" Margin="4,0,0,4"/>
+          <StackPanel Name="SettingsPanel" Spacing="8"/>
+        </StackPanel>
+
+        <StackPanel Spacing="6">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="LIVE TELEMETRY (ALL FIELDS)" FontSize="11" FontWeight="Bold"
+                       Foreground="#64748b" Margin="4,0,0,4"/>
+            <TextBlock Grid.Column="1" Name="TelemetryCountText" Text=""
+                       FontSize="11" Foreground="#64748b"/>
+          </Grid>
+          <Border Background="#131f2e" CornerRadius="6" Padding="8"
+                  BorderBrush="#1e3a5f" BorderThickness="0.5">
+            <ItemsControl Name="TelemetryList"/>
+          </Border>
+        </StackPanel>
+
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Calibration tab -->
+    <ScrollViewer Grid.Row="2" Name="TabCalibration" VerticalScrollBarVisibility="Auto" IsVisible="False">
+      <StackPanel Margin="12" Spacing="16">
         <StackPanel Spacing="6">
           <TextBlock Text="CALIBRATION" FontSize="11" FontWeight="Bold"
                      Foreground="#64748b" Margin="4,0,0,4"/>
@@ -45,29 +94,18 @@
             </StackPanel>
           </Border>
         </StackPanel>
-
-        <!-- Tunable settings -->
-        <StackPanel Spacing="6">
-          <TextBlock Text="TUNABLE SETTINGS" FontSize="11" FontWeight="Bold"
-                     Foreground="#64748b" Margin="4,0,0,4"/>
-          <StackPanel Name="SettingsPanel" Spacing="8"/>
-        </StackPanel>
-
-        <!-- Live telemetry -->
-        <StackPanel Spacing="6">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="LIVE TELEMETRY (ALL FIELDS)" FontSize="11" FontWeight="Bold"
-                       Foreground="#64748b" Margin="4,0,0,4"/>
-            <TextBlock Grid.Column="1" Name="TelemetryCountText" Text=""
-                       FontSize="11" Foreground="#64748b"/>
-          </Grid>
-          <Border Background="#131f2e" CornerRadius="6" Padding="8"
-                  BorderBrush="#1e3a5f" BorderThickness="0.5">
-            <ItemsControl Name="TelemetryList"/>
-          </Border>
-        </StackPanel>
-
       </StackPanel>
     </ScrollViewer>
+
+    <!-- Camera tab: Sequoia -->
+    <Grid Grid.Row="2" Name="TabCamera" IsVisible="False">
+      <local:SequoiaView/>
+    </Grid>
+
+    <!-- Sequoia Calibration tab -->
+    <Grid Grid.Row="2" Name="TabSequoiaCalibration" IsVisible="False">
+      <local:SequoiaCalibrationView x:Name="SequoiaCalibrationViewInstance"/>
+    </Grid>
+
   </Grid>
 </UserControl>

@@ -2,7 +2,57 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:maps="clr-namespace:Mapsui.UI.Avalonia;assembly=Mapsui.UI.Avalonia"
              x:Class="InfraDroneDesktop.Views.FlightView">
-  <Grid RowDefinitions="Auto,*,Auto,Auto">
+  <Grid RowDefinitions="Auto,*,Auto,Auto,Auto">
+    <Border Grid.Row="4" Name="VideoPanelBorder"
+            Background="#0f1923" BorderBrush="#1e3a5f" BorderThickness="0,1,0,0" Padding="8">
+      <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,0">
+          <Button Grid.Column="0" Name="BtnToggleVideoPanel" Content="▶ Camera" Click="OnToggleVideoPanel"
+                  Background="#1a2637" Foreground="#94a3b8"
+                  BorderBrush="#2d3f52" BorderThickness="0.5"
+                  Padding="8,4" CornerRadius="6" FontSize="10" HorizontalAlignment="Left"/>
+          <TextBlock Grid.Column="1" Text="BLUEDAM FRONT CAMERA" FontSize="9" FontWeight="Bold"
+                     Foreground="#4a5568" LetterSpacing="1" VerticalAlignment="Center" Margin="8,0,0,0"
+                     Name="VideoPanelTitle" IsVisible="False"/>
+          <StackPanel Grid.Column="2" Name="VideoControlsBar" Orientation="Horizontal" Spacing="6" IsVisible="False">
+            <TextBlock Name="VideoStatusText" Text="Not started" FontSize="10"
+                       Foreground="#64748b" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <Button Name="BtnStartVideo" Content="▶ Start" Click="OnStartVideo"
+                    Background="#0d3d2e" Foreground="#0d9e75"
+                    BorderBrush="#0d9e75" BorderThickness="0.5"
+                    Padding="8,3" CornerRadius="6" FontSize="10"/>
+            <Button Name="BtnStopVideo" Content="■ Stop" Click="OnStopVideo"
+                    Background="#3d0d0d" Foreground="#ef4444"
+                    BorderBrush="#ef4444" BorderThickness="0.5"
+                    Padding="8,3" CornerRadius="6" FontSize="10"/>
+            <Button Name="BtnMaximizeVideo" Content="⛶ Maximize" Click="OnMaximizeVideo"
+                    Background="#1a2637" Foreground="#94a3b8"
+                    BorderBrush="#2d3f52" BorderThickness="0.5"
+                    Padding="8,3" CornerRadius="6" FontSize="10"/>
+            <Button Name="BtnUnpinVideo" Content="⧉ Unpin" Click="OnUnpinVideo"
+                    Background="#1a2637" Foreground="#94a3b8"
+                    BorderBrush="#2d3f52" BorderThickness="0.5"
+                    Padding="8,3" CornerRadius="6" FontSize="10"/>
+          </StackPanel>
+        </Grid>
+        <Border Grid.Row="1" Name="VideoContentBorder" Background="#000000" CornerRadius="6" ClipToBounds="True" IsVisible="False">
+          <Grid Name="VideoContentGrid">
+            <Image Name="VideoFeedImage" Stretch="Uniform"/>
+            <Border Name="HorizonLine" Height="2" Width="2000" Background="#0d9e75"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+              <Border.RenderTransform>
+                <TransformGroup>
+                  <RotateTransform Angle="0"/>
+                  <TranslateTransform X="0" Y="0"/>
+                </TransformGroup>
+              </Border.RenderTransform>
+            </Border>
+            <Border Width="10" Height="10" Background="#0d9e75" CornerRadius="5"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
 
     <!-- Toolbar -->
     <Border Grid.Row="0" Background="#0f1923" Padding="10,6" BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">

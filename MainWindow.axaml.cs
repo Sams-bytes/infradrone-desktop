@@ -169,6 +169,7 @@ public partial class MainWindow : Window
             _flightView.SetMavLink(_mav);
         }
         if (_v1 != null) _flightView.SetMavlinkV1(_v1);
+        _flightView.SetBluegrass(_bluegrass);
         ContentArea.Child = _flightView;
     }
     private MissionView? _missionView;
@@ -249,7 +250,6 @@ public partial class MainWindow : Window
 
     private LicenseView? _licenseView;
     private DjiView? _djiView;
-    private SequoiaView? _sequoiaView;
     private ProcessingView? _processingView;
     private Views.LandEnvironmentView? _landEnvironmentView;
     private void OnLandEnvironmentView(object? sender, RoutedEventArgs e)
@@ -317,11 +317,6 @@ public partial class MainWindow : Window
         if (_v1 != null) _flightView.SetMavlinkV1(_v1);
         _surveyAndProcessingView.SetFlightView(_flightView);
         ContentArea.Child = _surveyAndProcessingView;
-    }
-    private void OnSequoiaView(object? sender, RoutedEventArgs e)
-    {
-        if (_sequoiaView == null) _sequoiaView = new SequoiaView();
-        ContentArea.Child = _sequoiaView;
     }
     private Views.NitrogenZonesView? _nitrogenZonesView;
     private Views.ValidationEvidenceView? _validationEvidenceView;
