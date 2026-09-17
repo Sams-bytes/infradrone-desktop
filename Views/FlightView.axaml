@@ -251,6 +251,8 @@
             <StackPanel Spacing="6" Margin="8" MinWidth="180">
               <Button Name="BtnAddWpToggle" HorizontalAlignment="Stretch" Background="#1a2637" Foreground="#94a3b8"
                       BorderBrush="#2d3f52" Click="OnAddWpToggle">📍 Add WP: OFF</Button>
+                      <Button Background="#1a2637" Foreground="#cfe3f5" BorderBrush="#2d3f52"
+                              Click="OnOpen3DView">🌍 3D View</Button>
               <Button Name="BtnClearWp" HorizontalAlignment="Stretch" Background="#3d1515" Foreground="#ef4444"
                       BorderBrush="#ef4444" Click="OnClearWaypoints">🗑 Clear WP</Button>
               <Button Name="BtnUploadMission" HorizontalAlignment="Stretch" Background="#0d3d2e" Foreground="#0d9e75"

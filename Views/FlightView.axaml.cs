@@ -663,6 +663,7 @@ public partial class FlightView : UserControl
     // checking Telemetry.Connected, not just whether the object exists,
     // since _mav always exists as an object even with no real vehicle.
     private bool CubeOrangeConnected => _mav != null && _mav.Telemetry.Connected;
+    private bool BCubeConnected => _v1 != null && _v1.Telemetry.Connected;
     private bool BluegrassConnected => _bluegrass != null && _bluegrass.IsConnected;
 
     private async void OnArm(object? s, RoutedEventArgs e)
@@ -718,6 +719,27 @@ public partial class FlightView : UserControl
 
     // --- Minimal waypoint plotting on this view's own map (no export/import/survey) ---
     internal readonly System.Collections.Generic.List<Waypoint> _waypoints = new();
+
+    // SORA operational-volume parameters per vehicle.
+    // Loong 2160: from Foxtech's published datasheet — wingspan 2160mm (CD),
+    // recommended cruise 18-20 m/s (V0 = top of range). VTOL/QuadPlane, so
+    // classified FixedWing for the contingency-manoeuvre formula. GRB uses
+    // the 1:1 rule (no verified glide ratio for this airframe yet).
+    private static readonly SoraVolumeParameters Loong2160Profile = new()
+    {
+        Airframe = SoraAirframe.FixedWing,
+        V0 = 20.0,
+        CD = 2.16,
+        GrbMethod = GrbMethod.FixedWingNoGlide
+    };
+
+    // BCube: generic Pixhawk-class quad, no manufacturer datasheet exists.
+    // TODO: set real measured V0 (m/s) and CD (motor-to-motor diagonal, m)
+    // before this vehicle's SORA bands can be trusted for anything real.
+    private static readonly SoraVolumeParameters? BCubeProfile = null;
+
+    private bool _showSoraVolume = true;
+    private readonly Cesium3DViewService _cesium3D = new();
     private bool _addWpMode = false;
     private Avalonia.Point _wpPressPos;
 
@@ -768,6 +790,57 @@ public partial class FlightView : UserControl
         MissionStatusText.Text = $"{_waypoints.Count} waypoint(s) placed.";
     }
 
+    private SoraVolumeParameters? GetActiveSoraProfile()
+    {
+        if (CubeOrangeConnected) return Loong2160Profile;
+        if (BCubeConnected) return BCubeProfile; // null until real BCube numbers are supplied
+        return Loong2160Profile; // nothing connected yet (pre-flight planning) — default to primary platform
+    }
+
+    private void RefreshSoraVolume()
+    {
+        if (_mapControl?.Map is not { } map) return;
+        SoraVolumeLayers.RemoveFrom(map);
+        if (!_showSoraVolume || _waypoints.Count == 0) return;
+
+        var profile = GetActiveSoraProfile();
+        if (profile == null)
+        {
+            MissionStatusText.Text = "SORA bands unavailable: BCube profile has no real V0/CD yet.";
+            return;
+        }
+
+        profile.HFG = _waypoints.Max(wp => wp.AltM); // live from the actual planned route
+
+        try
+        {
+            var pts = _waypoints.Select(wp => (wp.Lat, wp.Lon)).ToList();
+            var geom = SoraVolumeLayers.Build(pts, profile);
+            foreach (var layer in SoraVolumeLayers.ToLayers(geom))
+                map.Layers.Add(layer);
+            if (_cesium3D.IsRunning)
+                _cesium3D.Publish(_waypoints.Select(w => (w.Lat, w.Lon, w.AltM)).ToList(), geom);
+        }
+        catch (ArgumentException ex)
+        {
+            System.Console.WriteLine("[SORA] invalid parameters: " + ex.Message);
+        }
+    }
+
+    private void OnOpen3DView(object? s, RoutedEventArgs e)
+    {
+        try
+        {
+            _cesium3D.StartAndOpen();
+            RefreshSoraVolume(); // push the current mission immediately
+            MissionStatusText.Text = "3D view opened at " + _cesium3D.Url;
+        }
+        catch (Exception ex)
+        {
+            MissionStatusText.Text = "3D view failed: " + ex.Message;
+        }
+    }
+
     internal void RefreshWpMap()
     {
         if (_wpLayer == null || _routeLayer == null) return;
@@ -804,6 +877,7 @@ public partial class FlightView : UserControl
         }
         _wpLayer.Features = wpFeatures;
         _routeLayer.Features = routeFeatures;
+        RefreshSoraVolume();
         _mapControl?.Map.Refresh();
     }
     internal void RefreshWaypointList()

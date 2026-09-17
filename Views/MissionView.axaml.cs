@@ -25,6 +25,7 @@ using Mapsui.Nts;
 using MBrush = Mapsui.Styles.Brush;
 using MColor = Mapsui.Styles.Color;
 using MPen = Mapsui.Styles.Pen;
+using InfraDroneDesktop.Services;
 
 namespace InfraDroneDesktop.Views;
 
@@ -43,6 +44,19 @@ public class Waypoint
 public partial class MissionView : UserControl
 {
     internal readonly List<Waypoint> _waypoints = new();
+
+    // SORA volume — placeholder values, MUST be replaced with the real vehicle's
+    // V0 (max operational speed) and CD (max characteristic dimension) before this
+    // is used for anything but visual reference. Loong 2160 and BCube have different
+    // numbers; this needs a per-vehicle source, not one hardcoded set.
+    private readonly SoraVolumeParameters _soraParams = new()
+    {
+        Airframe = SoraAirframe.Multirotor,
+        V0 = 15,   // PLACEHOLDER m/s
+        CD = 1.5,  // PLACEHOLDER m
+        HFG = 100  // PLACEHOLDER m — should come from the mission's actual planned altitude
+    };
+    private bool _showSoraVolume = true;
     internal double? MissionSpeedMps = null; // null = don't send a speed change, use vehicle default
     private Mapsui.UI.Avalonia.MapControl? _mapControl;
     private MemoryLayer? _wpLayer;
@@ -183,6 +197,29 @@ public partial class MissionView : UserControl
         RefreshList();
     }
 
+    private void RefreshSoraVolume()
+    {
+        System.Console.WriteLine($"[SORA] called, _mapControl={_mapControl != null}, waypoints={_waypoints.Count}");
+        if (_mapControl?.Map is not { } map) { System.Console.WriteLine("[SORA] bail: no map"); return; }
+        SoraVolumeLayers.RemoveFrom(map);
+        if (!_showSoraVolume || _waypoints.Count == 0) { System.Console.WriteLine("[SORA] bail: showSora=" + _showSoraVolume + " count=" + _waypoints.Count); return; }
+
+        try
+        {
+            var pts = _waypoints.Select(wp => (wp.Lat, wp.Lon)).ToList();
+            var geom = SoraVolumeLayers.Build(pts, _soraParams);
+            var layers = SoraVolumeLayers.ToLayers(geom);
+            System.Console.WriteLine($"[SORA] built {layers.Count} layers; map had {map.Layers.Count} layers before add");
+            foreach (var layer in layers)
+                map.Layers.Add(layer);
+            System.Console.WriteLine($"[SORA] map has {map.Layers.Count} layers after add");
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine("[SORA] ERROR: " + ex);
+        }
+    }
+
     private void RefreshMap()
     {
         if (_wpLayer == null || _routeLayer == null) return;
@@ -224,6 +261,7 @@ public partial class MissionView : UserControl
 
         _wpLayer.Features = wpFeatures;
         _routeLayer.Features = routeFeatures;
+        RefreshSoraVolume();
         _mapControl?.Map.Refresh();
     }
 
