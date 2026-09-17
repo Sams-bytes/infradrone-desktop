@@ -740,6 +740,7 @@ public partial class FlightView : UserControl
 
     private bool _showSoraVolume = true;
     private readonly Cesium3DViewService _cesium3D = new();
+    private FenceBuildResult? _lastFence;   // last successfully built fence, or null
     private bool _addWpMode = false;
     private Avalonia.Point _wpPressPos;
 
@@ -820,6 +821,31 @@ public partial class FlightView : UserControl
                 map.Layers.Add(layer);
             if (_cesium3D.IsRunning)
                 _cesium3D.Publish(_waypoints.Select(w => (w.Lat, w.Lon, w.AltM)).ToList(), geom);
+
+            // Fence preview: the polygon that WOULD be uploaded, drawn so it can be
+            // inspected before any of it reaches a flight controller.
+            try
+            {
+                var meanLat = _waypoints.Average(w => w.Lat);
+                _lastFence = SoraFenceBuilder.Build(geom.GroundRiskBuffer, meanLat);
+                var fenceLayer = new MemoryLayer
+                {
+                    Name = "SORA_FENCE",
+                    Features = new List<IFeature> { new GeometryFeature(_lastFence.Polygon) },
+                    Style = new VectorStyle
+                    {
+                        Fill = null,
+                        Outline = new Mapsui.Styles.Pen(new Mapsui.Styles.Color(255, 255, 255, 230), 2)
+                    }
+                };
+                map.Layers.Add(fenceLayer);
+                MissionStatusText.Text = "Fence preview: " + _lastFence.Summary;
+            }
+            catch (Exception fex)
+            {
+                _lastFence = null;
+                MissionStatusText.Text = "Fence not buildable: " + fex.Message;
+            }
         }
         catch (ArgumentException ex)
         {
@@ -838,6 +864,55 @@ public partial class FlightView : UserControl
         catch (Exception ex)
         {
             MissionStatusText.Text = "3D view failed: " + ex.Message;
+        }
+    }
+
+    private async void OnUploadFence(object? s, RoutedEventArgs e)
+    {
+        if (_lastFence == null)
+        {
+            MissionStatusText.Text = "No fence built yet - plot a route first.";
+            return;
+        }
+        if (!CubeOrangeConnected)
+        {
+            MissionStatusText.Text = "Fence upload needs the Cube Orange (MAVLink 2). " +
+                                     "The BCube link is v1 and cannot accept fences.";
+            return;
+        }
+
+        var uploader = _mav?.CreateFenceUploader();
+        if (uploader == null) { MissionStatusText.Text = "Vehicle not ready for fence upload."; return; }
+
+        MissionStatusText.Text = $"Uploading fence ({_lastFence.Points.Count} points)...";
+        var result = await uploader.UploadAsync(_lastFence, FenceAction.Report);
+        MissionStatusText.Text = result.Message;
+        if (!result.Success) return;
+
+        // Read back and compare against what was sent. A fence that uploads but
+        // reads back different is worse than one that fails outright.
+        try
+        {
+            var readBack = await uploader.DownloadAsync();
+            if (readBack.Count != _lastFence.Points.Count)
+            {
+                MissionStatusText.Text = $"WARNING: sent {_lastFence.Points.Count} points, " +
+                                         $"vehicle reports {readBack.Count}. Do not enable this fence.";
+                return;
+            }
+            double worst = 0;
+            for (var i = 0; i < readBack.Count; i++)
+            {
+                worst = Math.Max(worst, Math.Abs(readBack[i].lat - _lastFence.Points[i].lat));
+                worst = Math.Max(worst, Math.Abs(readBack[i].lon - _lastFence.Points[i].lon));
+            }
+            MissionStatusText.Text = $"Fence verified: {readBack.Count} points match, " +
+                                     $"worst deviation {worst * 111000:F2} m. Still disabled.";
+        }
+        catch (Exception ex)
+        {
+            MissionStatusText.Text = "Uploaded, but read-back failed: " + ex.Message +
+                                     " - verify in Mission Planner before enabling.";
         }
     }
 

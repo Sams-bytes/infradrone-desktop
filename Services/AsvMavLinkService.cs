@@ -35,6 +35,7 @@ namespace InfraDroneDesktop.Services
         private TelemetryClient? _telemetryClient;
         private GnssClient? _gnssClient;
         private ParamsClient? _paramsClient;
+        private MissionClient? _missionClient;   // used for geofence upload
         private MavlinkDeviceBrowser? _browser;
         private IDisposable? _deviceSubscription;
         private readonly System.Collections.Generic.List<IDisposable> _telemetrySubscriptions = new();
@@ -157,6 +158,22 @@ namespace InfraDroneDesktop.Services
             });
         }
 
+        /// <summary>
+        /// Builds a fence uploader for the connected vehicle, or null if nothing is
+        /// connected yet. Cube Orange only - the BCube link is MAVLink v1 and
+        /// ArduPilot will not accept a fence over it.
+        /// </summary>
+        public FenceUploadService? CreateFenceUploader()
+        {
+            if (_connection == null || _missionClient == null || _lastIdentity == null || _lastSeq == null)
+                return null;
+            return new FenceUploadService(_connection, _missionClient, _paramsClient,
+                                          _lastIdentity, _lastSeq);
+        }
+
+        private MavlinkClientIdentity? _lastIdentity;
+        private IPacketSequenceCalculator? _lastSeq;
+
         private void SetupVehicleClient(IMavlinkDevice device)
         {
             try
@@ -170,6 +187,7 @@ namespace InfraDroneDesktop.Services
                 var identity = new MavlinkClientIdentity(
                     254, 1, device.SystemId, device.ComponentId);
                 var seq = new PacketSequenceCalculator();
+                _lastIdentity = identity; _lastSeq = seq;
 
                 _vehicle = new ArduPlaneClient(_connection!, identity, new VehicleClientConfig(), seq,
                     System.Reactive.Concurrency.Scheduler.Default);
@@ -180,6 +198,7 @@ namespace InfraDroneDesktop.Services
                     System.Reactive.Concurrency.Scheduler.Default);
                 _gnssClient = new GnssClient(_connection!, identity, seq);
                 _paramsClient = new ParamsClient(_connection!, identity, seq, new ParameterClientConfig());
+                _missionClient = new MissionClient(_connection!, identity, seq, new MissionClientConfig());
 
                 Console.WriteLine($"[AsvMavLink] Vehicle client ready for sysid={identity.TargetSystemId}, compid={identity.TargetComponentId}");
                 Telemetry.Connected = true;
