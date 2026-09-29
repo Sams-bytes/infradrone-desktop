@@ -18,3 +18,12 @@ filter_env/
 groningen_traffic_signs.geojson
 solar_train_env/
 semantic_search_env/
+
+# Asset Monitor data and secrets
+tools/ownership/secrets/
+tools/ownership/egms_cache/
+tools/ownership/screening_out/
+tools/ownership/ownership_out/
+tools/ownership/.venv/
+tools/ownership/*_console.log
+*.bak_assetmonitor

@@ -85,6 +85,7 @@
             <Button Content="🤖  AI" Classes="nav" Click="OnAiView"/>
             <Button Content="🗺  Survey &amp; Processing" Classes="nav" Click="OnSurveyAndProcessingView"/>
             <Button Content="🚦  Traffic Intelligence" Classes="nav" Click="OnTrafficIntelligenceView"/>
+            <Button Content="🏛  Asset Monitor" Classes="nav" Click="OnAssetMonitorView"/>
           </StackPanel>
         </Expander>
 

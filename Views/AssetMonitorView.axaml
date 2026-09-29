@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.AssetMonitorView"
+             Background="{DynamicResource AppContentBg}">
+  <Grid RowDefinitions="Auto,*">
+    <Border Grid.Row="0" Background="{DynamicResource AppPanelBg}" Padding="16,12"
+            BorderBrush="{DynamicResource AppPanelBorder}" BorderThickness="0,0,0,1">
+      <StackPanel Spacing="8">
+        <TextBlock Text="🏛 Asset Monitor — Province of Groningen" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource AppTextPrimary}"/>
+        <TextBlock Text="Official asset registers · satellite ground-motion screening · targeted drone inspection · NEN 2767 condition scores"
+                   FontSize="11" Foreground="{DynamicResource AppTextMuted}" TextWrapping="Wrap"/>
+        <WrapPanel Orientation="Horizontal">
+          <Button Name="BtnSubRegister" Content="🗂 Asset Register" Click="OnSubNav" Margin="0,0,6,0"
+                  Background="{DynamicResource AppAccentBg}" Foreground="{DynamicResource AppAccentFg}" BorderBrush="{DynamicResource AppAccentFg}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubSatellite" Content="🛰 Satellite Screening" Click="OnSubNav" Margin="0,0,6,0"
+                  Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubTasks" Content="📋 Inspection Tasks" Click="OnSubNav" Margin="0,0,6,0"
+                  Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubCondition" Content="🏗 Condition (NEN 2767)" Click="OnSubNav" Margin="0,0,6,0"
+                  Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubValue" Content="💶 Value &amp; Audit" Click="OnSubNav" Margin="0,0,6,0"
+                  Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+        </WrapPanel>
+      </StackPanel>
+    </Border>
+    <Grid Grid.Row="1" Name="ContentHost"/>
+  </Grid>
+</UserControl>

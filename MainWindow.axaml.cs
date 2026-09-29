@@ -325,6 +325,13 @@ public partial class MainWindow : Window
     private Views.MavLinkTestView? _mavLinkTestView;
     private Views.FailsafeMonitorView? _failsafeMonitorView;
     private Views.StoryModeView? _storyModeView;
+    private Views.AssetMonitorView? _assetMonitorView;
+    private void OnAssetMonitorView(object? sender, RoutedEventArgs e)
+    {
+        if (_assetMonitorView == null) _assetMonitorView = new Views.AssetMonitorView();
+        ContentArea.Child = _assetMonitorView;
+    }
+
     private Views.TrafficIntelligenceView? _trafficIntelligenceView;
     private void OnTrafficIntelligenceView(object? sender, RoutedEventArgs e)
     {
