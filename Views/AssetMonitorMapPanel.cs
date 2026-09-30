@@ -53,6 +53,11 @@ internal sealed class AmMapPanel : UserControl
     private readonly Map _map = new();
     private readonly MemoryLayer _bridgeLayer = new() { Name = "Asset Monitor bridges", IsMapInfoLayer = true, Style = null };
     private readonly MemoryLayer _roadLayer = new() { Name = "Asset Monitor roads", IsMapInfoLayer = true, Style = null };
+    private readonly MemoryLayer _pointLayer = new() { Name = "Asset Monitor radar points", IsMapInfoLayer = true, Style = null };
+    private readonly CheckBox _pointsCheck = new() { Content = "Radar points on flagged decks", Margin = new Thickness(12, 0, 12, 0) };
+    private List<IFeature> _allPoints = new();
+    private Dictionary<string, StructureResult>? _structure;
+    private DateTime _structureTime;
 
     private List<IFeature> _allBridges = new();
     private List<IFeature> _allRoads = new();
@@ -95,6 +100,7 @@ internal sealed class AmMapPanel : UserControl
         _map.Layers.Add(OpenStreetMap.CreateTileLayer("OSM Base"));
         _map.Layers.Add(_roadLayer);
         _map.Layers.Add(_bridgeLayer);
+        _map.Layers.Add(_pointLayer);
         var (x1, y1) = SphericalMercator.FromLonLat(6.15, 52.84);
         var (x2, y2) = SphericalMercator.FromLonLat(7.25, 53.56);
         _province = new MRect(x1, y1, x2, y2);
@@ -125,6 +131,9 @@ internal sealed class AmMapPanel : UserControl
         bar.Children.Add(home);
         bar.Children.Add(_roadsCheck);
         bar.Children.Add(_roadType);
+        _pointsCheck.Dyn(CheckBox.ForegroundProperty, "AppTextPrimary");
+        _pointsCheck.IsCheckedChanged += async (_, _) => await TogglePointsAsync();
+        bar.Children.Add(_pointsCheck);
         var legend = Am.M("   Roads: purple = Rijk · blue = Provincie · grey = Gemeente · cyan = Waterschap · yellow = Overig. Click any dot or road for details.");
         legend.VerticalAlignment = VerticalAlignment.Center;
         bar.Children.Add(legend);
@@ -270,6 +279,75 @@ internal sealed class AmMapPanel : UserControl
         }
     }
 
+    // =============================================================== radar measurement points (structure level)
+    private async Task TogglePointsAsync()
+    {
+        if (_pointsCheck.IsChecked != true) { _pointLayer.Features = new List<IFeature>(); Refresh(_pointLayer); return; }
+        if (!File.Exists(BridgePointsGeo)) { _status.Text = "No structure-level results yet — run them in the Satellite Screening sub-tab."; return; }
+        if (_allPoints.Count == 0)
+        {
+            _status.Text = "Loading radar points…";
+            try { _allPoints = await Task.Run(() => ReadFeatures(BridgePointsGeo, asPoints: true, styleFor: f => PointStyle(Num(f, "vel")))); }
+            catch (Exception ex) { _status.Text = $"Could not load radar points: {ex.Message}"; return; }
+        }
+        _pointLayer.Features = _allPoints;
+        Refresh(_pointLayer);
+        _status.Text = $"{_allPoints.Count:N0} radar measurement points on flagged bridge decks — zoom in on a bridge to see them";
+    }
+
+    private static readonly Dictionary<string, IStyle> PointStyles = new();
+    private static IStyle PointStyle(double? v)
+    {
+        // colour = line-of-sight velocity of the point itself (mm/yr)
+        var key = v is null ? "none" : v <= -4 ? "r" : v <= -2 ? "o" : v >= 2 ? "b" : "g";
+        lock (PointStyles)
+        {
+            if (!PointStyles.TryGetValue(key, out var st))
+            {
+                var c = key switch { "r" => new MColor(239, 68, 68), "o" => new MColor(245, 158, 11), "b" => new MColor(59, 130, 246), "g" => new MColor(34, 211, 238), _ => new MColor(148, 163, 184) };
+                PointStyles[key] = st = new SymbolStyle { Fill = new MBrush(c), Outline = new MPen(MColor.Black, 0.5f), SymbolScale = 0.22 };
+            }
+            return st;
+        }
+    }
+
+    private StructureResult? Structure(string? assetId)
+    {
+        if (assetId == null || !File.Exists(BridgePointsCsv)) return null;
+        var t = File.GetLastWriteTimeUtc(BridgePointsCsv);
+        if (_structure == null || t != _structureTime)
+        {
+            _structure = ReadStructureResults().GroupBy(s => s.AssetId).ToDictionary(g => g.Key, g => g.First());
+            _structureTime = t;
+        }
+        return _structure.TryGetValue(assetId, out var s) ? s : null;
+    }
+
+    private void ShowPointCard(IFeature f)
+    {
+        _cardBody.Children.Clear();
+        TextBlock T(string text, double size = 12, string color = "#e2e8f0", bool bold = false) => new()
+        {
+            Text = text, FontSize = size, TextWrapping = TextWrapping.Wrap,
+            Foreground = new SolidColorBrush(Avalonia.Media.Color.Parse(color)), FontWeight = bold ? FontWeight.Bold : FontWeight.Normal
+        };
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        header.Children.Add(T("📡 Radar measurement point", 14, "#ffffff", true));
+        var close = new Button { Content = "✕", Padding = new Thickness(6, 0), FontSize = 12 };
+        close.Click += (_, _) => _card.IsVisible = false;
+        Grid.SetColumn(close, 1);
+        header.Children.Add(close);
+        _cardBody.Children.Add(header);
+        string N(string k, string fmt) => Num(f, k) is double d ? d.ToString(fmt, CultureInfo.InvariantCulture) : "—";
+        _cardBody.Children.Add(T($"Velocity (line of sight): {N("vel", "0.0")} mm/yr", 14, "#ffffff", true));
+        _cardBody.Children.Add(T($"Satellite track: {Attr(f, "track") ?? "—"}"));
+        _cardBody.Children.Add(T($"Point quality (temporal coherence, 0–1): {N("coh", "0.00")}"));
+        _cardBody.Children.Add(T($"EGMS point ID: {Attr(f, "pid") ?? "—"}   ·   bridge register ID: {Attr(f, "asset_id") ?? "—"}", 11, "#94a3b8"));
+        _cardBody.Children.Add(T("One individual radar reflection on the bridge deck, as published by EGMS. Negative = moving away from the satellite (usually sinking). " +
+                                 "Colours: red ≤ −4, orange ≤ −2, cyan in between, blue ≥ +2 mm/yr.", 11, "#94a3b8"));
+        _card.IsVisible = true;
+    }
+
     // =============================================================== filters
     private void ApplyBridgeFilter()
     {
@@ -321,7 +399,9 @@ internal sealed class AmMapPanel : UserControl
     private void OnMapInfo(object? sender, MapInfoEventArgs e)
     {
         var f = e.MapInfo?.Feature;
-        if (f == null || (e.MapInfo?.Layer != _bridgeLayer && e.MapInfo?.Layer != _roadLayer)) return;
+        if (f == null) return;
+        if (e.MapInfo?.Layer == _pointLayer) { Avalonia.Threading.Dispatcher.UIThread.Post(() => ShowPointCard(f)); return; }
+        if (e.MapInfo?.Layer != _bridgeLayer && e.MapInfo?.Layer != _roadLayer) return;
         bool isBridge = e.MapInfo!.Layer == _bridgeLayer;
         Avalonia.Threading.Dispatcher.UIThread.Post(() => ShowCard(f, isBridge));
     }
@@ -378,6 +458,26 @@ internal sealed class AmMapPanel : UserControl
                 _cardBody.Children.Add(T($"Satellite points at bridge / surroundings: {F("up_local_n").Replace(".0", "")} / {F("up_ground_n").Replace(".0", "")}"));
                 _cardBody.Children.Add(T($"EGMS release {Attr(f, "egms_release") ?? "?"} · screened {Attr(f, "screened_utc") ?? "?"}", 11, "#94a3b8"));
                 _cardBody.Children.Add(T("Negative vertical = sinking. Few points = weaker evidence.", 11, "#94a3b8"));
+            }
+
+            // ---- structure level (radar points on the deck)
+            Section("MEASURED ON THE STRUCTURE (radar points on the deck)");
+            var sr = Structure(assetId);
+            if (sr == null) _cardBody.Children.Add(T("Not screened at structure level yet.", 12, "#94a3b8"));
+            else
+            {
+                var sc = StatusColor.GetValueOrDefault(sr.Status, StatusColor["Not screened"]);
+                _cardBody.Children.Add(new TextBlock { Text = "● " + sr.Status + (sr.TracksFlagging >= 2 ? " · confirmed from 2+ viewing directions" : ""),
+                    FontSize = 13, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap,
+                    Foreground = new SolidColorBrush(Avalonia.Media.Color.FromRgb((byte)sc.R, (byte)sc.G, (byte)sc.B)) });
+                if (sr.DiffLos.HasValue)
+                {
+                    string G(double? d, string fmt = "0.0") => d.HasValue ? d.Value.ToString(fmt, CultureInfo.InvariantCulture) : "—";
+                    _cardBody.Children.Add(T($"On the deck: {G(sr.DeckMedian)} mm/yr ({sr.DeckN} points) · around: {G(sr.RingMedian)} mm/yr ({sr.RingN} points)"));
+                    _cardBody.Children.Add(T($"Deck vs surroundings: {G(sr.DiffLos)} mm/yr · directions flagging {sr.TracksFlagging} of {sr.TracksQualifying} · strongest: {sr.Track}"));
+                    if (sr.Coherence.HasValue) _cardBody.Children.Add(T($"Point quality (coherence 0–1): {G(sr.Coherence, "0.00")}", 11, "#94a3b8"));
+                    _cardBody.Children.Add(T("Line of sight = towards/away from the satellite; negative usually means sinking. Tick “Radar points on flagged decks” to see each point.", 11, "#94a3b8"));
+                }
             }
 
             // ---- inspection

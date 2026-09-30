@@ -15,6 +15,7 @@ public partial class AssetMonitorView : UserControl
     public AssetMonitorView()
     {
         InitializeComponent();
+        _factories[BtnSubBriefing] = () => new AmBriefingPanel();
         _factories[BtnSubRegister] = () => new AmRegisterPanel();
         _factories[BtnSubMap] = () => new AmMapPanel();
         _factories[BtnSubSatellite] = () => new AmSatellitePanel();
@@ -27,10 +28,10 @@ public partial class AssetMonitorView : UserControl
         foreach (var b in _factories.Keys)
             b.Content = new TextBlock { Text = b.Content as string ?? "", FontSize = 13 };
 
-        var first = _factories[BtnSubRegister]();
-        _cache[BtnSubRegister] = first;
+        var first = _factories[BtnSubBriefing]();
+        _cache[BtnSubBriefing] = first;
         ContentHost.Children.Add(first);
-        ApplyNavStyle(BtnSubRegister);
+        ApplyNavStyle(BtnSubBriefing);
 
         // "📍 Show on map" from any sub-tab -> switch to the Map sub-tab and fly to the bridge
         AmNav.ShowOnMapRequested += (id, lat, lon) =>
