@@ -270,6 +270,10 @@ internal sealed class AmTasksPanel : AmPanel
     private readonly TextBlock _status = Am.M("");
     private readonly StackPanel _list = new() { Spacing = 2 };
     private List<InspectionTask> _tasks = new();
+    private readonly ComboBox _vehicle = new() { ItemsSource = new[] { "Quadcopter (BCube) — bridges", "Loong 2160 VTOL — road corridors" }, SelectedIndex = 0, Width = 280 };
+    private readonly TextBox _alt = new() { Text = "30", Width = 70 };
+    private readonly TextBox _offset = new() { Text = "20", Width = 70 };
+    private readonly TextBlock _planOut = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap };
 
     public AmTasksPanel()
     {
@@ -289,9 +293,46 @@ internal sealed class AmTasksPanel : AmPanel
             Reload();
         }));
         Root.Children.Add(buttons);
+
+        // flight plan settings
+        var plan = new StackPanel { Spacing = 6 };
+        plan.Children.Add(Am.H("✈ Flight plan settings (used by the “Flight plan” button of each task)"));
+        var row = new WrapPanel();
+        void Field(string label, Control c)
+        {
+            var l = Am.P(label);
+            l.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center;
+            l.Margin = new Thickness(0, 0, 6, 0);
+            row.Children.Add(l);
+            c.Margin = new Thickness(0, 0, 16, 0);
+            row.Children.Add(c);
+        }
+        Field("Aircraft:", _vehicle);
+        Field("Altitude above launch point (m):", _alt);
+        Field("Distance from the bridge (m):", _offset);
+        plan.Children.Add(row);
+        plan.Children.Add(Am.M("Bridges get an orbit around the deck with the camera pointed at the bridge; roads get a corridor along the centre line. " +
+                               "Every plan is checked against the official airspace file and saved as a standard .waypoints file (opens in QGroundControl). Always a DRAFT for the pilot to review."));
+        plan.Children.Add(_planOut);
+        Root.Children.Add(Am.Card(plan));
+
         Root.Children.Add(_status);
         Root.Children.Add(Am.Card(_list));
         AttachedToVisualTree += (_, _) => Reload();
+    }
+
+    private void MakePlan(InspectionTask task)
+    {
+        double? alt = Am.Num(_alt.Text), off = Am.Num(_offset.Text);
+        if (alt is null || off is null || off <= 0) { _planOut.Text = "Please enter a valid altitude and distance."; return; }
+        try
+        {
+            var (path, notes) = FlightPlanner.Generate(task, new FlightPlanner.Settings(_vehicle.SelectedIndex == 1, alt.Value, off.Value));
+            _planOut.Text = $"✈ {OwnerLabel(task.OwnerType, task.OwnerName)}\n• " + string.Join("\n• ", notes);
+            _planOut.Foreground = new SolidColorBrush(Color.Parse(notes.Any(n => n.StartsWith("⛔")) ? "#ef4444" : "#22d3ee"));
+            if (path != null) Am.OpenFolder(AmExtras.FlightPlanDir);
+        }
+        catch (Exception ex) { _planOut.Text = $"Could not make the flight plan: {ex.Message}"; }
     }
 
     private void Reload()
@@ -334,6 +375,24 @@ internal sealed class AmTasksPanel : AmPanel
                 copy,
                 Am.M(task.Aircraft),
                 combo));
+            var acts = new WrapPanel { Margin = new Thickness(90, 0, 0, 10) };
+            acts.Children.Add(Am.Btn("✈ Flight plan", (_, _) => MakePlan(task)));
+            acts.Children.Add(Am.Btn("📄 Report", (_, _) =>
+            {
+                try
+                {
+                    var path = InspectionReport.Build(task);
+                    Process.Start(new ProcessStartInfo("xdg-open", path) { UseShellExecute = false });
+                    _status.Text = $"Report opened in your browser — press Ctrl+P there and choose “Save as PDF”. File: {path}";
+                }
+                catch (Exception ex) { _status.Text = $"Could not make the report: {ex.Message}"; }
+            }));
+            acts.Children.Add(Am.Btn("📷 Photos folder", (_, _) =>
+            {
+                Am.OpenFolder(AmExtras.AssetFolder(task.AssetId));
+                _status.Text = "Put this asset's inspection photos (.jpg/.png) in the folder that opened; they appear in its report.";
+            }));
+            _list.Children.Add(acts);
         }
     }
 }

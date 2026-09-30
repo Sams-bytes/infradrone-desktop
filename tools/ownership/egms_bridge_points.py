@@ -45,11 +45,12 @@ import shapely
 from pyproj import Transformer
 from shapely.geometry import Polygon, box, shape
 
-SCRIPT_VERSION = "egms_bridge_points 0.2"
+SCRIPT_VERSION = "egms_bridge_points 0.4"
 API = "https://egms.land.copernicus.eu/insar-api/archive"
 
 # ---- screening settings: PLACEHOLDERS to be agreed with the province (recorded in the audit file) ----
 DECK_TOLERANCE_M = 3.0
+ROAD_TOLERANCE_M = 6.0    # roads: NWB is a centre line; half a provincial road width plus point position uncertainty
 RING_INNER_M = 20.0
 RING_OUTER_M = 300.0
 MIN_DECK_POINTS = 3
@@ -64,8 +65,13 @@ CACHE = HERE / "egms_cache" / "l2b"
 OUT = HERE / "screening_out"
 for d in (CACHE, OUT):
     d.mkdir(parents=True, exist_ok=True)
-logging.basicConfig(filename=OUT / "bridge_points_run.log", filemode="w", level=logging.INFO,
-                    format="%(asctime)s %(message)s")
+PREFIX = "bridge_points"          # becomes "road_points" with --assets roads
+ROAD_FIELDS = {"road_name": ("stt_naam",), "road_number": ("wegnummer",), "municipality": ("gme_naam",)}
+
+
+def setup_logging():
+    logging.basicConfig(filename=OUT / f"{PREFIX}_run.log", filemode="w", level=logging.INFO,
+                        format="%(asctime)s %(message)s", force=True)
 log = logging.info
 
 
@@ -123,9 +129,16 @@ def track_key(h):
 
 
 # ------------------------------------------------------------------ bridges
-def load_bridges(path):
+def load_bridges(path, roads=False):
     g = gpd.read_file(path)
-    id_col = next((c for c in g.columns if "lokaal" in c.lower() and "id" in c.lower()), None) \
+    if roads:
+        g = g[g["owner_type"].astype(str).str.startswith("Provincie")].copy()
+        for new, names in ROAD_FIELDS.items():
+            src = next((c for c in g.columns if c.lower() in names), None)
+            if src:
+                g[new] = g[src].astype(str).replace({"None": "", "nan": ""})
+    id_col = (next((c for c in g.columns if c.lower() == "wvk_id"), None) if roads else None) \
+        or next((c for c in g.columns if "lokaal" in c.lower() and "id" in c.lower()), None) \
         or next((c for c in g.columns if c.lower() in ("identificatie", "gml_id", "id")), None)
     g["asset_id"] = g[id_col].astype(str) if id_col else ("row_" + g.index.astype(str))
     rp = g.geometry.representative_point()
@@ -224,10 +237,20 @@ def main():
     ap.add_argument("--plan", action="store_true", help="only list files and download size")
     ap.add_argument("--token", default=str(HERE / "secrets" / "token.jwt"))
     ap.add_argument("--bridges", default=str(HERE / "ownership_out" / "bgt_bridges_by_owner.geojson"))
+    ap.add_argument("--assets", choices=["bridges", "roads"], default="bridges",
+                    help="roads = provincial road segments: points within ROAD_TOLERANCE_M of the centre line count as 'on the road'")
+    ap.add_argument("--roads", default=str(HERE / "ownership_out" / "roads_by_owner.geojson"))
     a = ap.parse_args()
     started = datetime.now(timezone.utc)
+    global PREFIX, DECK_TOLERANCE_M
+    roads = a.assets == "roads"
+    if roads:
+        PREFIX = "road_points"
+        DECK_TOLERANCE_M = ROAD_TOLERANCE_M
+        a.bridges = a.roads
+    setup_logging()
 
-    bridges, id_col = load_bridges(a.bridges)
+    bridges, id_col = load_bridges(a.bridges, roads)
     hull = bridges.to_crs(4326).geometry.union_all().convex_hull if hasattr(bridges.geometry, "union_all") \
         else bridges.to_crs(4326).geometry.unary_union.convex_hull
     headers = {"Authorization": f"Bearer {access_token(a.token)}", "Accept": "application/json"}
@@ -240,7 +263,7 @@ def main():
     plan = {"release": release, "files": len(hits), "total_gb": round(total / 1e9, 2),
             "cached_gb": round(cached / 1e9, 2), "to_download_gb": round((total - cached) / 1e9, 2),
             "tracks": dict(tracks), "checked_utc": started.isoformat(timespec="seconds")}
-    (OUT / "bridge_points_plan.json").write_text(json.dumps(plan, indent=2))
+    (OUT / f"{PREFIX}_plan.json").write_text(json.dumps(plan, indent=2))
 
     if a.plan:
         print("\n===== DOWNLOAD PLAN =====")
@@ -303,7 +326,7 @@ def screen(bridges, files, release):
         rows.append(rec)
     res = pd.DataFrame(rows).set_index("bridge")
 
-    out = bridges[["asset_id", "lon", "lat"] + [c for c in ("owner_type", "owner_name", "owner_code") if c in bridges.columns]].copy()
+    out = bridges[["asset_id", "lon", "lat"] + [c for c in ("owner_type", "owner_name", "owner_code", "road_name", "road_number", "municipality") if c in bridges.columns]].copy()
     out = out.join(res)
     out["bp_status"] = out["bp_status"].fillna("No points on structure")
     out["egms_release"] = release
@@ -319,17 +342,31 @@ def write_details(out, deck, ring, t, bridges):
     rg = {k: g for k, g in ring[ring["bridge"].isin(fl)].groupby("bridge")}
     tg = {k: g for k, g in t[t["bridge"].isin(fl)].groupby("bridge")}
     details = {}
+    to_ll = Transformer.from_crs("EPSG:28992", "EPSG:4326", always_xy=True)
     for idx in flagged:
         geom = bridges.geometry.iloc[idx]
         c = geom.centroid
+        # for a road (line): distance along the centre line, so the app can show WHERE along the stretch it moves
+        line = geom if geom.geom_type in ("LineString", "MultiLineString") else None
+        if line is not None and line.geom_type == "MultiLineString":
+            line = shapely.line_merge(line)
+            if line.geom_type != "LineString":
+                line = max(line.geoms, key=lambda g: g.length)
         polys = list(geom.geoms) if hasattr(geom, "geoms") else [geom]
-        outline = [[[round(x - c.x, 1), round(y - c.y, 1)] for x, y in p.simplify(0.3).exterior.coords] for p in polys if hasattr(p, "exterior")]
+        outline = [[[round(x - c.x, 1), round(y - c.y, 1)] for x, y in (p.simplify(0.3).exterior.coords if hasattr(p, "exterior") else p.simplify(0.3).coords)]
+                   for p in polys]
         def pts(df, n=None):
             if df is None or len(df) == 0:
                 return []
             if n and len(df) > n:
                 df = df.sample(n, random_state=0)
-            return [[round(x - c.x, 1), round(y - c.y, 1), round(float(v), 2), tr] for x, y, v, tr in zip(df["x"], df["y"], df["vel"], df["track"])]
+            lon, lat = to_ll.transform(df["x"].to_numpy(), df["y"].to_numpy())
+            along = (shapely.line_locate_point(line, shapely.points(df["x"].to_numpy(), df["y"].to_numpy()))
+                     if line is not None else [None] * len(df))
+            # [dx, dy, velocity, track, lon, lat, metres along the road (roads only)]
+            return [[round(x - c.x, 1), round(y - c.y, 1), round(float(v), 2), tr, round(float(lo), 6), round(float(la), 6),
+                     (round(float(al), 1) if al is not None else None)]
+                    for x, y, v, tr, lo, la, al in zip(df["x"], df["y"], df["vel"], df["track"], lon, lat, along)]
         tracks = []
         for _, r in tg.get(idx, pd.DataFrame()).iterrows():
             tracks.append({"track": r["track"], "deck_n": int(r["deck_n"]), "deck_med": round(float(r["deck_med"]), 2),
@@ -337,16 +374,23 @@ def write_details(out, deck, ring, t, bridges):
                            "ring_med": round(float(r["ring_med"]), 2) if pd.notna(r["ring_med"]) else None,
                            "diff": round(float(r["diff"]), 2) if pd.notna(r["diff"]) else None,
                            "qualifies": bool(r["qualifies"])})
+        outline_ll = []
+        for ring_xy in outline:
+            xs = [c.x + q[0] for q in ring_xy]; ys = [c.y + q[1] for q in ring_xy]
+            lo, la = to_ll.transform(xs, ys)
+            outline_ll.append([[round(float(a), 6), round(float(b), 6)] for a, b in zip(lo, la)])
         details[str(out.at[idx, "asset_id"])] = {
-            "outline": outline, "deck_points": pts(dg.get(idx)),
+            "outline": outline, "outline_lonlat": outline_ll,
+            "length_m": round(float(line.length), 1) if line is not None else None,
+            "deck_points": pts(dg.get(idx)),
             "ring_points": pts(rg.get(idx), MAX_RING_POINTS_SAVED),
             "ring_points_total": int(len(rg[idx])) if idx in rg else 0, "tracks": tracks}
-    (OUT / "bridge_points_details.json").write_text(json.dumps(details))
+    (OUT / f"{PREFIX}_details.json").write_text(json.dumps(details))
     log(f"details written for {len(details)} flagged bridges")
 
 
 def write_outputs(out, deck, files, release, bridges_path, id_col, n_bridges, started):
-    out.drop(columns="geometry", errors="ignore").to_csv(OUT / "bridge_points_screening.csv", index=False)
+    out.drop(columns="geometry", errors="ignore").to_csv(OUT / f"{PREFIX}_screening.csv", index=False)
 
     # the actual measurement points on flagged decks -> shown on the map, verifiable one by one
     flagged_idx = set(out.index[out["bp_status"].isin(["Priority", "Review"])])
@@ -355,7 +399,7 @@ def write_outputs(out, deck, files, release, bridges_path, id_col, n_bridges, st
         g = gpd.GeoDataFrame(fp[["vel", "coh", "track", "pid"]].assign(asset_id=out.loc[fp["bridge"], "asset_id"].to_numpy()),
                              geometry=gpd.points_from_xy(fp["x"], fp["y"]), crs=28992).to_crs(4326)
         g["pid"] = g["pid"].astype(str)
-        g.to_file(OUT / "bridge_points_measurements.geojson", driver="GeoJSON")
+        g.to_file(OUT / f"{PREFIX}_measurements.geojson", driver="GeoJSON")
 
     counts = out["bp_status"].value_counts().to_dict()
     audit = {
@@ -368,9 +412,9 @@ def write_outputs(out, deck, files, release, bridges_path, id_col, n_bridges, st
             "MIN_DECK_POINTS": MIN_DECK_POINTS, "MIN_RING_POINTS": MIN_RING_POINTS,
             "REVIEW_MM_YR": REVIEW_MM_YR, "PRIORITY_MM_YR": PRIORITY_MM_YR},
         "result_counts": counts}
-    (OUT / "bridge_points_audit.json").write_text(json.dumps(audit, indent=2, default=str))
+    (OUT / f"{PREFIX}_audit.json").write_text(json.dumps(audit, indent=2, default=str))
 
-    print("\n===== STRUCTURE-LEVEL SUMMARY =====")
+    print("\n===== " + ("ON-ROAD SUMMARY (provincial roads)" if PREFIX == "road_points" else "STRUCTURE-LEVEL SUMMARY") + " =====")
     for k, v in sorted(counts.items(), key=lambda kv: -kv[1]):
         print(f"  {v:>6}  {k}")
     both = int((out["bp_tracks_flagging"].fillna(0) >= 2).sum())

@@ -59,6 +59,7 @@ internal sealed class AmBridgeCheckPanel : UserControl
         hs.Children.Add(btns);
         hs.Children.Add(_runStatus);
         hs.Children.Add(_runSummary);
+        hs.Children.Add(new ExtrasBar(() => Load()));
         hero.Child = hs;
 
         // ---------------- how it works (3 simple steps)
@@ -298,6 +299,11 @@ internal sealed class AmBridgeCheckPanel : UserControl
             _detail.Children.Add(row);
         }
 
+        // movement over time + earthquakes nearby
+        var histIds = b.PartIds.Count > 0 ? b.PartIds : new List<string> { b.AssetId };
+        _detail.Children.Add(Am.Card(new TimeSeriesView("bridges", histIds, "Bridge")));
+        _detail.Children.Add(Am.Card(new QuakesView(b.Lat, b.Lon)));
+
         // facts + actions
         _detail.Children.Add(Am.M($"Strongest direction: {b.Track} · {b.DeckN} points on the deck, {b.RingN} around it" +
                                   (b.Coherence.HasValue ? $" · point quality {b.Coherence.Value.ToString("0.00", CultureInfo.InvariantCulture)} (0–1)" : "") +
@@ -326,7 +332,7 @@ internal sealed class AmBridgeCheckPanel : UserControl
     }
 
     /// <summary>Pairs of bars per satellite track: ground (left) vs deck (right), zero line in the middle.</summary>
-    private static Control Bars(List<TrackEvidence> tracks)
+    internal static Control Bars(List<TrackEvidence> tracks, string assetWord = "Bridge", string groundWord = "Ground")
     {
         var shown = tracks.Where(t => t.RingMed.HasValue).ToList();
         if (shown.Count == 0) return Am.M("No per-direction numbers available.");
@@ -361,8 +367,8 @@ internal sealed class AmBridgeCheckPanel : UserControl
             Bar(2, t.DeckMed, t.Diff is double df && Math.Abs(df) >= 4 ? Red : t.Diff is double df2 && Math.Abs(df2) >= 2 ? Orange : Cyan);
             pair.Children.Add(chart);
             var labels = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*") };
-            var l1 = Am.M($"Ground\n{(t.RingMed ?? 0).ToString("+0.0;−0.0;0.0", CultureInfo.InvariantCulture)}"); l1.TextAlignment = TextAlignment.Center;
-            var l2 = Am.M($"Bridge\n{t.DeckMed.ToString("+0.0;−0.0;0.0", CultureInfo.InvariantCulture)}"); l2.TextAlignment = TextAlignment.Center;
+            var l1 = Am.M($"{groundWord}\n{(t.RingMed ?? 0).ToString("+0.0;−0.0;0.0", CultureInfo.InvariantCulture)}"); l1.TextAlignment = TextAlignment.Center;
+            var l2 = Am.M($"{assetWord}\n{t.DeckMed.ToString("+0.0;−0.0;0.0", CultureInfo.InvariantCulture)}"); l2.TextAlignment = TextAlignment.Center;
             Grid.SetColumn(l2, 1);
             labels.Children.Add(l1); labels.Children.Add(l2);
             pair.Children.Add(labels);
@@ -396,12 +402,9 @@ internal sealed class RadarPlot : Control
     {
         var s = Bounds.Size;
         ctx.DrawRectangle(Bg, null, new Rect(s));
-        double extent = 300;
-        if (_zoomed)
-        {
-            var xs = _ev.Outline.SelectMany(p => p).Select(p => Math.Max(Math.Abs(p.X), Math.Abs(p.Y))).DefaultIfEmpty(20).Max();
-            extent = Math.Max(25, xs * 1.8);
-        }
+        // whole view = the 300 m surroundings (or the full length of a long road segment); zoomed = the asset itself
+        var xs = _ev.Outline.SelectMany(p => p).Select(p => Math.Max(Math.Abs(p.X), Math.Abs(p.Y))).DefaultIfEmpty(20).Max();
+        double extent = _zoomed ? Math.Max(25, xs * 1.8) : Math.Max(300, xs * 1.1);
         double k = Math.Min(s.Width, s.Height) / 2 / (extent * 1.05);
         var c = new Point(s.Width / 2, s.Height / 2);
         Point P(double dx, double dy) => new(c.X + dx * k, c.Y - dy * k);

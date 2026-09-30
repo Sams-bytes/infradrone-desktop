@@ -43,7 +43,7 @@ import jwt
 import pandas as pd
 import requests
 
-SCRIPT_VERSION = "egms_screen 0.3"
+SCRIPT_VERSION = "egms_screen 0.4"
 API = "https://egms.land.copernicus.eu/insar-api/archive"
 GRONINGEN_BBOX = [[6.15, 52.84], [7.25, 53.56]]     # lon/lat; API limit is 5 degrees
 
@@ -60,9 +60,15 @@ EGMS_DIR = HERE / "egms_cache"
 OUT = HERE / "screening_out"
 for d in (EGMS_DIR, OUT):
     d.mkdir(parents=True, exist_ok=True)
-logging.basicConfig(filename=OUT / "run.log", filemode="w", level=logging.INFO,
-                    format="%(asctime)s %(message)s")
 log = logging.info
+
+
+def setup_logging(name):
+    logging.basicConfig(filename=OUT / name, filemode="w", level=logging.INFO, format="%(asctime)s %(message)s", force=True)
+
+
+# road names from the NWB (National Road Database) - copied to the ranked list so people recognise the road
+ROAD_FIELDS = {"road_name": ("stt_naam",), "road_number": ("wegnummer",), "municipality": ("gme_naam",)}
 
 
 def sha256(path):
@@ -205,16 +211,32 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--token", default=str(HERE / "secrets" / "token.jwt"))
     ap.add_argument("--bridges", default=str(HERE / "ownership_out" / "bgt_bridges_by_owner.geojson"))
+    ap.add_argument("--assets", choices=["bridges", "roads"], default="bridges",
+                    help="roads = provincial road segments from the NWB (National Road Database)")
+    ap.add_argument("--roads", default=str(HERE / "ownership_out" / "roads_by_owner.geojson"))
     a = ap.parse_args()
     started = datetime.now(timezone.utc)
+    roads = a.assets == "roads"
+    global LOCAL_RADIUS_M, RING_RADIUS_M
+    if roads:
+        # a road is a line: points within 100 m of the centre line = "at the road" (Ortho grid is 100 m)
+        LOCAL_RADIUS_M, RING_RADIUS_M = 100, 1000
+    setup_logging("roads_run.log" if roads else "run.log")
+    prefix = "roads_" if roads else "bridges_"
+    input_path = a.roads if roads else a.bridges
 
     headers = {"Authorization": f"Bearer {access_token(a.token)}", "Accept": "application/json"}
     release = latest_release(headers)
     print(f"  EGMS release: {release}")
     files = download_ortho(headers, release)
 
-    bridges = gpd.read_file(a.bridges).to_crs(28992)
-    print(f"  bridges loaded: {len(bridges)}")
+    bridges = gpd.read_file(input_path).to_crs(28992)
+    if roads:
+        bridges = bridges[bridges["owner_type"].astype(str).str.startswith("Provincie")].copy()
+        if bridges.empty:
+            raise RuntimeError("No provincial road segments found in the road register file")
+    bridges = bridges.reset_index(drop=True)
+    print(f"  {'provincial road segments' if roads else 'bridges'} loaded: {len(bridges)}")
     results = bridges.copy()
     for product, label in (("ORTHO-UP", "up"), ("ORTHO-EAST", "east")):
         pts = points_gdf(files, product)
@@ -229,32 +251,39 @@ def main():
     results["screened_utc"] = started.isoformat(timespec="seconds")
 
     # stable asset identifier from the register (BGT local id) + location for the inspection task list
-    id_col = next((c for c in results.columns if "lokaal" in c.lower() and "id" in c.lower()), None) \
+    id_col = next((c for c in results.columns if c.lower() == "wvk_id"), None) if roads else None
+    id_col = id_col or next((c for c in results.columns if "lokaal" in c.lower() and "id" in c.lower()), None) \
         or next((c for c in results.columns if c.lower() in ("identificatie", "gml_id", "id")), None)
+    for new, names in ROAD_FIELDS.items():
+        src = next((c for c in results.columns if c.lower() in names), None)
+        if src:
+            results[new] = results[src].astype(str).replace({"None": "", "nan": ""})
     log(f"asset id column: {id_col}")
     results["asset_id"] = results[id_col].astype(str) if id_col else ("row_" + results.index.astype(str))
     rp = results.to_crs(4326).geometry.representative_point()
     results["lon"] = rp.x.round(6)
     results["lat"] = rp.y.round(6)
 
-    results.to_crs(4326).to_file(OUT / "bridges_screening.geojson", driver="GeoJSON")
-    keep = [c for c in ["asset_id", "lon", "lat", "owner_type", "owner_name", "owner_code", "screening", "up_local", "up_ground",
+    results.to_crs(4326).to_file(OUT / f"{prefix}screening.geojson", driver="GeoJSON")
+    keep = [c for c in ["asset_id", "lon", "lat", "owner_type", "owner_name", "owner_code", "road_name", "road_number",
+                        "municipality", "screening", "up_local", "up_ground",
                         "up_diff", "east_diff", "up_local_n", "up_ground_n"] if c in results.columns]
     ranked = results.assign(max_abs=results[[c for c in ("up_diff", "east_diff") if c in results]].abs().max(axis=1))
-    ranked.sort_values("max_abs", ascending=False)[keep + ["max_abs"]].to_csv(OUT / "bridges_ranked.csv")
+    ranked.sort_values("max_abs", ascending=False)[keep + ["max_abs"]].to_csv(OUT / f"{prefix}ranked.csv")
 
     manifest = {
         "script": SCRIPT_VERSION, "run_utc": started.isoformat(timespec="seconds"),
         "egms_api": API, "egms_release": release, "egms_files": files,
         "asset_id_field": id_col or "row number (no register id column found)",
-        "bridges_input": {"path": a.bridges, "sha256": sha256(a.bridges), "count": len(bridges)},
+        ("assets_input" if roads else "bridges_input"): {"path": input_path, "sha256": sha256(input_path), "count": len(bridges),
+                                                          "kind": "provincial road segments (NWB)" if roads else "bridge deck parts (BGT)"},
         "settings_placeholders_to_agree_with_province": {
             "LOCAL_RADIUS_M": LOCAL_RADIUS_M, "RING_RADIUS_M": RING_RADIUS_M,
             "MIN_LOCAL_POINTS": MIN_LOCAL_POINTS, "MIN_RING_POINTS": MIN_RING_POINTS,
             "REVIEW_MM_YR": REVIEW_MM_YR, "PRIORITY_MM_YR": PRIORITY_MM_YR},
         "result_counts": results["screening"].value_counts().to_dict(),
     }
-    (OUT / "audit_manifest.json").write_text(json.dumps(manifest, indent=2, default=str))
+    (OUT / ("roads_audit_manifest.json" if roads else "audit_manifest.json")).write_text(json.dumps(manifest, indent=2, default=str))
 
     print("\n===== SCREENING SUMMARY =====")
     for k, v in results["screening"].value_counts().items():
