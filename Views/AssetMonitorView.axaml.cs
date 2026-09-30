@@ -19,6 +19,7 @@ public partial class AssetMonitorView : UserControl
         _factories[BtnSubRegister] = () => new AmRegisterPanel();
         _factories[BtnSubMap] = () => new AmMapPanel();
         _factories[BtnSubSatellite] = () => new AmSatellitePanel();
+        _factories[BtnSubBridgeCheck] = () => new AmBridgeCheckPanel();
         _factories[BtnSubTasks] = () => new AmTasksPanel();
         _factories[BtnSubCondition] = () => new AmConditionPanel();
         _factories[BtnSubValue] = () => new AmValueAuditPanel();

@@ -46,12 +46,6 @@ internal sealed class AmSatellitePanel : AmPanel
     private readonly WrapPanel _watch = new();
     private readonly StackPanel _table = new() { Spacing = 1 };
     private double _review = 2, _priority = 4;
-    // structure-level (EGMS Calibrated L2b points)
-    private readonly TextBlock _bpStatus = Am.M("");
-    private readonly TextBlock _bpPlan = Am.Mono("");
-    private readonly WrapPanel _bpKpis = new();
-    private readonly WrapPanel _bpWatch = new();
-    private readonly Button _bpPlanBtn, _bpRunBtn;
 
     public AmSatellitePanel()
     {
@@ -128,29 +122,7 @@ internal sealed class AmSatellitePanel : AmPanel
         Root.Children.Add(Am.H("🎯 Watchlist — the bridges moving most differently from their surroundings"));
         Root.Children.Add(_watch);
 
-        // ---------------- structure-level screening (radar points on the deck itself)
-        var bp = new StackPanel { Spacing = 8 };
-        bp.Children.Add(Am.H("🔬 Structure-level screening — radar points measured on the bridge deck itself"));
-        bp.Children.Add(Am.P(
-            "Uses EGMS Calibrated (level L2b) point data: the individual radar reflections, instead of the 100 m grid above. " +
-            "Bridges reflect radar strongly, so there are often measurement points on the deck. For every bridge deck the software compares " +
-            "the points ON the deck with the points on the ground 20–300 m around it, separately for each satellite track (viewing direction). " +
-            "A bridge flagged from two viewing directions is much stronger evidence."));
-        bp.Children.Add(Am.M(
-            "Movement is measured along the satellite's line of sight (towards or away from the satellite), not purely up-down. " +
-            "Negative = moving away from the satellite, usually sinking. Thresholds are placeholder settings to agree with the province. " +
-            "The point files are large — check the download size first; downloaded files are kept and re-used."));
-        var bpButtons = new WrapPanel();
-        _bpPlanBtn = Am.Btn("📦 Check download size", async (_, _) => await RunBridgePointsAsync(plan: true));
-        _bpRunBtn = Am.Btn("▶ Run structure-level screening", async (_, _) => await RunBridgePointsAsync(plan: false));
-        bpButtons.Children.Add(_bpPlanBtn);
-        bpButtons.Children.Add(_bpRunBtn);
-        bp.Children.Add(bpButtons);
-        bp.Children.Add(_bpStatus);
-        bp.Children.Add(_bpPlan);
-        bp.Children.Add(_bpKpis);
-        bp.Children.Add(_bpWatch);
-        Root.Children.Add(Am.Card(bp));
+        Root.Children.Add(Am.Card(Am.P("🔬 Want to know whether the bridge ITSELF moves, not just the ground around it? Open the 🔬 Bridge Check sub-tab.")));
 
         // ---------------- technical details (collapsed)
         var tech = new StackPanel { Spacing = 8 };
@@ -162,103 +134,7 @@ internal sealed class AmSatellitePanel : AmPanel
         tech.Children.Add(_table);
         Root.Children.Add(new Expander { Header = "Technical details, limitations and full ranked table", Content = tech, HorizontalAlignment = HorizontalAlignment.Stretch });
 
-        AttachedToVisualTree += (_, _) => { CheckToken(); _ = LoadAsync(); LoadBridgePoints(); };
-    }
-
-    // =============================================================== structure level
-    private void LoadBridgePoints()
-    {
-        _bpKpis.Children.Clear();
-        _bpWatch.Children.Clear();
-        var plan = ReadJson(BridgePointsPlan);
-        if (plan != null)
-        {
-            var tracks = (plan["tracks"] as System.Text.Json.Nodes.JsonObject)?.Count ?? 0;
-            _bpPlan.Text = $"Last size check ({plan["checked_utc"]}): {plan["files"]} files from {tracks} satellite tracks · " +
-                           $"total {plan["total_gb"]} GB · already downloaded {plan["cached_gb"]} GB · still to download {plan["to_download_gb"]} GB";
-        }
-        List<StructureResult> res;
-        try { res = ReadStructureResults(); }
-        catch (Exception ex) { _bpStatus.Text = $"Could not read structure-level results: {ex.Message}"; return; }
-        if (res.Count == 0) { _bpKpis.Children.Add(Am.M("No structure-level results yet — check the download size, then run it.")); return; }
-
-        int withData = res.Count(r => r.Status is "Priority" or "Review" or "No unusual movement");
-        int p = res.Count(r => r.Status == "Priority"), rv = res.Count(r => r.Status == "Review");
-        var flaggedBridges = GroupStructure(res.Where(r => r.Status is "Priority" or "Review")).ToList();
-        int two = flaggedBridges.Count(r => r.TracksFlagging >= 2);
-        int pB = flaggedBridges.Count(r => r.Status == "Priority"), rB = flaggedBridges.Count(r => r.Status == "Review");
-        int few = res.Count(r => r.Status == "Too few points on structure"), none = res.Count(r => r.Status == "No points on structure");
-        _bpKpis.Children.Add(Kpi("Decks measured on the structure", withData, "#22d3ee", "enough radar points on deck and around it"));
-        _bpKpis.Children.Add(Kpi("Priority bridges (structure)", pB, Red, $"deck moves ≥ {_priority:0.#} mm/yr differently · {p} deck parts"));
-        _bpKpis.Children.Add(Kpi("Review bridges (structure)", rB, Orange, $"deck moves ≥ {_review:0.#} mm/yr differently · {rv} deck parts"));
-        _bpKpis.Children.Add(Kpi("Bridges confirmed by 2+ viewing directions", two, "#a855f7", "strongest satellite evidence"));
-        _bpKpis.Children.Add(Kpi("Too few points on deck", few, Grey, "some points, not enough to judge"));
-        _bpKpis.Children.Add(Kpi("No points on deck", none, Grey, "use the area screening above"));
-
-        int rank = 0;
-        foreach (var s in flaggedBridges.OrderByDescending(r => r.TracksFlagging).ThenByDescending(r => Math.Abs(r.DiffLos ?? 0)).Take(12))
-            _bpWatch.Children.Add(StructureCard(++rank, s));
-    }
-
-    private Control StructureCard(int rank, StructureResult s)
-    {
-        var color = s.Status == "Priority" ? Red : Orange;
-        var sp = new StackPanel { Spacing = 8 };
-        var badge = new Border
-        {
-            Width = 30, Height = 30, CornerRadius = new CornerRadius(15), Background = new SolidColorBrush(Color.Parse(color)),
-            Child = new TextBlock { Text = rank.ToString(), FontWeight = FontWeight.Bold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center }
-        };
-        var title = new StackPanel { Spacing = 1, Margin = new Thickness(10, 0, 0, 0) };
-        title.Children.Add(new TextBlock { Text = s.Status.ToUpperInvariant() + (s.TracksFlagging >= 2 ? " · CONFIRMED 2+ DIRECTIONS" : ""), FontSize = 11, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Color.Parse(color)) });
-        title.Children.Add(Am.H(s.ManagerLabel));
-        var head = new StackPanel { Orientation = Orientation.Horizontal };
-        head.Children.Add(badge);
-        head.Children.Add(title);
-        sp.Children.Add(head);
-        sp.Children.Add(Diverging("📡 Line of sight", s.DiffLos, "away from satellite", "towards satellite"));
-        sp.Children.Add(Am.M($"On the deck: {Am.F(s.DeckMedian)} mm/yr ({s.DeckN} points) · around: {Am.F(s.RingMedian)} mm/yr ({s.RingN} points)"));
-        if (s.Parts > 1) sp.Children.Add(Am.M($"{s.Parts} register deck parts at this spot share these same radar points — shown once."));
-        sp.Children.Add(Am.M($"Viewing directions flagging: {s.TracksFlagging} of {s.TracksQualifying} measured · strongest: {s.Track}" +
-                             (s.Coherence.HasValue ? $" · point quality (coherence 0–1): {Am.F(s.Coherence, "0.00")}" : "")));
-        if (s.Lat.HasValue && s.Lon.HasValue)
-        {
-            var go = Am.Btn("📍 Show on map", (_, _) => AmNav.ShowOnMap(s.AssetId, s.Lat!.Value, s.Lon!.Value));
-            go.Margin = new Thickness(0);
-            sp.Children.Add(go);
-        }
-        var accent = new Border { BorderThickness = new Thickness(0, 3, 0, 0), BorderBrush = new SolidColorBrush(Color.Parse(color)), Padding = new Thickness(0, 10, 0, 0), Child = sp };
-        var card = Am.Card(accent);
-        card.Width = 330;
-        card.Margin = new Thickness(0, 0, 12, 12);
-        card.Opacity = 0;
-        card.Transitions = new Transitions { new DoubleTransition { Property = Visual.OpacityProperty, Duration = TimeSpan.FromMilliseconds(500) } };
-        After(200 + rank * 90, () => card.Opacity = 1);
-        return card;
-    }
-
-    private async Task RunBridgePointsAsync(bool plan)
-    {
-        _bpPlanBtn.IsEnabled = false;
-        _bpRunBtn.IsEnabled = false;
-        if (!plan) _pulse.Scanning = true;
-        _bpStatus.Text = plan ? "Asking EGMS which point files cover the province…"
-                              : "Downloading and reading radar points — the first run can take a long time (large files)…";
-        try
-        {
-            var r = await RunScriptAsync(BridgePointsScript, line => Dispatcher.UIThread.Post(() => _bpStatus.Text = line),
-                                         plan ? new[] { "--plan" } : Array.Empty<string>());
-            LoadBridgePoints();
-            _bpPlan.Text = r.Summary;
-            _bpStatus.Text = r.ExitCode == 0 ? "Finished." : $"Script ended with code {r.ExitCode}. Full output: {r.ConsoleLog}";
-        }
-        catch (Exception ex) { _bpStatus.Text = $"Could not run the structure-level script: {ex.Message}"; }
-        finally
-        {
-            _pulse.Scanning = false;
-            _bpPlanBtn.IsEnabled = File.Exists(TokenFile);
-            _bpRunBtn.IsEnabled = File.Exists(TokenFile);
-        }
+        AttachedToVisualTree += (_, _) => { CheckToken(); _ = LoadAsync(); };
     }
 
     // =============================================================== data -> visuals

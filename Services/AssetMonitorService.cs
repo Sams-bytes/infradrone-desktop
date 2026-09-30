@@ -33,11 +33,57 @@ public static class AssetMonitorService
     public static string RankedCsv => Path.Combine(ScreeningOut, "bridges_ranked.csv");
     public static string ManifestFile => Path.Combine(ScreeningOut, "audit_manifest.json");
     public static string TasksFile => Path.Combine(ToolsDir, "inspection_tasks.json");
+    // bridge-level (structure) screening with EGMS Calibrated (L2b) points
+    public static string BridgePointsScript => Path.Combine(ToolsDir, "egms_bridge_points.py");
+    public static string BridgePointsCsv => Path.Combine(ScreeningOut, "bridge_points_screening.csv");
+    public static string BridgePointsGeo => Path.Combine(ScreeningOut, "bridge_points_measurements.geojson");
+    public static string BridgePointsAudit => Path.Combine(ScreeningOut, "bridge_points_audit.json");
+    public static string BridgePointsPlan => Path.Combine(ScreeningOut, "bridge_points_plan.json");
+    public static string BridgePointsDetails => Path.Combine(ScreeningOut, "bridge_points_details.json");
+
+    // ------------------------------------------------------------------ evidence per flagged bridge (for the Bridge Check pictures)
+    public sealed record RadarPoint(double Dx, double Dy, double Vel, string Track);
+    public sealed record TrackEvidence(string Track, int DeckN, double DeckMed, int RingN, double? RingMed, double? Diff, bool Qualifies);
+    public sealed class BridgeEvidence
+    {
+        public List<List<(double X, double Y)>> Outline = new();
+        public List<RadarPoint> Deck = new(), Ring = new();
+        public int RingTotal;
+        public List<TrackEvidence> Tracks = new();
+    }
+
+    public static Dictionary<string, BridgeEvidence> ReadEvidence()
+    {
+        var result = new Dictionary<string, BridgeEvidence>();
+        if (!File.Exists(BridgePointsDetails)) return result;
+        if (JsonNode.Parse(File.ReadAllText(BridgePointsDetails)) is not JsonObject root) return result;
+        double Dbl(JsonNode? n) => n == null ? 0 : n.GetValue<double>();
+        foreach (var (id, node) in root)
+        {
+            if (node == null) continue;
+            var ev = new BridgeEvidence();
+            if (node["outline"] is JsonArray polys)
+                foreach (var poly in polys.OfType<JsonArray>())
+                    ev.Outline.Add(poly.OfType<JsonArray>().Select(p => (Dbl(p[0]), Dbl(p[1]))).ToList());
+            IEnumerable<RadarPoint> Pts(JsonNode? arr) => (arr as JsonArray ?? new JsonArray()).OfType<JsonArray>()
+                .Select(p => new RadarPoint(Dbl(p[0]), Dbl(p[1]), Dbl(p[2]), p[3]?.ToString() ?? ""));
+            ev.Deck = Pts(node["deck_points"]).ToList();
+            ev.Ring = Pts(node["ring_points"]).ToList();
+            ev.RingTotal = node["ring_points_total"]?.GetValue<int>() ?? ev.Ring.Count;
+            if (node["tracks"] is JsonArray tracks)
+                foreach (var t in tracks.OfType<JsonObject>())
+                    ev.Tracks.Add(new TrackEvidence(t["track"]?.ToString() ?? "", t["deck_n"]?.GetValue<int>() ?? 0, Dbl(t["deck_med"]),
+                        t["ring_n"]?.GetValue<int>() ?? 0, t["ring_med"] is JsonNode rm ? rm.GetValue<double>() : null,
+                        t["diff"] is JsonNode df ? df.GetValue<double>() : null, t["qualifies"]?.GetValue<bool>() ?? false));
+            result[id] = ev;
+        }
+        return result;
+    }
 
     // ------------------------------------------------------------------ running the Python scripts
     public sealed record ScriptResult(int ExitCode, string FullOutput, string Summary, string ConsoleLog);
 
-    public static async Task<ScriptResult> RunScriptAsync(string script, Action<string> onLine)
+    public static async Task<ScriptResult> RunScriptAsync(string script, Action<string> onLine, params string[] args)
     {
         if (!File.Exists(PythonExe))
             throw new FileNotFoundException($"Python environment not found at {PythonExe}");
@@ -56,6 +102,7 @@ public static class AssetMonitorService
         };
         psi.ArgumentList.Add("-u");            // unbuffered -> progress lines arrive live
         psi.ArgumentList.Add(script);
+        foreach (var a in args) psi.ArgumentList.Add(a);
 
         var sb = new StringBuilder();
         var gate = new object();
@@ -201,6 +248,74 @@ public static class AssetMonitorService
             });
         }
         return list;
+    }
+
+    // ------------------------------------------------------------------ structure-level results (L2b points)
+    public sealed class StructureResult
+    {
+        public string AssetId = "", OwnerType = "", OwnerName = "", OwnerCode = "", Status = "", Track = "";
+        public double? Lat, Lon, DiffLos, DeckMedian, RingMedian, Coherence;
+        public int DeckN, RingN, TracksQualifying, TracksFlagging;
+        public int Parts = 1;
+        public List<string> PartIds = new();
+        public string ManagerLabel => OwnerLabel(OwnerType, OwnerName);
+    }
+
+    /// <summary>
+    /// Neighbouring deck parts of one bridge pick up the same radar points and get identical results.
+    /// Parts with the same manager, same status and identical measurements within about 100 m are shown as ONE bridge.
+    /// Only identical rows are combined - nothing is averaged or changed.
+    /// </summary>
+    public static List<StructureResult> GroupStructure(IEnumerable<StructureResult> rows)
+    {
+        string K(double? v, string f) => v.HasValue ? v.Value.ToString(f, CultureInfo.InvariantCulture) : "-";
+        var result = new List<StructureResult>();
+        foreach (var g in rows.GroupBy(r => string.Join("|", r.OwnerCode, r.Status, r.Track,
+                     K(r.Lat, "0.000"), K(r.Lon, "0.000"), K(r.DiffLos, "0.00"), K(r.DeckMedian, "0.00"),
+                     K(r.RingMedian, "0.00"), r.DeckN.ToString(), r.RingN.ToString())))
+        {
+            var first = g.First();
+            first.Parts = g.Count();
+            first.PartIds = g.Select(x => x.AssetId).ToList();
+            result.Add(first);
+        }
+        return result;
+    }
+
+    public static List<StructureResult> ReadStructureResults()
+    {
+        var list = new List<StructureResult>();
+        if (!File.Exists(BridgePointsCsv)) return list;
+        using var reader = new StreamReader(BridgePointsCsv);
+        var headerLine = reader.ReadLine();
+        if (headerLine == null) return list;
+        var header = SplitCsv(headerLine);
+        int C(string n) => header.FindIndex(h => h == n);
+        int cId = C("asset_id"), cT = C("owner_type"), cN = C("owner_name"), cOc = C("owner_code"), cS = C("bp_status"), cTr = C("bp_track"),
+            cLat = C("lat"), cLon = C("lon"), cD = C("bp_diff_los"), cDm = C("bp_deck_median"), cRm = C("bp_ring_median"),
+            cCo = C("bp_coherence"), cDn = C("bp_deck_n"), cRn = C("bp_ring_n"), cQ = C("bp_tracks_qualifying"), cF = C("bp_tracks_flagging");
+        string G(List<string> r, int i) => i >= 0 && i < r.Count ? r[i] : "";
+        int I(List<string> r, int i) => D(G(r, i)) is double d ? (int)d : 0;
+        string? line;
+        while ((line = reader.ReadLine()) != null)
+        {
+            if (line.Length == 0) continue;
+            var r = SplitCsv(line);
+            list.Add(new StructureResult
+            {
+                AssetId = G(r, cId), OwnerType = G(r, cT), OwnerName = G(r, cN), OwnerCode = G(r, cOc), Status = G(r, cS), Track = G(r, cTr),
+                Lat = D(G(r, cLat)), Lon = D(G(r, cLon)), DiffLos = D(G(r, cD)), DeckMedian = D(G(r, cDm)),
+                RingMedian = D(G(r, cRm)), Coherence = D(G(r, cCo)), DeckN = I(r, cDn), RingN = I(r, cRn),
+                TracksQualifying = I(r, cQ), TracksFlagging = I(r, cF)
+            });
+        }
+        return list;
+    }
+
+    public static JsonNode? ReadJson(string path)
+    {
+        if (!File.Exists(path)) return null;
+        try { return JsonNode.Parse(File.ReadAllText(path)); } catch { return null; }
     }
 
     public static JsonNode? ReadManifest()
