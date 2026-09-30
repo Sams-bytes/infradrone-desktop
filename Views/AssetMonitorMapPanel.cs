@@ -63,6 +63,31 @@ internal sealed class AmMapPanel : UserControl
     private readonly Border _card;
     private readonly StackPanel _cardBody = new() { Spacing = 4 };
     private bool _loaded;
+    private (string? Id, double Lat, double Lon)? _pendingFocus;
+
+    /// <summary>Fly to a bridge and open its info card (used by "📍 Show on map").</summary>
+    public void FocusOn(string? assetId, double lat, double lon)
+    {
+        _pendingFocus = (assetId, lat, lon);
+        if (_allBridges.Count > 0) ApplyFocus();
+    }
+
+    private void ApplyFocus()
+    {
+        if (_pendingFocus == null) return;
+        var (id, lat, lon) = _pendingFocus.Value;
+        _pendingFocus = null;
+        var feature = id == null ? null : _allBridges.FirstOrDefault(f => Attr(f, "asset_id") == id);
+        if (feature != null)
+        {
+            var st = Attr(feature, "screening") ?? "No satellite data";
+            if (_statusChecks.TryGetValue(st, out var cb) && cb.IsChecked != true) cb.IsChecked = true;   // make sure the dot is visible
+        }
+        var (x, y) = SphericalMercator.FromLonLat(lon, lat);
+        _map.Navigator.CenterOnAndZoomTo(new MPoint(x, y), 2.0, 800);
+        _map.Refresh();
+        if (feature != null) ShowCard(feature, true);
+    }
     private readonly MRect _province;
 
     public AmMapPanel()
@@ -155,6 +180,7 @@ internal sealed class AmMapPanel : UserControl
                 { "Priority" => 3, "Review" => 2, "No unusual movement" => 1, _ => 0 }).ToList();
             ApplyBridgeFilter();
             _status.Text = $"{_allBridges.Count:N0} bridge deck parts loaded from {Path.GetFileName(file)}";
+            ApplyFocus();
         }
         catch (Exception ex) { _status.Text = $"Could not load bridges: {ex.Message}"; }
     }

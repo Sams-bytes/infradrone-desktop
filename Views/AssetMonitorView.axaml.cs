@@ -31,6 +31,13 @@ public partial class AssetMonitorView : UserControl
         _cache[BtnSubRegister] = first;
         ContentHost.Children.Add(first);
         ApplyNavStyle(BtnSubRegister);
+
+        // "📍 Show on map" from any sub-tab -> switch to the Map sub-tab and fly to the bridge
+        AmNav.ShowOnMapRequested += (id, lat, lon) =>
+        {
+            OnSubNav(BtnSubMap, new RoutedEventArgs());
+            if (_cache.TryGetValue(BtnSubMap, out var v) && v is AmMapPanel map) map.FocusOn(id, lat, lon);
+        };
     }
 
     private void ApplyNavStyle(Button activeBtn)
