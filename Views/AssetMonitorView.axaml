@@ -25,6 +25,12 @@
           <Button Name="BtnSubBridgeCheck" Content="🔬 Bridge Check" Click="OnSubNav" Margin="0,0,6,0"
                   Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
                   BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubRoadCheck" Content="🛣 Road Check" Click="OnSubNav" Margin="0,0,6,0"
+                  Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
+          <Button Name="BtnSubQuakes" Content="🌍 Earthquakes" Click="OnSubNav" Margin="0,0,6,0"
+                  Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
+                  BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
           <Button Name="BtnSubTasks" Content="📋 Inspection Tasks" Click="OnSubNav" Margin="0,0,6,0"
                   Background="{DynamicResource AppPanelBg}" Foreground="{DynamicResource AppTextMuted}" BorderBrush="{DynamicResource AppPanelBorder}"
                   BorderThickness="0.5" Padding="10,6" CornerRadius="6"/>
