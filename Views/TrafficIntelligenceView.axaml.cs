@@ -68,7 +68,7 @@ public partial class TrafficIntelligenceView : UserControl
         // Theme-aware: look up current AppAccentBg/AppPanelBg etc. rather than
         // hardcoding hex, so the active/inactive sub-nav colors respect light/dark mode.
         IBrush ResolveBrush(string key) =>
-            this.TryFindResource(key, out var res) && res is IBrush brush ? brush : Brushes.Transparent;
+            this.TryFindResource(key, ActualThemeVariant, out var res) && res is IBrush brush ? brush : (key.Contains("Fg") || key.Contains("Text") ? Brushes.White : Brushes.Transparent);
 
         foreach (var b in new[] { BtnSubAerial, BtnSubReplay, BtnSubHub, BtnSubStory, BtnSubConflict, BtnSubProvince })
         {
