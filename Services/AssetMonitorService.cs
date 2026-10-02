@@ -40,23 +40,33 @@ public static class AssetMonitorService
     public static string BridgePointsAudit => Path.Combine(ScreeningOut, "bridge_points_audit.json");
     public static string BridgePointsPlan => Path.Combine(ScreeningOut, "bridge_points_plan.json");
     public static string BridgePointsDetails => Path.Combine(ScreeningOut, "bridge_points_details.json");
+    // provincial roads (NWB road segments)
+    public static string RoadsRankedCsv => Path.Combine(ScreeningOut, "roads_ranked.csv");
+    public static string RoadsAudit => Path.Combine(ScreeningOut, "roads_audit_manifest.json");
+    public static string RoadPointsCsv => Path.Combine(ScreeningOut, "road_points_screening.csv");
+    public static string RoadPointsDetails => Path.Combine(ScreeningOut, "road_points_details.json");
+    public static string RoadPointsAudit => Path.Combine(ScreeningOut, "road_points_audit.json");
 
     // ------------------------------------------------------------------ evidence per flagged bridge (for the Bridge Check pictures)
-    public sealed record RadarPoint(double Dx, double Dy, double Vel, string Track);
+    public sealed record RadarPoint(double Dx, double Dy, double Vel, string Track, double? Lon = null, double? Lat = null, double? Along = null);
     public sealed record TrackEvidence(string Track, int DeckN, double DeckMed, int RingN, double? RingMed, double? Diff, bool Qualifies);
     public sealed class BridgeEvidence
     {
         public List<List<(double X, double Y)>> Outline = new();
+        public List<List<(double Lon, double Lat)>> OutlineLonLat = new();
+        public double? LengthM;                                    // roads only: length of the centre line
+        public bool HasMapPositions => Deck.Count > 0 && Deck[0].Lon.HasValue;
         public List<RadarPoint> Deck = new(), Ring = new();
         public int RingTotal;
         public List<TrackEvidence> Tracks = new();
     }
 
-    public static Dictionary<string, BridgeEvidence> ReadEvidence()
+    public static Dictionary<string, BridgeEvidence> ReadEvidence(string? path = null)
     {
+        path ??= BridgePointsDetails;
         var result = new Dictionary<string, BridgeEvidence>();
-        if (!File.Exists(BridgePointsDetails)) return result;
-        if (JsonNode.Parse(File.ReadAllText(BridgePointsDetails)) is not JsonObject root) return result;
+        if (!File.Exists(path)) return result;
+        if (JsonNode.Parse(File.ReadAllText(path)) is not JsonObject root) return result;
         double Dbl(JsonNode? n) => n == null ? 0 : n.GetValue<double>();
         foreach (var (id, node) in root)
         {
@@ -65,8 +75,13 @@ public static class AssetMonitorService
             if (node["outline"] is JsonArray polys)
                 foreach (var poly in polys.OfType<JsonArray>())
                     ev.Outline.Add(poly.OfType<JsonArray>().Select(p => (Dbl(p[0]), Dbl(p[1]))).ToList());
+            double? Opt(JsonArray p, int i) => p.Count > i && p[i] is JsonNode n ? n.GetValue<double>() : null;
             IEnumerable<RadarPoint> Pts(JsonNode? arr) => (arr as JsonArray ?? new JsonArray()).OfType<JsonArray>()
-                .Select(p => new RadarPoint(Dbl(p[0]), Dbl(p[1]), Dbl(p[2]), p[3]?.ToString() ?? ""));
+                .Select(p => new RadarPoint(Dbl(p[0]), Dbl(p[1]), Dbl(p[2]), p[3]?.ToString() ?? "", Opt(p, 4), Opt(p, 5), Opt(p, 6)));
+            if (node["outline_lonlat"] is JsonArray llPolys)
+                foreach (var poly in llPolys.OfType<JsonArray>())
+                    ev.OutlineLonLat.Add(poly.OfType<JsonArray>().Select(q => (Dbl(q[0]), Dbl(q[1]))).ToList());
+            ev.LengthM = node["length_m"] is JsonNode len ? len.GetValue<double>() : null;
             ev.Deck = Pts(node["deck_points"]).ToList();
             ev.Ring = Pts(node["ring_points"]).ToList();
             ev.RingTotal = node["ring_points_total"]?.GetValue<int>() ?? ev.Ring.Count;
@@ -185,15 +200,36 @@ public static class AssetMonitorService
         public int? LocalN, GroundN;
         public int Parts = 1;                       // BGT deck parts combined into this row
         public List<string> PartIds = new();
+        public string RoadName = "", RoadNumber = "", Municipality = "";   // roads only (NWB)
 
         /// <summary>"Waterschap · W0646" - manager type is always visible, even when the register has only a code.</summary>
         public string ManagerLabel => OwnerLabel(OwnerType, OwnerName);
     }
 
+    /// <summary>
+    /// Official names for BGT source-keeper codes that the register gives only as a code.
+    /// Checked against two public sources (Sept 2026): the BGT source-keeper code lists published in public
+    /// government GIS services and the SVB-BGT milestone list. Municipality and province codes get their names
+    /// from the Kadaster boundaries during the ownership run.
+    /// </summary>
+    public static readonly Dictionary<string, string> KnownCodes = new()
+    {
+        ["L0001"] = "Ministerie van Economische Zaken",
+        ["L0002"] = "Rijkswaterstaat",
+        ["L0003"] = "Ministerie van Defensie",
+        ["L0004"] = "ProRail",
+        ["W0646"] = "Waterschap Hunze en Aa's",
+        ["W0647"] = "Waterschap Noorderzijlvest",
+        ["W0653"] = "Wetterskip Fryslân",
+        ["W0664"] = "Waterschap Drents Overijsselse Delta",
+    };
+
     public static string OwnerLabel(string ownerType, string ownerName)
     {
         var shortType = ownerType.Split(' ')[0];    // "Waterschap (water board)" -> "Waterschap"
         if (string.IsNullOrWhiteSpace(ownerName)) return shortType;
+        var code = ownerName.Trim();
+        if (KnownCodes.TryGetValue(code, out var known)) return $"{known} ({code})";
         return ownerName.StartsWith(shortType, StringComparison.OrdinalIgnoreCase) ? ownerName : $"{shortType} · {ownerName}";
     }
 
@@ -218,11 +254,12 @@ public static class AssetMonitorService
         return result;
     }
 
-    public static List<ScreenedBridge> ReadRanked()
+    public static List<ScreenedBridge> ReadRanked(string? path = null)
     {
+        path ??= RankedCsv;
         var list = new List<ScreenedBridge>();
-        if (!File.Exists(RankedCsv)) return list;
-        using var reader = new StreamReader(RankedCsv);
+        if (!File.Exists(path)) return list;
+        using var reader = new StreamReader(path);
         var headerLine = reader.ReadLine();
         if (headerLine == null) return list;
         var header = SplitCsv(headerLine);
@@ -230,7 +267,8 @@ public static class AssetMonitorService
         int cId = Col("asset_id"), cType = Col("owner_type"), cName = Col("owner_name"), cCode = Col("owner_code"),
             cScr = Col("screening"), cUl = Col("up_local"), cUg = Col("up_ground"), cUd = Col("up_diff"),
             cEd = Col("east_diff"), cMax = Col("max_abs"), cLon = Col("lon"), cLat = Col("lat"),
-            cLn = Col("up_local_n"), cGn = Col("up_ground_n");
+            cLn = Col("up_local_n"), cGn = Col("up_ground_n"),
+            cRn = Col("road_name"), cRno = Col("road_number"), cMun = Col("municipality");
         string Get(List<string> r, int i) => i >= 0 && i < r.Count ? r[i] : "";
         string? line;
         while ((line = reader.ReadLine()) != null)
@@ -244,7 +282,8 @@ public static class AssetMonitorService
                 UpLocal = D(Get(r, cUl)), UpGround = D(Get(r, cUg)), UpDiff = D(Get(r, cUd)),
                 EastDiff = D(Get(r, cEd)), MaxAbs = D(Get(r, cMax)), Lon = D(Get(r, cLon)), Lat = D(Get(r, cLat)),
                 LocalN = D(Get(r, cLn)) is double ln ? (int)ln : null,
-                GroundN = D(Get(r, cGn)) is double gn ? (int)gn : null
+                GroundN = D(Get(r, cGn)) is double gn ? (int)gn : null,
+                RoadName = Get(r, cRn), RoadNumber = Get(r, cRno), Municipality = Get(r, cMun)
             });
         }
         return list;
@@ -258,6 +297,7 @@ public static class AssetMonitorService
         public int DeckN, RingN, TracksQualifying, TracksFlagging;
         public int Parts = 1;
         public List<string> PartIds = new();
+        public string RoadName = "", RoadNumber = "", Municipality = "";   // roads only (NWB)
         public string ManagerLabel => OwnerLabel(OwnerType, OwnerName);
     }
 
@@ -282,18 +322,20 @@ public static class AssetMonitorService
         return result;
     }
 
-    public static List<StructureResult> ReadStructureResults()
+    public static List<StructureResult> ReadStructureResults(string? path = null)
     {
+        path ??= BridgePointsCsv;
         var list = new List<StructureResult>();
-        if (!File.Exists(BridgePointsCsv)) return list;
-        using var reader = new StreamReader(BridgePointsCsv);
+        if (!File.Exists(path)) return list;
+        using var reader = new StreamReader(path);
         var headerLine = reader.ReadLine();
         if (headerLine == null) return list;
         var header = SplitCsv(headerLine);
         int C(string n) => header.FindIndex(h => h == n);
         int cId = C("asset_id"), cT = C("owner_type"), cN = C("owner_name"), cOc = C("owner_code"), cS = C("bp_status"), cTr = C("bp_track"),
             cLat = C("lat"), cLon = C("lon"), cD = C("bp_diff_los"), cDm = C("bp_deck_median"), cRm = C("bp_ring_median"),
-            cCo = C("bp_coherence"), cDn = C("bp_deck_n"), cRn = C("bp_ring_n"), cQ = C("bp_tracks_qualifying"), cF = C("bp_tracks_flagging");
+            cCo = C("bp_coherence"), cDn = C("bp_deck_n"), cRn = C("bp_ring_n"), cQ = C("bp_tracks_qualifying"), cF = C("bp_tracks_flagging"),
+            cRoad = C("road_name"), cRoadNo = C("road_number"), cMun = C("municipality");
         string G(List<string> r, int i) => i >= 0 && i < r.Count ? r[i] : "";
         int I(List<string> r, int i) => D(G(r, i)) is double d ? (int)d : 0;
         string? line;
@@ -306,7 +348,8 @@ public static class AssetMonitorService
                 AssetId = G(r, cId), OwnerType = G(r, cT), OwnerName = G(r, cN), OwnerCode = G(r, cOc), Status = G(r, cS), Track = G(r, cTr),
                 Lat = D(G(r, cLat)), Lon = D(G(r, cLon)), DiffLos = D(G(r, cD)), DeckMedian = D(G(r, cDm)),
                 RingMedian = D(G(r, cRm)), Coherence = D(G(r, cCo)), DeckN = I(r, cDn), RingN = I(r, cRn),
-                TracksQualifying = I(r, cQ), TracksFlagging = I(r, cF)
+                TracksQualifying = I(r, cQ), TracksFlagging = I(r, cF),
+                RoadName = G(r, cRoad), RoadNumber = G(r, cRoadNo), Municipality = G(r, cMun)
             });
         }
         return list;
