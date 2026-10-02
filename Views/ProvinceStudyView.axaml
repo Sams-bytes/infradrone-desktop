@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:svc="using:InfraDroneDesktop.Services"
+             x:Class="InfraDroneDesktop.Views.ProvinceStudyView">
+  <Grid ColumnDefinitions="320,*" RowDefinitions="Auto,*">
+
+    <!-- Header: title, section filter, actions -->
+    <StackPanel Grid.ColumnSpan="2" Orientation="Horizontal" Margin="12,10" Spacing="12">
+      <TextBlock x:Name="HeaderText" FontSize="20" FontWeight="Bold" VerticalAlignment="Center"
+                 Text="Province study"/>
+      <ComboBox x:Name="SectionFilter" MinWidth="340" SelectionChanged="OnFilterChanged"/>
+      <Button Content="Reload" Click="OnReload"/>
+      <Button Content="Open study folder" Click="OnOpenFolder"/>
+      <TextBlock x:Name="GeneratedText" Opacity="0.6" VerticalAlignment="Center" FontSize="12"/>
+    </StackPanel>
+
+    <!-- Left: list of results -->
+    <ListBox Grid.Row="1" x:Name="ItemList" Margin="12,0,6,12" SelectionChanged="OnItemSelected">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="svc:StudyItem">
+          <StackPanel Margin="2,4" Spacing="1">
+            <TextBlock Text="{Binding Section}" FontSize="11" Opacity="0.6" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding KindLabel}" FontSize="11" Foreground="{Binding TagBrush}"/>
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <!-- Right: details of the selected result -->
+    <ScrollViewer Grid.Row="1" Grid.Column="1" Margin="6,0,12,12">
+      <StackPanel Spacing="10" Margin="4">
+        <TextBlock x:Name="DTitle" FontSize="22" FontWeight="Bold" TextWrapping="Wrap"/>
+        <Border x:Name="DTagBorder" CornerRadius="3" Padding="8,2" HorizontalAlignment="Left">
+          <TextBlock x:Name="DTag" FontWeight="Bold" Foreground="White"/>
+        </Border>
+        <TextBlock x:Name="DDesc" TextWrapping="Wrap" MaxWidth="900" HorizontalAlignment="Left"/>
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button x:Name="OpenBtn" Content="Open" Click="OnOpen"/>
+          <Button x:Name="FolderBtn" Content="Show in folder" Click="OnShowInFolder"/>
+        </StackPanel>
+        <Image x:Name="DImage" Stretch="Uniform" MaxHeight="760" HorizontalAlignment="Left"/>
+        <StackPanel x:Name="TablePanel"/>
+        <TextBlock x:Name="DSource" FontSize="12" Opacity="0.7" TextWrapping="Wrap" MaxWidth="900"
+                   HorizontalAlignment="Left"/>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

@@ -14,6 +14,7 @@ public partial class TrafficIntelligenceView : UserControl
     private TrafficHubView? _trafficHubView;
     private StoryModeView? _storyModeView;
     private ConflictDetectionView? _conflictDetectionView;
+    private ProvinceStudyView? _provinceStudyView;
     public TrafficIntelligenceView()
     {
         InitializeComponent();
@@ -48,6 +49,11 @@ public partial class TrafficIntelligenceView : UserControl
             if (_storyModeView == null) _storyModeView = new StoryModeView();
             ContentHost.Children.Add(_storyModeView);
         }
+        if (btn == BtnSubProvince)
+        {
+            if (_provinceStudyView == null) _provinceStudyView = new ProvinceStudyView();
+            ContentHost.Children.Add(_provinceStudyView);
+        }
         if (btn == BtnSubConflict)
         {
             if (_conflictDetectionView == null)
@@ -64,7 +70,7 @@ public partial class TrafficIntelligenceView : UserControl
         IBrush ResolveBrush(string key) =>
             this.TryFindResource(key, out var res) && res is IBrush brush ? brush : Brushes.Transparent;
 
-        foreach (var b in new[] { BtnSubAerial, BtnSubReplay, BtnSubHub, BtnSubStory, BtnSubConflict })
+        foreach (var b in new[] { BtnSubAerial, BtnSubReplay, BtnSubHub, BtnSubStory, BtnSubConflict, BtnSubProvince })
         {
             bool active = b == btn;
             b.Background = ResolveBrush(active ? "AppAccentBg" : "AppPanelBg");
