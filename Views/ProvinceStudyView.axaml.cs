@@ -105,6 +105,24 @@ namespace InfraDroneDesktop.Views
             return b;
         }
 
+        /// <summary>"How to read this" box: section name, Dutch explanation, short English line.</summary>
+        public static Control IntroBox(StudySection s)
+        {
+            var sp = new StackPanel { Spacing = 4 };
+            sp.Children.Add(Text(s.Name, 15, bold: true));
+            if (!string.IsNullOrWhiteSpace(s.IntroNl)) sp.Children.Add(Text(s.IntroNl, 14));
+            if (!string.IsNullOrWhiteSpace(s.IntroEn)) sp.Children.Add(Text("EN: " + s.IntroEn, 12, opacity: 0.7));
+            return new Border
+            {
+                Child = sp,
+                Padding = new Thickness(12, 8),
+                Margin = new Thickness(6, 8, 6, 4),
+                BorderThickness = new Thickness(4, 0, 0, 0),
+                BorderBrush = Brush.Parse("#1D4E89"),
+                Background = new SolidColorBrush(Color.Parse("#1D4E89"), 0.12),
+            };
+        }
+
         public static Grid Table(List<List<string>> rows, int maxRows = 40)
         {
             var g = new Grid();
@@ -156,16 +174,16 @@ namespace InfraDroneDesktop.Views
             list.SelectionChanged += (_, _) => { if (list.SelectedItem is StudyItem it) Show(it); };
 
             var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("330,*") };
-            var intro = UI.Text(s.Name, 13, opacity: 0.7, margin: new Thickness(6, 8, 6, 0));
-            var left = new DockPanel();
-            DockPanel.SetDock(intro, Dock.Top);
-            left.Children.Add(intro);
-            left.Children.Add(list);
-            grid.Children.Add(left);
+            grid.Children.Add(list);
             var right = new ScrollViewer { Content = _detail, Margin = new Thickness(6, 8, 4, 4) };
             Grid.SetColumn(right, 1);
             grid.Children.Add(right);
-            Content = grid;
+            var dock = new DockPanel();
+            var box = UI.IntroBox(s);
+            DockPanel.SetDock(box, Dock.Top);
+            dock.Children.Add(box);
+            dock.Children.Add(grid);
+            Content = dock;
             if (s.Items.Count > 0) list.SelectedIndex = 0;
         }
 
@@ -232,11 +250,9 @@ namespace InfraDroneDesktop.Views
             var csv = s.Items.FirstOrDefault(i => i.Kind == "csv");
             var cands = csv != null ? StudyManifestService.LoadCandidates(csv.FilePath) : new List<SiteCandidate>();
 
-            var top = new StackPanel { Spacing = 8, Margin = new Thickness(6, 8, 6, 6) };
-            top.Children.Add(UI.Text("Candidate locations per question, ranked with open data and the province's own map "
-                                     + "layers. A starting point for choosing pilot sites together with the province, not a conclusion.",
-                                     13, opacity: 0.8));
-            var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+            var top = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 6, 6) };
+            top.Children.Add(UI.IntroBox(s));
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(6, 0, 0, 0) };
             if (map is { Exists: true })
                 actions.Children.Add(UI.Button("Open interactive map", () => StudyManifestService.OpenExternal(map.FilePath)));
             if (csv is { Exists: true })

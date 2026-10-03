@@ -57,6 +57,8 @@ namespace InfraDroneDesktop.Services
         [JsonPropertyName("id")] public string Id { get; set; } = "";
         [JsonPropertyName("short")] public string Short { get; set; } = "";
         [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("intro_nl")] public string IntroNl { get; set; } = "";
+        [JsonPropertyName("intro_en")] public string IntroEn { get; set; } = "";
         [JsonPropertyName("items")] public List<StudyItem> Items { get; set; } = new();
     }
 
