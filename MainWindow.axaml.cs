@@ -455,7 +455,11 @@ public partial class MainWindow : Window
                     _v1 = new Mavlink1SerialService();
                     bool v1Ok = _v1.Start("/dev/bcube", 57600);
                     if (!v1Ok) _v1 = null;
-                    else _v1.TelemetryUpdated += OnV1TelemetrySidebar;
+                    else
+                    {
+                        _v1.TelemetryUpdated += OnV1TelemetrySidebar;
+                        _flightView?.SetMavlinkV1(_v1);  // late-connect fix: Flight View opened before Connect also gets the Pixhawk
+                    }
                 }
                 catch (Exception ex)
                 {
