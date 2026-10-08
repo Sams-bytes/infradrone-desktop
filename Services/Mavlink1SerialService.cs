@@ -39,6 +39,24 @@ public class Mavlink1Telemetry
     // From SYS_STATUS (msg 1)
     public float BatteryVoltage { get; set; }
     public int BatteryPct { get; set; } = -1;
+    // BatteryPct is now calculated from voltage per cell, NOT the Pixhawk's
+    // consumption estimate (which restarts at 100% on every power-up).
+    public int BatteryPctFc { get; set; } = -1;  // raw Pixhawk value, reference only
+    public int BatteryCells { get; private set; } // 0 = not detected yet
+    public int VoltageToPercent(float v)
+    {
+        if (v < 5.0f) { BatteryCells = 0; return -1; }        // no battery (USB power only)
+        if (BatteryCells == 0) BatteryCells = v > 12.9f ? 4 : 3; // detected once per battery
+        float cell = v / BatteryCells;
+        float[] cv = { 3.50f, 3.60f, 3.75f, 3.85f, 4.00f, 4.20f };
+        float[] cp = { 0f,    5f,    25f,   50f,   75f,   100f };
+        if (cell <= cv[0]) return 0;
+        if (cell >= cv[cv.Length - 1]) return 100;
+        for (int k = 1; k < cv.Length; k++)
+            if (cell <= cv[k])
+                return (int)Math.Round(cp[k - 1] + (cell - cv[k - 1]) / (cv[k] - cv[k - 1]) * (cp[k] - cp[k - 1]));
+        return 100;
+    }
 
     // From VFR_HUD (msg 74)
     public float Speed { get; set; }
@@ -681,7 +699,8 @@ public class Mavlink1SerialService
                             ushort voltageBattery = BitConverter.ToUInt16(_buffer, i + 6 + 14);
                             sbyte batteryRemaining = (sbyte)_buffer[i + 6 + 30];
                             Telemetry.BatteryVoltage = voltageBattery / 1000.0f;
-                            Telemetry.BatteryPct = batteryRemaining;
+                            Telemetry.BatteryPctFc = batteryRemaining;
+                            Telemetry.BatteryPct = Telemetry.VoltageToPercent(Telemetry.BatteryVoltage);
                             _lastTelemetryTime = DateTime.UtcNow;
                             TelemetryUpdated?.Invoke(Telemetry);
                         }
