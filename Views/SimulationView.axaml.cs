@@ -13,6 +13,7 @@ public partial class SimulationView : UserControl
     // Asked of MainWindow, which owns the Connect logic and the Flight View.
     public event Action? ConnectRequested;
     public event Action? OpenMissionPlannerRequested;
+    public event Action? Open3DViewRequested;
 
     private readonly SimulatorService _sim = SimulatorService.Instance;
     private readonly DispatcherTimer _timer;
@@ -106,6 +107,12 @@ public partial class SimulationView : UserControl
     {
         if (_sim.IsRunning) ConnectRequested?.Invoke();
         OpenMissionPlannerRequested?.Invoke();
+    }
+
+    private void OnOpen3D(object? sender, RoutedEventArgs e)
+    {
+        if (_sim.IsRunning) ConnectRequested?.Invoke();
+        Open3DViewRequested?.Invoke();
     }
 
     private void RefreshStatus()

@@ -36,6 +36,12 @@ namespace InfraDroneDesktop.Services
         private CancellationTokenSource? _cts;
         private readonly object _stateLock = new();
         private string _stateJson = "{\"waypoints\":[],\"volumes\":null}";
+
+        // Live vehicle (real or simulated). Built per request so "stale" is current.
+        private readonly object _vehicleLock = new();
+        private (double lat, double lon, double altRel, double hdg, double roll, double pitch,
+                 double speed, string mode, bool armed)? _vehicle;
+        private DateTime _vehicleTime = DateTime.MinValue;
         private int _port;
 
         public bool IsRunning => _listener?.IsListening == true;
@@ -86,6 +92,14 @@ namespace InfraDroneDesktop.Services
                         lock (_stateLock) json = _stateJson;
                         Write(ctx, "application/json", json);
                     }
+                    else if (path == "/vehicle")
+                    {
+                        Write(ctx, "application/json", VehicleJson());
+                    }
+                    else if (path == "/drone.glb")
+                    {
+                        WriteBytes(ctx, "model/gltf-binary", Drone3DModel.Glb);
+                    }
                     else
                     {
                         Write(ctx, "text/html; charset=utf-8", Cesium3DPage.Html);
@@ -96,8 +110,10 @@ namespace InfraDroneDesktop.Services
         }
 
         private static void Write(HttpListenerContext ctx, string contentType, string body)
+            => WriteBytes(ctx, contentType, Encoding.UTF8.GetBytes(body));
+
+        private static void WriteBytes(HttpListenerContext ctx, string contentType, byte[] bytes)
         {
-            var bytes = Encoding.UTF8.GetBytes(body);
             ctx.Response.ContentType = contentType;
             ctx.Response.ContentLength64 = bytes.Length;
             ctx.Response.Headers["Cache-Control"] = "no-store";
@@ -147,6 +163,45 @@ namespace InfraDroneDesktop.Services
             sb.Append('}');
 
             lock (_stateLock) _stateJson = sb.ToString();
+        }
+
+        /// <summary>
+        /// Publishes the live vehicle pose. Called from the telemetry handler
+        /// (already throttled there); it only swaps a value under a lock.
+        /// altRelM is altitude above HOME, as reported by the autopilot.
+        /// </summary>
+        public void PublishVehicle(double lat, double lon, double altRelM, double headingDeg,
+                                   double rollDeg, double pitchDeg, double speedMs,
+                                   string mode, bool armed)
+        {
+            lock (_vehicleLock)
+            {
+                _vehicle = (lat, lon, altRelM, headingDeg, rollDeg, pitchDeg, speedMs, mode ?? "", armed);
+                _vehicleTime = DateTime.UtcNow;
+            }
+        }
+
+        private string VehicleJson()
+        {
+            var inv = CultureInfo.InvariantCulture;
+            lock (_vehicleLock)
+            {
+                if (_vehicle == null) return "{\"present\":false}";
+                var v = _vehicle.Value;
+                var age = (DateTime.UtcNow - _vehicleTime).TotalSeconds;
+                var mode = v.mode.Replace("\\", "").Replace("\"", "");
+                return "{\"present\":true" +
+                       ",\"stale\":" + (age > 5 ? "true" : "false") +
+                       ",\"lat\":" + v.lat.ToString("F7", inv) +
+                       ",\"lon\":" + v.lon.ToString("F7", inv) +
+                       ",\"alt\":" + v.altRel.ToString("F2", inv) +
+                       ",\"hdg\":" + v.hdg.ToString("F1", inv) +
+                       ",\"roll\":" + v.roll.ToString("F1", inv) +
+                       ",\"pitch\":" + v.pitch.ToString("F1", inv) +
+                       ",\"speed\":" + v.speed.ToString("F1", inv) +
+                       ",\"mode\":\"" + mode + "\"" +
+                       ",\"armed\":" + (v.armed ? "true" : "false") + "}";
+            }
         }
 
         /// <summary>Outer rings only, as [[lon,lat,lon,lat,...], ...] in WGS84.</summary>

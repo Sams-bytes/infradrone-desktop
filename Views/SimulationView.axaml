@@ -70,6 +70,9 @@
               <Button Name="BtnOpenPlanner" Content="✈  Open Mission Planner" Click="OnOpenPlanner"
                       Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
                       BorderThickness="1" Padding="16,8" CornerRadius="6"/>
+              <Button Name="BtnOpen3D" Content="🌍  Open 3D View" Click="OnOpen3D"
+                      Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
+                      BorderThickness="1" Padding="16,8" CornerRadius="6"/>
             </StackPanel>
             <TextBlock Name="MessageText" Text="Ready. Click Start simulation."
                        FontSize="12" Foreground="#cbd5e1" TextWrapping="Wrap"/>
@@ -113,6 +116,8 @@
                        Text="3. Click Arm, then Auto. The drone takes off vertically and flies the route."/>
             <TextBlock Foreground="#cbd5e1" FontSize="12" TextWrapping="Wrap"
                        Text="4. After the last waypoint it circles home. Click Land to bring it down."/>
+            <TextBlock Foreground="#cbd5e1" FontSize="12" TextWrapping="Wrap"
+                       Text="Tip: click Open 3D View to watch the drone fly over the 3D buildings of Groningen in your browser. Use Follow drone there for a chase camera."/>
             <TextBlock Foreground="#fbbf24" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"
                        Text="Before connecting the REAL drone: click Stop here, then in a terminal run  sudo systemctl start mavproxy-router"/>
           </StackPanel>

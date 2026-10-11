@@ -1,5 +1,7 @@
 // Services/Cesium3DPage.cs
 //
+// Also draws the LIVE drone (real or simulated) from /vehicle using /drone.glb.
+//
 // The CesiumJS page served by Cesium3DViewService, kept as a plain string so no
 // .csproj change, embedded resource, or file-copy step is needed.
 //
@@ -40,6 +42,12 @@ namespace InfraDroneDesktop.Services
   #hud b { color:#fff; font-size:13px; }
   .sw { display:inline-block; width:10px; height:10px; margin-right:6px; border-radius:2px; }
   #err { color:#ff9a9a; margin-top:6px; display:none; }
+  #veh { margin-top:8px; padding-top:8px; border-top:1px solid #23394f; display:none; }
+  #veh .k { color:#7f93a8; display:inline-block; width:56px; }
+  #veh .v { color:#fff; font-family:monospace; }
+  .btn { margin-top:6px; margin-right:4px; background:#12324a; color:#cfe3f5; border:1px solid #2a5878;
+         border-radius:4px; padding:4px 8px; font:12px system-ui, sans-serif; cursor:pointer; }
+  .btn.on { background:#0e7490; color:#fff; border-color:#22d3ee; }
 </style>
 </head>
 <body>
@@ -52,6 +60,16 @@ namespace InfraDroneDesktop.Services
     <span class='sw' style='background:#00aa00'></span>Flight geography<br>
     <span class='sw' style='background:#ffc800'></span>Contingency volume<br>
     <span class='sw' style='background:#dc0000'></span>Ground risk buffer
+  </div>
+  <div id='veh'>
+    <b>Live drone</b> <span id='vstale' style='color:#fbbf24'></span><br>
+    <span class='k'>Mode</span><span class='v' id='vmode'>-</span><br>
+    <span class='k'>Armed</span><span class='v' id='varmed'>-</span><br>
+    <span class='k'>Alt</span><span class='v' id='valt'>-</span><br>
+    <span class='k'>Speed</span><span class='v' id='vspd'>-</span><br>
+    <span class='k'>Heading</span><span class='v' id='vhdg'>-</span><br>
+    <button class='btn' id='bfollow'>Follow drone</button>
+    <button class='btn' id='btrail'>Clear trail</button>
   </div>
   <div id='err'></div>
 </div>
@@ -142,6 +160,18 @@ function tryBuildings(i) {
 if (Cesium.Cesium3DTileset && Cesium.Cesium3DTileset.fromUrl) { tryBuildings(0); }
 else { showErr('This Cesium build is too old for fromUrl(); buildings skipped.'); }
 
+// ---- Ground reference ----------------------------------------------------
+// The autopilot reports altitude relative to HOME, and missions are uploaded
+// with relative altitudes. Cesium positions are heights above the WGS84
+// ellipsoid, which in the Netherlands is about 40-45 m above NAP. So every
+// relative height is drawn on top of the terrain height at home (groundRef),
+// read from the loaded PDOK terrain once its tiles are available.
+var groundRef = null;
+function terrainHeightAt(lon, lat) {
+  var h = viewer.scene.globe.getHeight(Cesium.Cartographic.fromDegrees(lon, lat));
+  return (h === undefined || h === null || isNaN(h)) ? null : h;
+}
+
 // ---- Mission rendering ---------------------------------------------------
 var entities = [];
 var lastJson = '';
@@ -157,7 +187,7 @@ function flatToDegreesArray(flat) {
   return Cesium.Cartesian3.fromDegreesArray(flat);
 }
 
-function addVolume(rings, cssColor, height) {
+function addVolume(rings, cssColor, height, base) {
   if (!rings) { return; }
   for (var r = 0; r < rings.length; r++) {
     var flat = rings[r];
@@ -168,8 +198,8 @@ function addVolume(rings, cssColor, height) {
         material: Cesium.Color.fromCssColorString(cssColor).withAlpha(0.22),
         outline: true,
         outlineColor: Cesium.Color.fromCssColorString(cssColor),
-        extrudedHeight: height,
-        height: 0,
+        extrudedHeight: base + height,
+        height: base,
         closeTop: false
       }
     });
@@ -177,26 +207,31 @@ function addVolume(rings, cssColor, height) {
   }
 }
 
+var missionBase = null;   // ground height used for the last mission render
 function render(state) {
   clearEntities();
   var wps = state.waypoints || [];
+  var base = groundRef;
+  if (base === null && wps.length > 0) { base = terrainHeightAt(wps[0].lon, wps[0].lat); }
+  missionBase = base;
+  if (base === null) { base = 0; }
   document.getElementById('wpcount').textContent = wps.length + ' waypoint(s)';
   document.getElementById('alt').textContent =
     state.hfg ? ('flight geography ' + state.hfg + ' m, contingency top ' + state.hcv + ' m') : '';
 
   if (state.volumes) {
     // Outermost first so the inner ones stay visible through them.
-    addVolume(state.volumes.grb, '#dc0000', state.hcv || 100);
-    addVolume(state.volumes.cv,  '#ffc800', state.hcv || 100);
-    addVolume(state.volumes.fg,  '#00aa00', state.hfg || 100);
+    addVolume(state.volumes.grb, '#dc0000', state.hcv || 100, base);
+    addVolume(state.volumes.cv,  '#ffc800', state.hcv || 100, base);
+    addVolume(state.volumes.fg,  '#00aa00', state.hfg || 100, base);
   }
 
   if (wps.length > 0) {
     var routePts = [];
     for (var i = 0; i < wps.length; i++) {
-      routePts.push(wps[i].lon, wps[i].lat, wps[i].alt);
+      routePts.push(wps[i].lon, wps[i].lat, base + wps[i].alt);
       entities.push(viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(wps[i].lon, wps[i].lat, wps[i].alt),
+        position: Cesium.Cartesian3.fromDegrees(wps[i].lon, wps[i].lat, base + wps[i].alt),
         point: { pixelSize: 10, color: Cesium.Color.fromCssColorString('#0d9e75'),
                  outlineColor: Cesium.Color.WHITE, outlineWidth: 2,
                  disableDepthTestDistance: Number.POSITIVE_INFINITY },
@@ -227,14 +262,166 @@ function poll() {
   fetch('/state', { cache: 'no-store' })
     .then(function (r) { return r.text(); })
     .then(function (txt) {
-      if (txt === lastJson) { return; }
+      if (txt === lastJson) {
+        // Same mission. Redraw only if it was drawn before the ground height
+        // was known and that height is available now.
+        var groundNowKnown = groundRef !== null || terrainKnownFor(txt);
+        if (missionBase !== null || !groundNowKnown) { return; }
+      }
       lastJson = txt;
       render(JSON.parse(txt));
     })
     .catch(function () { /* app closed or busy; keep polling quietly */ });
 }
+function terrainKnownFor(txt) {
+  try {
+    var w = JSON.parse(txt).waypoints || [];
+    return w.length > 0 && terrainHeightAt(w[0].lon, w[0].lat) !== null;
+  } catch (e) { return false; }
+}
 setInterval(poll, 500);
 poll();
+
+// ---- Live drone ------------------------------------------------------------
+// Model nose is +X. Cesium heading 0 points the model's +X east, so a compass
+// heading (0 = north, clockwise) needs -90 deg. Change this if the nose looks
+// sideways in some future Cesium version.
+var MODEL_HEADING_OFFSET = -90;
+var POLL_MS = 250;
+
+var drone = null;
+var prevPos = null, nextPos = null, prevHpr = null, nextHpr = null, tNext = 0;
+var trail = [];
+var MAX_TRAIL = 1200;          // about 5 minutes at 4 Hz
+var flownToDrone = false;
+var following = false;
+
+function lerpAngle(a, b, f) {
+  var d = ((b - a + 540) % 360) - 180;
+  return a + d * f;
+}
+function frac() {
+  var f = (Date.now() - (tNext - POLL_MS)) / POLL_MS;
+  return f < 0 ? 0 : (f > 1 ? 1 : f);
+}
+function currentPos() {
+  if (!nextPos) { return undefined; }
+  if (!prevPos) { return nextPos; }
+  return Cesium.Cartesian3.lerp(prevPos, nextPos, frac(), new Cesium.Cartesian3());
+}
+function currentHpr() {
+  if (!nextHpr) { return null; }
+  if (!prevHpr) { return nextHpr; }
+  var f = frac();
+  return { h: lerpAngle(prevHpr.h, nextHpr.h, f), p: prevHpr.p + (nextHpr.p - prevHpr.p) * f,
+           r: prevHpr.r + (nextHpr.r - prevHpr.r) * f };
+}
+
+function createDrone() {
+  drone = viewer.entities.add({
+    name: 'Drone',
+    position: new Cesium.CallbackProperty(currentPos, false),
+    orientation: new Cesium.CallbackProperty(function () {
+      var pos = currentPos(); var a = currentHpr();
+      if (!pos || !a) { return undefined; }
+      var hpr = new Cesium.HeadingPitchRoll(
+        Cesium.Math.toRadians(a.h + MODEL_HEADING_OFFSET),
+        Cesium.Math.toRadians(a.p), Cesium.Math.toRadians(a.r));
+      return Cesium.Transforms.headingPitchRollQuaternion(pos, hpr);
+    }, false),
+    model: {
+      uri: '/drone.glb',
+      minimumPixelSize: 72,
+      maximumScale: 400,
+      silhouetteColor: Cesium.Color.fromCssColorString('#22d3ee').withAlpha(0.8),
+      silhouetteSize: 1.5
+    },
+    viewFrom: new Cesium.Cartesian3(-60, -60, 35)
+  });
+  viewer.entities.add({
+    polyline: {
+      positions: new Cesium.CallbackProperty(function () { return trail; }, false),
+      width: 6,
+      material: new Cesium.PolylineGlowMaterialProperty({
+        glowPower: 0.25, color: Cesium.Color.fromCssColorString('#22d3ee').withAlpha(0.9) })
+    }
+  });
+  // Thin line from the drone straight down to the ground, helps judge height.
+  viewer.entities.add({
+    polyline: {
+      positions: new Cesium.CallbackProperty(function () {
+        var p = currentPos(); if (!p || groundRef === null) { return []; }
+        var c = Cesium.Cartographic.fromCartesian(p);
+        return [p, Cesium.Cartesian3.fromRadians(c.longitude, c.latitude, groundRef)];
+      }, false),
+      width: 1.5,
+      material: new Cesium.PolylineDashMaterialProperty({ color: Cesium.Color.WHITE.withAlpha(0.6) })
+    }
+  });
+}
+
+function updateHud(v) {
+  document.getElementById('veh').style.display = 'block';
+  document.getElementById('vmode').textContent = v.mode || '-';
+  document.getElementById('varmed').textContent = v.armed ? 'YES' : 'no';
+  document.getElementById('valt').textContent = v.alt.toFixed(1) + ' m';
+  document.getElementById('vspd').textContent = v.speed.toFixed(1) + ' m/s';
+  document.getElementById('vhdg').textContent = Math.round(v.hdg) + ' deg';
+  document.getElementById('vstale').textContent = v.stale ? '(no data)' : '';
+}
+
+function onVehicle(v) {
+  if (!v.present || (v.lat === 0 && v.lon === 0)) { return; }
+  updateHud(v);
+  if (v.stale) { return; }
+
+  if (groundRef === null) {
+    // On the ground at home this is the home terrain height; once airborne the
+    // terrain under the drone is used instead, which is the same in flat NL.
+    var g = terrainHeightAt(v.lon, v.lat);
+    if (g !== null && (!v.armed || v.alt < 2)) { groundRef = g; console.log('ground reference ' + g.toFixed(1) + ' m (ellipsoid)'); }
+  }
+  var base = groundRef === null ? 0 : groundRef;
+  var pos = Cesium.Cartesian3.fromDegrees(v.lon, v.lat, base + v.alt);
+
+  if (!drone) { createDrone(); }
+  prevPos = currentPos() || pos;
+  prevHpr = currentHpr() || { h: v.hdg, p: v.pitch, r: v.roll };
+  nextPos = pos;
+  nextHpr = { h: v.hdg, p: v.pitch, r: v.roll };
+  tNext = Date.now() + POLL_MS;
+
+  var last = trail.length ? trail[trail.length - 1] : null;
+  if (v.armed && (!last || Cesium.Cartesian3.distance(last, pos) > 0.5)) {
+    trail.push(pos);
+    if (trail.length > MAX_TRAIL) { trail.shift(); }
+  }
+
+  if (!flownToDrone) {
+    flownToDrone = true;
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(v.lon, v.lat - 0.0035, base + 220),
+      orientation: { heading: 0, pitch: Cesium.Math.toRadians(-35), roll: 0 },
+      duration: 2
+    });
+  }
+}
+
+document.getElementById('bfollow').onclick = function () {
+  following = !following;
+  viewer.trackedEntity = following ? drone : undefined;
+  this.classList.toggle('on', following);
+  this.textContent = following ? 'Following' : 'Follow drone';
+};
+document.getElementById('btrail').onclick = function () { trail = []; };
+
+function pollVehicle() {
+  fetch('/vehicle', { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(onVehicle)
+    .catch(function () { /* app closed or busy */ });
+}
+setInterval(pollVehicle, POLL_MS);
 </script>
 </body>
 </html>";

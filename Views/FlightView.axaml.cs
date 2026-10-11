@@ -254,7 +254,12 @@ public partial class FlightView : UserControl
                 if (CompassNeedle.RenderTransform is Avalonia.Media.RotateTransform rt)
                     rt.Angle = t.Heading;
                 if (t.Lat != 0 && t.Lon != 0)
+                {
                     UpdateDroneMarker(t.Lat, t.Lon, t.Heading);
+                    if (_cesium3D.IsRunning)
+                        _cesium3D.PublishVehicle(t.Lat, t.Lon, t.RelativeAlt, t.Heading, t.Roll, t.Pitch,
+                                                 t.Speed, t.FlightMode, t.Armed);
+                }
             }
         });
     }
@@ -664,7 +669,12 @@ public partial class FlightView : UserControl
             HudGps.Text = t.Connected ? $"{t.GpsSats} sat" : "—";
             HudPos.Text = t.Connected && t.Lat != 0 ? $"{t.Lat:F5}, {t.Lon:F5}" : "—";
             if (t.Connected && t.Lat != 0 && t.Lon != 0 && t.GpsFix >= 3)
+            {
                 UpdateDroneMarker(t.Lat, t.Lon, t.Heading);
+                if (_cesium3D.IsRunning)
+                    _cesium3D.PublishVehicle(t.Lat, t.Lon, t.AltRel, t.Heading, t.Roll, t.Pitch,
+                                             t.Speed, t.FlightMode, t.Armed);
+            }
             else
                 HideDroneMarker();
         });
@@ -867,6 +877,9 @@ public partial class FlightView : UserControl
             System.Console.WriteLine("[SORA] invalid parameters: " + ex.Message);
         }
     }
+
+    /// <summary>Opens the 3D view from elsewhere in the app (e.g. the Simulation tab).</summary>
+    public void Open3DView() => OnOpen3DView(this, new RoutedEventArgs());
 
     private void OnOpen3DView(object? s, RoutedEventArgs e)
     {

@@ -420,6 +420,12 @@ public partial class MainWindow : Window
                 if (!_mavRunning) OnConnect(this, new RoutedEventArgs());
             };
             _simulationView.OpenMissionPlannerRequested += () => OnFlightView(this, new RoutedEventArgs());
+            _simulationView.Open3DViewRequested += () =>
+            {
+                // The 3D view lives in Flight View, which also feeds it telemetry.
+                OnFlightView(this, new RoutedEventArgs());
+                _flightView?.Open3DView();
+            };
         }
         ContentArea.Child = _simulationView;
     }
