@@ -75,8 +75,16 @@ namespace InfraDroneDesktop.Services
             {
                 Console.WriteLine($"[AsvMavLink] Failed to write alert log: {ex.Message}");
             }
-            RaiseSafetyAlert(title, message);
+            // Previously called RaiseSafetyAlert(title, message) here -- infinite
+            // recursion, so the FIRST alert of any kind (low battery, link lost,
+            // GPS degraded, geofence) crashed the whole app with a stack overflow.
+            SafetyAlert?.Invoke(title, message);
         }
+
+        // Set MAVDEBUG=1 to see per-packet logging. Off by default: printing every
+        // packet floods the console and slows the UI thread during real flights.
+        private static readonly bool DebugLogging =
+            Environment.GetEnvironmentVariable("MAVDEBUG") == "1";
 
         // Live status for a monitoring UI -- computed on demand, not events.
         public double SecondsSinceLastTelemetry => (DateTime.UtcNow - _lastTelemetryTime).TotalSeconds;
@@ -99,6 +107,7 @@ namespace InfraDroneDesktop.Services
         private bool _criticalBatteryAlertSent = false;
         private bool _linkLostAlertSent = false;
         private bool _gpsDegradedAlertSent = false;
+        private bool _fenceBreachAlertSent = false;
         private DateTime _lastTelemetryTime = DateTime.MinValue;
         private System.Threading.Timer? _linkWatchdogTimer;
 
@@ -322,21 +331,25 @@ namespace InfraDroneDesktop.Services
                 // connection stream and filter for this specific packet type.
                 _telemetrySubscriptions.Add(_connection!.Subscribe(packet =>
                 {
-                    // TEMP DEBUG: log every raw packet type to confirm our fence
-                    // test packet is actually arriving at this subscription at all.
-                    Console.WriteLine($"[AsvMavLink DEBUG] Raw packet received: {packet.Name} (payload type: {packet.Payload?.GetType().FullName})");
-                    if (packet.MessageId == 162)
-                    {
-                        Console.WriteLine($"[AsvMavLink DEBUG] *** MessageId 162 (FENCE_STATUS) SEEN! Name={packet.Name}, PayloadType={packet.Payload?.GetType().FullName} ***");
-                    }
+                    if (DebugLogging)
+                        Console.WriteLine($"[AsvMavLink DEBUG] Raw packet received: {packet.Name} (payload type: {packet.Payload?.GetType().FullName})");
 
                     if (packet.Payload is Asv.Mavlink.V2.Ardupilotmega.FenceStatusPayload fence)
                     {
-                        Console.WriteLine($"[AsvMavLink DEBUG] FENCE_STATUS matched! BreachStatus={fence.BreachStatus}");
-                        if (fence.BreachStatus != 0)
+                        if (DebugLogging)
+                            Console.WriteLine($"[AsvMavLink DEBUG] FENCE_STATUS matched! BreachStatus={fence.BreachStatus}");
+                        // FENCE_STATUS arrives about once a second; alert once per
+                        // breach instead of once per packet.
+                        if (fence.BreachStatus != 0 && !_fenceBreachAlertSent)
                         {
+                            _fenceBreachAlertSent = true;
                             RaiseSafetyAlert("GEOFENCE BREACH",
                                 $"Drone has breached the geofence! Breach type: {fence.BreachType}. RTL recommended.");
+                        }
+                        else if (fence.BreachStatus == 0 && _fenceBreachAlertSent)
+                        {
+                            _fenceBreachAlertSent = false;
+                            RaiseSafetyAlert("GEOFENCE CLEAR", "Vehicle is back inside the geofence.");
                         }
                     }
                 }));
@@ -393,6 +406,165 @@ namespace InfraDroneDesktop.Services
             var accepted = result.Result == MavResult.MavResultAccepted;
             CommandResult?.Invoke($"MODE {modeId}", accepted);
             return accepted;
+        }
+
+        // ------------------------------------------------------------------
+        // MISSION UPLOAD (Cube Orange / ArduPlane QuadPlane, MAVLink 2)
+        //
+        // What gets uploaded:
+        //   seq 0          home placeholder (ArduPilot ALWAYS treats item 0 as
+        //                  home and overwrites it at arming -- it is never flown)
+        //   seq 1          NAV_VTOL_TAKEOFF to vtolTakeoffAltM (if > 0)
+        //   seq 2..        NAV_WAYPOINT for each user waypoint (relative altitude)
+        //   last           NAV_RETURN_TO_LAUNCH (if appendRtl). With Q_RTL_MODE
+        //                  set on the aircraft, RTL ends in a VTOL landing.
+        //
+        // Handshake is driven by hand on the raw connection, same reason as
+        // FenceUploadService: MissionClient's helpers don't expose MissionType.
+        // ArduPilot answers MISSION_COUNT with MISSION_REQUEST_INT (msg 51); old
+        // firmware may use MISSION_REQUEST (msg 40). Both are handled here.
+        //
+        // SAFETY: uploading never arms, never changes mode, never starts AUTO.
+        // ------------------------------------------------------------------
+        public enum CubeMissionUploadResult { Success, Timeout, Rejected, NotConnected, InvalidMission }
+
+        private readonly record struct MissionItemSpec(
+            MavCmd Command, MavFrame Frame, double Lat, double Lon, float Alt,
+            float P1 = 0, float P2 = 0, float P3 = 0, float P4 = 0);
+
+        public async Task<(CubeMissionUploadResult Result, string Detail)> UploadMissionAsync(
+            IReadOnlyList<(double Lat, double Lon, float AltM)> waypoints,
+            float vtolTakeoffAltM,
+            bool appendRtl = true,
+            int timeoutMs = 20000,
+            CancellationToken ct = default)
+        {
+            if (_connection == null || _missionClient == null || _lastIdentity == null || _lastSeq == null)
+                return (CubeMissionUploadResult.NotConnected, "No Cube Orange vehicle connected.");
+            if (waypoints == null || waypoints.Count == 0)
+                return (CubeMissionUploadResult.InvalidMission, "No waypoints to upload.");
+            foreach (var wp in waypoints)
+            {
+                if (double.IsNaN(wp.Lat) || Math.Abs(wp.Lat) > 90 || double.IsNaN(wp.Lon) || Math.Abs(wp.Lon) > 180)
+                    return (CubeMissionUploadResult.InvalidMission, $"Invalid coordinate {wp.Lat},{wp.Lon}.");
+                if (wp.AltM <= 0)
+                    return (CubeMissionUploadResult.InvalidMission, "Every waypoint needs an altitude above 0 m.");
+            }
+
+            // ---- Build the item list ----
+            var items = new List<MissionItemSpec>
+            {
+                new(MavCmd.MavCmdNavWaypoint, MavFrame.MavFrameGlobal, waypoints[0].Lat, waypoints[0].Lon, 0)
+            };
+            if (vtolTakeoffAltM > 0)
+                items.Add(new(MavCmd.MavCmdNavVtolTakeoff, MavFrame.MavFrameGlobalRelativeAlt,
+                              waypoints[0].Lat, waypoints[0].Lon, vtolTakeoffAltM));
+            foreach (var wp in waypoints)
+                items.Add(new(MavCmd.MavCmdNavWaypoint, MavFrame.MavFrameGlobalRelativeAlt,
+                              wp.Lat, wp.Lon, wp.AltM));
+            if (appendRtl)
+                items.Add(new(MavCmd.MavCmdNavReturnToLaunch, MavFrame.MavFrameGlobalRelativeAlt, 0, 0, 0));
+
+            var identity = _lastIdentity;
+            var count = (ushort)items.Count;
+
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(timeoutMs);
+            var tct = timeoutCts.Token;
+
+            var ackTcs = new TaskCompletionSource<MavMissionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var sentSeqs = new HashSet<ushort>();
+
+            async Task SendItem(ushort seq)
+            {
+                if (seq >= items.Count) return;
+                var it = items[seq];
+                lock (sentSeqs) sentSeqs.Add(seq);
+                await _missionClient!.WriteMissionIntItem(p =>
+                {
+                    p.TargetSystem = identity.TargetSystemId;
+                    p.TargetComponent = identity.TargetComponentId;
+                    p.Seq = seq;
+                    p.Frame = it.Frame;
+                    p.Command = it.Command;
+                    p.MissionType = MavMissionType.MavMissionTypeMission;
+                    p.Current = 0;
+                    p.Autocontinue = 1;
+                    p.Param1 = it.P1; p.Param2 = it.P2; p.Param3 = it.P3; p.Param4 = it.P4;
+                    p.X = (int)Math.Round(it.Lat * 1e7);
+                    p.Y = (int)Math.Round(it.Lon * 1e7);
+                    p.Z = it.Alt;
+                }, tct);
+            }
+
+            // Only listen to packets from the vehicle we target -- QGroundControl or
+            // MAVProxy on the same link must not be mistaken for the vehicle.
+            using var sub = _connection.Subscribe(packet =>
+            {
+                if (packet.SystemId != identity.TargetSystemId) return;
+                try
+                {
+                    switch (packet.Payload)
+                    {
+                        case MissionRequestIntPayload rqi when rqi.MissionType == MavMissionType.MavMissionTypeMission:
+                            _ = SendItem(rqi.Seq);
+                            break;
+                        case MissionRequestPayload rq when rq.MissionType == MavMissionType.MavMissionTypeMission:
+                            _ = SendItem(rq.Seq);
+                            break;
+                        case MissionAckPayload ack when ack.MissionType == MavMissionType.MavMissionTypeMission:
+                            ackTcs.TrySetResult(ack.Type);
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("[AsvMavLink] Mission item send failed: " + ex.Message);
+                }
+            });
+
+            try
+            {
+                var pkt = new MissionCountPacket
+                {
+                    SystemId = identity.SystemId,
+                    ComponentId = identity.ComponentId,
+                    Sequence = _lastSeq.GetNextSequenceNumber()
+                };
+                pkt.Payload.TargetSystem = identity.TargetSystemId;
+                pkt.Payload.TargetComponent = identity.TargetComponentId;
+                pkt.Payload.Count = count;
+                pkt.Payload.MissionType = MavMissionType.MavMissionTypeMission;
+                await _connection.Send(pkt, tct);
+
+                var result = await ackTcs.Task.WaitAsync(tct);
+                int served; lock (sentSeqs) served = sentSeqs.Count;
+
+                if (result != MavMissionResult.MavMissionAccepted)
+                    return (CubeMissionUploadResult.Rejected, $"Vehicle rejected the mission: {result}.");
+                if (served < count)
+                    return (CubeMissionUploadResult.Rejected,
+                            $"Vehicle acknowledged after only {served} of {count} items -- treat as failed and re-upload.");
+
+                CommandResult?.Invoke("MISSION UPLOAD", true);
+                return (CubeMissionUploadResult.Success,
+                        $"Mission accepted: {waypoints.Count} waypoints" +
+                        (vtolTakeoffAltM > 0 ? $", VTOL takeoff to {vtolTakeoffAltM:F0} m" : "") +
+                        (appendRtl ? ", RTL at end" : "") +
+                        $" ({count} items incl. home). Not armed, mode unchanged.");
+            }
+            catch (OperationCanceledException)
+            {
+                CommandResult?.Invoke("MISSION UPLOAD", false);
+                int served; lock (sentSeqs) served = sentSeqs.Count;
+                return (CubeMissionUploadResult.Timeout,
+                        $"Timed out after {timeoutMs / 1000}s ({served} of {count} items requested by vehicle).");
+            }
+            catch (Exception ex)
+            {
+                CommandResult?.Invoke("MISSION UPLOAD", false);
+                return (CubeMissionUploadResult.Rejected, "Upload failed: " + ex.Message);
+            }
         }
 
         public async Task<float?> ReadParamAsync(string name, CancellationToken ct = default)

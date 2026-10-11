@@ -399,7 +399,12 @@ public partial class MissionView : UserControl
         }
         else
         {
-            StatusText.Text = "Cube Orange mission upload not yet implemented.";
+            // Cube Orange / Loong 2160: VTOL takeoff to the first waypoint's
+            // altitude, then the waypoints, then RTL (VTOL landing via Q_RTL_MODE).
+            var (result, detail) = await _mav!.UploadMissionAsync(wps, vtolTakeoffAltM: wps[0].Item3);
+            StatusText.Text = result == AsvMavLinkService.CubeMissionUploadResult.Success
+                ? "Upload complete: " + detail
+                : "Upload FAILED: " + detail;
         }
     }
 
