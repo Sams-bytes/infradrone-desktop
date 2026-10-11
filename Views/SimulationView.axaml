@@ -1,0 +1,124 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.SimulationView"
+             Background="#0f1923">
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- Header -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock Text="Flight Simulation (SITL)" FontSize="14" FontWeight="Bold"
+                     Foreground="#e2e8f0"/>
+          <TextBlock Text="Simulated Cube Orange running real ArduPlane QuadPlane firmware · no aircraft, no radio"
+                     FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+        <Border Grid.Column="1" Name="StateBadge" Background="#2a1215" BorderBrush="#ef4444"
+                BorderThickness="1.5" CornerRadius="6" Padding="12,6">
+          <TextBlock Name="StateText" Text="STOPPED" FontSize="14" FontWeight="Bold"
+                     Foreground="#ef4444"/>
+        </Border>
+      </Grid>
+    </Border>
+
+    <ScrollViewer Grid.Row="1">
+      <StackPanel Margin="16,12" Spacing="12" MaxWidth="760" HorizontalAlignment="Left">
+
+        <!-- 1. Start location -->
+        <Border Background="#1a2637" CornerRadius="8" Padding="14">
+          <StackPanel Spacing="8">
+            <TextBlock Text="1 · START LOCATION" FontSize="10" FontWeight="Bold"
+                       Foreground="#64748b" LetterSpacing="1"/>
+            <ComboBox Name="PresetBox" SelectionChanged="OnPresetChanged" MinWidth="320">
+              <ComboBoxItem Content="Groningen — city centre"/>
+              <ComboBoxItem Content="Custom (type coordinates below)"/>
+            </ComboBox>
+            <Grid ColumnDefinitions="Auto,*,Auto,*" RowDefinitions="Auto,Auto" Margin="0,4,0,0">
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="Latitude" Foreground="#94a3b8"
+                         FontSize="11" VerticalAlignment="Center" Margin="0,0,8,6"/>
+              <TextBox Grid.Row="0" Grid.Column="1" Name="LatBox" FontFamily="Consolas" Margin="0,0,16,6"/>
+              <TextBlock Grid.Row="0" Grid.Column="2" Text="Longitude" Foreground="#94a3b8"
+                         FontSize="11" VerticalAlignment="Center" Margin="0,0,8,6"/>
+              <TextBox Grid.Row="0" Grid.Column="3" Name="LonBox" FontFamily="Consolas" Margin="0,0,0,6"/>
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="Ground alt (m)" Foreground="#94a3b8"
+                         FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBox Grid.Row="1" Grid.Column="1" Name="AltBox" FontFamily="Consolas" Margin="0,0,16,0"/>
+              <TextBlock Grid.Row="1" Grid.Column="2" Text="Heading (°)" Foreground="#94a3b8"
+                         FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBox Grid.Row="1" Grid.Column="3" Name="HdgBox" FontFamily="Consolas"/>
+            </Grid>
+            <TextBlock Text="Ground altitude is above sea level (NAP ≈ sea level; Groningen is only a few metres). It only sets the simulated home point."
+                       FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <!-- 2. Start / stop -->
+        <Border Background="#1a2637" CornerRadius="8" Padding="14">
+          <StackPanel Spacing="10">
+            <TextBlock Text="2 · RUN" FontSize="10" FontWeight="Bold"
+                       Foreground="#64748b" LetterSpacing="1"/>
+            <CheckBox Name="AutoOpenBox" IsChecked="True" Foreground="#cbd5e1" FontSize="12"
+                      Content="Connect and open Mission Planner automatically when ready"/>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Name="BtnStart" Content="▶  Start simulation" Click="OnStart"
+                      Background="#0d3d2e" Foreground="#34d399" BorderBrush="#0d9e75"
+                      BorderThickness="1" Padding="16,8" CornerRadius="6" FontWeight="Bold"/>
+              <Button Name="BtnStop" Content="■  Stop" Click="OnStop" IsEnabled="False"
+                      Background="#2a1215" Foreground="#f87171" BorderBrush="#ef4444"
+                      BorderThickness="1" Padding="16,8" CornerRadius="6"/>
+              <Button Name="BtnOpenPlanner" Content="✈  Open Mission Planner" Click="OnOpenPlanner"
+                      Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
+                      BorderThickness="1" Padding="16,8" CornerRadius="6"/>
+            </StackPanel>
+            <TextBlock Name="MessageText" Text="Ready. Click Start simulation."
+                       FontSize="12" Foreground="#cbd5e1" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Border>
+
+        <!-- 3. Status -->
+        <Border Background="#1a2637" CornerRadius="8" Padding="14">
+          <StackPanel Spacing="6">
+            <TextBlock Text="3 · STATUS" FontSize="10" FontWeight="Bold"
+                       Foreground="#64748b" LetterSpacing="1"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Ellipse Name="DotArdu" Width="10" Height="10" Fill="#475569"/>
+              <TextBlock Text="Simulated autopilot (ArduPlane)" Foreground="#cbd5e1" FontSize="12"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Ellipse Name="DotMav" Width="10" Height="10" Fill="#475569"/>
+              <TextBlock Text="MAVLink relay (MAVProxy)" Foreground="#cbd5e1" FontSize="12"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Ellipse Name="DotLink" Width="10" Height="10" Fill="#475569"/>
+              <TextBlock Text="Link to this app" Foreground="#cbd5e1" FontSize="12"/>
+              <TextBlock Name="PacketText" Text="" Foreground="#64748b" FontSize="11"
+                         FontFamily="Consolas" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Name="LogText" Text="" FontSize="10" Foreground="#64748b"
+                       TextWrapping="Wrap" Margin="0,6,0,0"/>
+          </StackPanel>
+        </Border>
+
+        <!-- 4. How to fly -->
+        <Border Background="#1a2637" CornerRadius="8" Padding="14">
+          <StackPanel Spacing="4">
+            <TextBlock Text="4 · HOW TO FLY" FontSize="10" FontWeight="Bold"
+                       Foreground="#64748b" LetterSpacing="1" Margin="0,0,0,4"/>
+            <TextBlock Foreground="#cbd5e1" FontSize="12" TextWrapping="Wrap"
+                       Text="1. In Mission Planner, click Add WP and click the map to place waypoints."/>
+            <TextBlock Foreground="#cbd5e1" FontSize="12" TextWrapping="Wrap"
+                       Text="2. Click Upload. It adds a VTOL take-off at the start and Return-To-Launch at the end."/>
+            <TextBlock Foreground="#cbd5e1" FontSize="12" TextWrapping="Wrap"
+                       Text="3. Click Arm, then Auto. The drone takes off vertically and flies the route."/>
+            <TextBlock Foreground="#cbd5e1" FontSize="12" TextWrapping="Wrap"
+                       Text="4. After the last waypoint it circles home. Click Land to bring it down."/>
+            <TextBlock Foreground="#fbbf24" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0"
+                       Text="Before connecting the REAL drone: click Stop here, then in a terminal run  sudo systemctl start mavproxy-router"/>
+          </StackPanel>
+        </Border>
+
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

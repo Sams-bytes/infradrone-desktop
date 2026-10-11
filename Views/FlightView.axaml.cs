@@ -554,13 +554,28 @@ public partial class FlightView : UserControl
         if (_droneLayer == null || _mapControl == null) return;
         var (x, y) = SphericalMercator.FromLonLat(lon, lat);
         var f = new PointFeature(new MPoint(x, y));
-        f.Styles.Add(new SymbolStyle
+        var iconId = DroneIcon.BitmapId;
+        if (iconId >= 0)
         {
-            Fill = new MBrush(new MColor(13, 158, 117)),
-            Outline = new MPen(MColor.White, 2.5f),
-            SymbolScale = 0.8,
-            SymbolRotation = heading
-        });
+            // Top-down VTOL QuadPlane icon, nose = north, rotated to heading.
+            f.Styles.Add(new SymbolStyle
+            {
+                BitmapId = iconId,
+                SymbolScale = DroneIcon.DefaultScale,
+                SymbolRotation = heading
+            });
+        }
+        else
+        {
+            // Fallback: the original green dot, if the icon could not be loaded.
+            f.Styles.Add(new SymbolStyle
+            {
+                Fill = new MBrush(new MColor(13, 158, 117)),
+                Outline = new MPen(MColor.White, 2.5f),
+                SymbolScale = 0.8,
+                SymbolRotation = heading
+            });
+        }
         _droneLayer.Features = new System.Collections.Generic.List<IFeature> { f };
         _mapControl.Map.Refresh();
     }

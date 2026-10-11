@@ -24,6 +24,8 @@ public partial class MainWindow : Window
         _mav.TelemetryUpdated += (t) => _batteryHealth.OnTelemetryUpdate(t);
         _mav.SafetyAlert += OnSafetyAlert;
         _bluegrass.TelemetryUpdated += OnBluegrassTelemetrySidebar;
+        // Never leave a simulator running in the background after the app closes.
+        Closed += (_, _) => Services.SimulatorService.Instance.Stop();
 
         // A "View Health Passport" click anywhere in the app (currently only
 
@@ -324,6 +326,7 @@ public partial class MainWindow : Window
     private Views.AerialDetectionView? _aerialDetectionView;
     private Views.MavLinkTestView? _mavLinkTestView;
     private Views.FailsafeMonitorView? _failsafeMonitorView;
+    private Views.SimulationView? _simulationView;
     private Views.StoryModeView? _storyModeView;
     private Views.AssetMonitorView? _assetMonitorView;
     private void OnAssetMonitorView(object? sender, RoutedEventArgs e)
@@ -404,6 +407,21 @@ public partial class MainWindow : Window
     {
         if (_mavLinkTestView == null) _mavLinkTestView = new Views.MavLinkTestView();
         ContentArea.Child = _mavLinkTestView;
+    }
+    private void OnSimulationView(object? sender, RoutedEventArgs e)
+    {
+        if (_simulationView == null)
+        {
+            _simulationView = new Views.SimulationView();
+            // Connect only if not already connected -- OnConnect toggles, so a
+            // second call would DISconnect.
+            _simulationView.ConnectRequested += () =>
+            {
+                if (!_mavRunning) OnConnect(this, new RoutedEventArgs());
+            };
+            _simulationView.OpenMissionPlannerRequested += () => OnFlightView(this, new RoutedEventArgs());
+        }
+        ContentArea.Child = _simulationView;
     }
     private void OnFailsafeMonitorView(object? sender, RoutedEventArgs e)
     {

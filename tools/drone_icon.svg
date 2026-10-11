@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1b2430"/>
+      <stop offset="0.5" stop-color="#3a4757"/>
+      <stop offset="1" stop-color="#1b2430"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a5868"/>
+      <stop offset="1" stop-color="#222c38"/>
+    </linearGradient>
+    <radialGradient id="rotor" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.05"/>
+      <stop offset="0.75" stop-color="#22d3ee" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#22d3ee" stop-opacity="0.55"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a5f3fc"/>
+      <stop offset="1" stop-color="#0e7490"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <!-- booms -->
+    <rect x="74" y="44" width="8" height="168" rx="4" fill="url(#body)"/>
+    <rect x="174" y="44" width="8" height="168" rx="4" fill="url(#body)"/>
+
+    <!-- wing: slight taper, tips forward-swept look -->
+    <path d="M14 118 L114 108 L142 108 L242 118 L242 134 L142 142 L114 142 L14 134 Z"
+          fill="url(#wing)" stroke="#0b1017" stroke-width="2"/>
+    <!-- leading-edge accent -->
+    <path d="M18 119 L114 110 M142 110 L238 119" stroke="#22d3ee" stroke-width="2.5"
+          stroke-linecap="round" fill="none"/>
+
+    <!-- V-tail -->
+    <path d="M128 196 L94 228 L100 232 L128 212 L156 232 L162 228 Z"
+          fill="url(#wing)" stroke="#0b1017" stroke-width="2"/>
+
+    <!-- fuselage -->
+    <path d="M128 20 C142 26 146 46 146 70 L144 200 C144 210 136 216 128 216
+             C120 216 112 210 112 200 L110 70 C110 46 114 26 128 20 Z"
+          fill="url(#body)" stroke="#0b1017" stroke-width="2"/>
+    <!-- canopy / sensor glass -->
+    <path d="M128 30 C137 35 139 48 139 60 L117 60 C117 48 119 35 128 30 Z"
+          fill="url(#glass)"/>
+    <!-- spine accent -->
+    <rect x="126" y="70" width="4" height="120" rx="2" fill="#22d3ee" opacity="0.85"/>
+
+    <!-- motor hubs -->
+    <circle cx="78" cy="48" r="7" fill="#0b1017" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="178" cy="48" r="7" fill="#0b1017" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="78" cy="208" r="7" fill="#0b1017" stroke="#94a3b8" stroke-width="2"/>
+    <circle cx="178" cy="208" r="7" fill="#0b1017" stroke="#94a3b8" stroke-width="2"/>
+  </g>
+
+  <!-- spinning rotor discs (drawn over, translucent) -->
+  <circle cx="78" cy="48" r="32" fill="url(#rotor)"/>
+  <circle cx="178" cy="48" r="32" fill="url(#rotor)"/>
+  <circle cx="78" cy="208" r="32" fill="url(#rotor)"/>
+  <circle cx="178" cy="208" r="32" fill="url(#rotor)"/>
+  <!-- blade blur streaks -->
+  <g stroke="#e0f7ff" stroke-width="3" stroke-linecap="round" opacity="0.55">
+    <path d="M54 40 L102 56"/><path d="M154 56 L202 40"/>
+    <path d="M54 216 L102 200"/><path d="M154 200 L202 216"/>
+  </g>
+  <!-- pusher prop -->
+  <ellipse cx="128" cy="220" rx="16" ry="4" fill="#22d3ee" opacity="0.45"/>
+
+  <!-- nav lights: red port (left), green starboard (right), white tail -->
+  <circle cx="16" cy="126" r="5" fill="#ef4444" stroke="#fff" stroke-width="1.5"/>
+  <circle cx="240" cy="126" r="5" fill="#22c55e" stroke="#fff" stroke-width="1.5"/>
+  <circle cx="128" cy="232" r="3.5" fill="#ffffff"/>
+</svg>
