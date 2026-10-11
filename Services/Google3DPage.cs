@@ -97,12 +97,7 @@ function initMap() {
       defaultUIHidden: true
     });
     document.getElementById('map').appendChild(map);
-    trailLine = new M.Polyline3DElement({
-      path: [], strokeColor: '#22d3ee', outerColor: '#ffffff', strokeWidth: 6, outerWidth: 0.25,
-      altitudeMode: enumOr(M.AltitudeMode, 'RELATIVE_TO_GROUND', 'RELATIVE_TO_GROUND'),
-      drawsOccludedSegments: true
-    });
-    map.append(trailLine);
+    // The trail line is created once it has 2+ points: Google rejects an empty path.
     setInterval(pollState, 500); pollState();
     setInterval(pollVehicle, POLL_MS); pollVehicle();
     requestAnimationFrame(frame);
@@ -123,6 +118,9 @@ function pollState() {
 }
 
 function drawMission(state) {
+  try { drawMissionInner(state); } catch (e) { showErr('Could not draw the mission: ' + e.message); }
+}
+function drawMissionInner(state) {
   for (var i = 0; i < routeEls.length; i++) { routeEls[i].remove(); }
   routeEls = [];
   var rel = enumOr(M.AltitudeMode, 'RELATIVE_TO_GROUND', 'RELATIVE_TO_GROUND');
@@ -230,6 +228,9 @@ function setDroneVisible(show) {
 
 function frame() {
   requestAnimationFrame(frame);
+  try { frameInner(); } catch (e) { console.error('frame: ' + e.message); }
+}
+function frameInner() {
   var c = current();
   if (!c || !drone) { return; }
 
@@ -258,7 +259,19 @@ function frame() {
   }
 
   var now = Date.now();
-  if (now - lastTrailSet > 1000 && trailLine) { trailLine.path = trail.slice(); lastTrailSet = now; }
+  if (now - lastTrailSet > 1000 && trail.length >= 2) {
+    lastTrailSet = now;
+    if (!trailLine) {
+      trailLine = new M.Polyline3DElement({
+        path: trail.slice(), strokeColor: '#22d3ee', outerColor: '#ffffff', strokeWidth: 6, outerWidth: 0.25,
+        altitudeMode: enumOr(M.AltitudeMode, 'RELATIVE_TO_GROUND', 'RELATIVE_TO_GROUND'),
+        drawsOccludedSegments: true
+      });
+      map.append(trailLine);
+    } else {
+      trailLine.path = trail.slice();
+    }
+  }
 }
 
 // ---- Buttons -----------------------------------------------------------------
@@ -270,7 +283,10 @@ for (var b = 0; b < viewBtns.length; b++) {
     if (map) { map.roll = 0; }
   };
 }
-document.getElementById('btrail').onclick = function () { trail = []; if (trailLine) { trailLine.path = []; } };
+document.getElementById('btrail').onclick = function () {
+  trail = [];
+  if (trailLine) { trailLine.remove(); trailLine = null; }
+};
 document.getElementById('bnose').onclick = function () {
   noseOffset = ((noseOffset + 90 + 180) % 360) - 180;
   try { localStorage.setItem('infradrone.noseOffset.google', String(noseOffset)); } catch (e) { }
