@@ -53,7 +53,8 @@ namespace InfraDroneDesktop.Services
 <body>
 <div id='cesiumContainer'></div>
 <div id='hud'>
-  <b>Mission 3D</b><br>
+  <b>InfraDrone 3D</b> <span style='color:#7f93a8;font-size:11px'>PDOK (Dutch government 3D)</span><br>
+  Map: <button class='btn' onclick='location.href=""/google""'>Google 3D</button><button class='btn on'>PDOK</button><br>
   <span id='wpcount'>waiting for app...</span><br>
   <span id='alt'></span>
   <div style='margin-top:8px'>
@@ -68,8 +69,9 @@ namespace InfraDroneDesktop.Services
     <span class='k'>Alt</span><span class='v' id='valt'>-</span><br>
     <span class='k'>Speed</span><span class='v' id='vspd'>-</span><br>
     <span class='k'>Heading</span><span class='v' id='vhdg'>-</span><br>
-    <button class='btn' id='bfollow'>Follow drone</button>
-    <button class='btn' id='btrail'>Clear trail</button>
+    View:<br>
+    <button class='btn' data-view='chase'>Chase</button><button class='btn' data-view='fpv'>Onboard</button><button class='btn' data-view='top'>Top</button><button class='btn' data-view='orbit'>Orbit</button><button class='btn on' data-view='free'>Free</button><br>
+    <button class='btn' id='btrail'>Clear trail</button><button class='btn' id='bnose' title='Rotate the drone model 90 degrees if its nose points the wrong way'>Turn model 90°</button>
   </div>
   <div id='err'></div>
 </div>
@@ -111,6 +113,19 @@ var viewer = new Cesium.Viewer('cesiumContainer', {
   animation: false, infoBox: false, selectionIndicator: false
 });
 viewer.scene.globe.baseColor = Cesium.Color.fromCssColorString('#0b1017');
+// Midday sun today, with shadows: buildings read as 3D instead of flat blocks.
+(function () {
+  var d = new Date(); d.setHours(13, 0, 0, 0);
+  viewer.clock.currentTime = Cesium.JulianDate.fromDate(d);
+  viewer.clock.shouldAnimate = false;
+})();
+viewer.shadows = true;
+viewer.terrainShadows = Cesium.ShadowMode.RECEIVE_ONLY;
+viewer.shadowMap.size = 4096;
+viewer.shadowMap.softShadows = true;
+viewer.shadowMap.maximumDistance = 2500;
+viewer.scene.globe.enableLighting = true;
+viewer.scene.highDynamicRange = false;
 viewer.scene.globe.depthTestAgainstTerrain = true;
 viewer.scene.skyAtmosphere.show = true;
 viewer.scene.fog.enabled = true;
@@ -151,9 +166,9 @@ function tryBuildings(i) {
     .then(function (ts) {
       viewer.scene.primitives.add(ts);
       console.log('BUILDINGS LOADED from ' + url);
-      ts.style = new Cesium.Cesium3DTileStyle({
-        color: 'color(\'#7d94ad\', 0.95)'
-      });
+      // Warm white 'architectural model' look; sunlight and shadows give the depth.
+      ts.style = new Cesium.Cesium3DTileStyle({ color: 'color(\'#efe9dd\', 1.0)' });
+      ts.shadows = Cesium.ShadowMode.ENABLED;
     })
     .catch(function (e) { console.warn('buildings failed at ' + url + ': ' + e.message); tryBuildings(i + 1); });
 }
@@ -294,7 +309,6 @@ var prevPos = null, nextPos = null, prevHpr = null, nextHpr = null, tNext = 0;
 var trail = [];
 var MAX_TRAIL = 1200;          // about 5 minutes at 4 Hz
 var flownToDrone = false;
-var following = false;
 
 function lerpAngle(a, b, f) {
   var d = ((b - a + 540) % 360) - 180;
@@ -407,13 +421,54 @@ function onVehicle(v) {
   }
 }
 
-document.getElementById('bfollow').onclick = function () {
-  following = !following;
-  viewer.trackedEntity = following ? drone : undefined;
-  this.classList.toggle('on', following);
-  this.textContent = following ? 'Following' : 'Follow drone';
-};
+// ---- Camera views ------------------------------------------------------------
+var view = 'free';
+var orbitHeading = 0;
+try { var savedNose = localStorage.getItem('infradrone.noseOffset.cesium'); if (savedNose !== null) { MODEL_HEADING_OFFSET = Number(savedNose); } } catch (e) { }
+function rad(d) { return Cesium.Math.toRadians(d); }
+
+viewer.scene.preRender.addEventListener(function () {
+  if (!drone) { return; }
+  drone.show = view !== 'fpv';
+  if (view === 'free') { return; }
+  var pos = currentPos(); var a = currentHpr();
+  if (!pos || !a) { return; }
+  var cam = viewer.camera;
+  if (view === 'chase') {
+    cam.lookAt(pos, new Cesium.HeadingPitchRange(rad(a.h), rad(-12), 45));
+  } else if (view === 'top') {
+    cam.lookAt(pos, new Cesium.HeadingPitchRange(0, rad(-89.5), 350));
+  } else if (view === 'orbit') {
+    orbitHeading = (orbitHeading + 0.25) % 360;
+    cam.lookAt(pos, new Cesium.HeadingPitchRange(rad(orbitHeading), rad(-25), 160));
+  } else if (view === 'fpv') {
+    // Eye just above the nose, looking where the drone points.
+    cam.lookAtTransform(Cesium.Matrix4.IDENTITY);
+    var enu = Cesium.Transforms.eastNorthUpToFixedFrame(pos);
+    var h = rad(a.h);
+    var eye = Cesium.Matrix4.multiplyByPoint(enu, new Cesium.Cartesian3(Math.sin(h) * 1.5, Math.cos(h) * 1.5, 0.5),
+                                             new Cesium.Cartesian3());
+    cam.setView({ destination: eye, orientation: { heading: h, pitch: rad(a.p), roll: rad(a.r) } });
+  }
+});
+
+var viewBtns = document.querySelectorAll('[data-view]');
+for (var vb = 0; vb < viewBtns.length; vb++) {
+  viewBtns[vb].onclick = function () {
+    view = this.getAttribute('data-view');
+    for (var k = 0; k < viewBtns.length; k++) { viewBtns[k].classList.toggle('on', viewBtns[k] === this); }
+    viewer.trackedEntity = undefined;
+    // Mouse control only in Free; the other views drive the camera themselves.
+    viewer.scene.screenSpaceCameraController.enableInputs = view === 'free';
+    if (view === 'free') { viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY); }
+    viewer.scene.screenSpaceCameraController.enableCollisionDetection = view !== 'fpv';
+  };
+}
 document.getElementById('btrail').onclick = function () { trail = []; };
+document.getElementById('bnose').onclick = function () {
+  MODEL_HEADING_OFFSET = ((MODEL_HEADING_OFFSET + 90 + 180) % 360) - 180;
+  try { localStorage.setItem('infradrone.noseOffset.cesium', String(MODEL_HEADING_OFFSET)); } catch (e) { }
+};
 
 function pollVehicle() {
   fetch('/vehicle', { cache: 'no-store' })

@@ -100,9 +100,31 @@ namespace InfraDroneDesktop.Services
                     {
                         WriteBytes(ctx, "model/gltf-binary", Drone3DModel.Glb);
                     }
-                    else
+                    else if (path == "/config/google-key" && ctx.Request.HttpMethod == "POST")
+                    {
+                        string body;
+                        using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8))
+                            body = reader.ReadToEnd();
+                        var (ok, msg) = SaveGoogleKey(body);
+                        ctx.Response.StatusCode = ok ? 200 : 400;
+                        Write(ctx, "text/plain; charset=utf-8", msg);
+                    }
+                    else if (path == "/pdok")
                     {
                         Write(ctx, "text/html; charset=utf-8", Cesium3DPage.Html);
+                    }
+                    else if (path == "/google")
+                    {
+                        var key = GetGoogleKey();
+                        Write(ctx, "text/html; charset=utf-8",
+                              key == null ? Google3DPage.SetupHtml : Google3DPage.Html.Replace("__GOOGLE_KEY__", key));
+                    }
+                    else
+                    {
+                        // Default: Google photorealistic if a key is set, otherwise PDOK.
+                        var key = GetGoogleKey();
+                        Write(ctx, "text/html; charset=utf-8",
+                              key == null ? Cesium3DPage.Html : Google3DPage.Html.Replace("__GOOGLE_KEY__", key));
                     }
                 }
                 catch (Exception ex) { Console.WriteLine("[Cesium3D] request error: " + ex.Message); }
@@ -181,6 +203,46 @@ namespace InfraDroneDesktop.Services
             }
         }
 
+        // ---- Google Maps API key (stored only on this computer) --------------
+        private static string GoogleKeyPath => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".infradrone", "google_maps_api_key.txt");
+
+        private static readonly System.Text.RegularExpressions.Regex KeyPattern =
+            new("^[A-Za-z0-9_-]{20,100}$");
+
+        /// <summary>Key from INFRADRONE_GOOGLE_MAPS_KEY, else the saved file, else null.</summary>
+        public static string? GetGoogleKey()
+        {
+            var env = Environment.GetEnvironmentVariable("INFRADRONE_GOOGLE_MAPS_KEY");
+            if (!string.IsNullOrWhiteSpace(env) && KeyPattern.IsMatch(env.Trim())) return env.Trim();
+            try
+            {
+                if (File.Exists(GoogleKeyPath))
+                {
+                    var k = File.ReadAllText(GoogleKeyPath).Trim();
+                    if (KeyPattern.IsMatch(k)) return k;
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        private static (bool ok, string msg) SaveGoogleKey(string key)
+        {
+            key = (key ?? "").Trim();
+            if (!KeyPattern.IsMatch(key))
+                return (false, "That does not look like a Google API key (letters, digits, - and _, usually starting with AIza).");
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(GoogleKeyPath)!);
+                File.WriteAllText(GoogleKeyPath, key);
+                if (!OperatingSystem.IsWindows())
+                    File.SetUnixFileMode(GoogleKeyPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                return (true, "Key saved. Loading the Google 3D map...");
+            }
+            catch (Exception ex) { return (false, "Could not save the key: " + ex.Message); }
+        }
+
         private string VehicleJson()
         {
             var inv = CultureInfo.InvariantCulture;
@@ -200,8 +262,21 @@ namespace InfraDroneDesktop.Services
                        ",\"pitch\":" + v.pitch.ToString("F1", inv) +
                        ",\"speed\":" + v.speed.ToString("F1", inv) +
                        ",\"mode\":\"" + mode + "\"" +
-                       ",\"armed\":" + (v.armed ? "true" : "false") + "}";
+                       ",\"armed\":" + (v.armed ? "true" : "false") +
+                       GroundMslJson(inv) + "}";
             }
+        }
+
+        /// <summary>
+        /// Home ground height above sea level (alt MSL - alt above home), from the
+        /// Live Telemetry service if it has both. Used by the Google camera, whose
+        /// centre altitude is above sea level. Empty when unknown.
+        /// </summary>
+        private static string GroundMslJson(CultureInfo inv)
+        {
+            var snap = LiveTelemetryService.Shared?.Snapshot();
+            if (snap == null || double.IsNaN(snap.AltMsl) || double.IsNaN(snap.AltRel)) return "";
+            return ",\"gmsl\":" + (snap.AltMsl - snap.AltRel).ToString("F1", inv);
         }
 
         /// <summary>Outer rings only, as [[lon,lat,lon,lat,...], ...] in WGS84.</summary>
