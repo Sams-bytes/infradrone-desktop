@@ -24,6 +24,10 @@ public partial class MainWindow : Window
         _mav.TelemetryUpdated += (t) => _batteryHealth.OnTelemetryUpdate(t);
         _mav.SafetyAlert += OnSafetyAlert;
         _bluegrass.TelemetryUpdated += OnBluegrassTelemetrySidebar;
+        // Collects all vehicle telemetry + messages for the Live Telemetry window.
+        LiveTelemetryService.Shared = new LiveTelemetryService(_mav);
+        Closed += (_, _) => LiveTelemetryService.Shared?.StopRecording();
+
         // Never leave a simulator running in the background after the app closes.
         Closed += (_, _) => Services.SimulatorService.Instance.Stop();
 
@@ -408,6 +412,8 @@ public partial class MainWindow : Window
         if (_mavLinkTestView == null) _mavLinkTestView = new Views.MavLinkTestView();
         ContentArea.Child = _mavLinkTestView;
     }
+    private void OnTelemetryWindow(object? sender, RoutedEventArgs e) => Views.TelemetryWindow.ShowShared();
+
     private void OnSimulationView(object? sender, RoutedEventArgs e)
     {
         if (_simulationView == null)

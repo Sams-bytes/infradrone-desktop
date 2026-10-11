@@ -1,0 +1,68 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:InfraDroneDesktop.Views"
+        x:Class="InfraDroneDesktop.Views.TelemetryWindow"
+        Title="InfraDrone — Live Telemetry"
+        Width="1280" Height="820" MinWidth="900" MinHeight="560"
+        Background="#0f1923">
+  <Grid RowDefinitions="Auto,*">
+
+    <!-- Header -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
+            BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <TextBlock Text="📊 Live Telemetry" FontSize="15" FontWeight="Bold" Foreground="#e2e8f0"
+                     VerticalAlignment="Center"/>
+          <Ellipse Name="LinkDot" Width="10" Height="10" Fill="#475569" VerticalAlignment="Center"/>
+          <TextBlock Name="LinkText" Text="No data yet" FontSize="12" Foreground="#94a3b8"
+                     VerticalAlignment="Center"/>
+          <Border Name="ArmBadge" Background="#1e293b" CornerRadius="4" Padding="8,2">
+            <TextBlock Name="ArmText" Text="DISARMED" FontSize="12" FontWeight="Bold" Foreground="#94a3b8"/>
+          </Border>
+          <Border Background="#1e293b" CornerRadius="4" Padding="8,2">
+            <TextBlock Name="ModeHeader" Text="-" FontSize="12" FontWeight="Bold" Foreground="#22d3ee"/>
+          </Border>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button Name="BtnRecord" Content="● Record CSV" Click="OnRecord"
+                  Background="#1e293b" Foreground="#f87171" BorderBrush="#334155"
+                  BorderThickness="1" Padding="10,5" CornerRadius="6"/>
+          <Button Content="📂 Log folder" Click="OnOpenFolder"
+                  Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
+                  BorderThickness="1" Padding="10,5" CornerRadius="6"/>
+          <Button Content="🧹 Clear charts" Click="OnClearCharts"
+                  Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
+                  BorderThickness="1" Padding="10,5" CornerRadius="6"/>
+          <ToggleButton Name="BtnOnTop" Content="📌 On top" Click="OnToggleTop"
+                        Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
+                        BorderThickness="1" Padding="10,5" CornerRadius="6"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="5*,4*">
+
+      <!-- Left: value tiles -->
+      <ScrollViewer Grid.Column="0" Padding="12,10">
+        <StackPanel Name="TileHost" Spacing="10"/>
+      </ScrollViewer>
+
+      <!-- Right: charts + log -->
+      <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*" Margin="0,10,12,12">
+        <local:TelemetryChart Grid.Row="0" Name="AltChart" Margin="0,0,0,8"/>
+        <local:TelemetryChart Grid.Row="1" Name="SpeedChart" Margin="0,0,0,8"/>
+        <local:TelemetryChart Grid.Row="2" Name="PowerChart" Margin="0,0,0,8"/>
+        <Border Grid.Row="3" Background="#0b1017" CornerRadius="6" Padding="8">
+          <Grid RowDefinitions="Auto,*">
+            <TextBlock Text="MESSAGES  (AP = autopilot, APP = InfraDrone)" FontSize="10" FontWeight="Bold"
+                       Foreground="#64748b" LetterSpacing="1" Margin="0,0,0,6"/>
+            <ScrollViewer Grid.Row="1">
+              <StackPanel Name="LogPanel" Spacing="1"/>
+            </ScrollViewer>
+          </Grid>
+        </Border>
+      </Grid>
+    </Grid>
+  </Grid>
+</Window>

@@ -69,6 +69,7 @@
             <Button Content="🚁  BlueDam" Classes="nav" Click="OnBluegrassParamsView"/>
             <Button Content="✈  Mission Planner" Classes="nav" Click="OnFlightView"/>
             <Button Content="🎮  Simulation" Classes="nav" Click="OnSimulationView"/>
+            <Button Content="📊  Live Telemetry" Classes="nav" Click="OnTelemetryWindow"/>
             <Button Content="🧪  MAVLink Test" Classes="nav" Click="OnMavLinkTestView"/>
             <Button Content="🛡  Failsafe Monitor" Classes="nav" Click="OnFailsafeMonitorView"/>
             <Button Content="☑  Pre-flight check" Classes="nav" Click="OnPreflightView"/>

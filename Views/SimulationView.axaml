@@ -73,6 +73,9 @@
               <Button Name="BtnOpen3D" Content="🌍  Open 3D View" Click="OnOpen3D"
                       Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
                       BorderThickness="1" Padding="16,8" CornerRadius="6"/>
+              <Button Name="BtnTelemetry" Content="📊  Live Telemetry" Click="OnTelemetry"
+                      Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
+                      BorderThickness="1" Padding="16,8" CornerRadius="6"/>
             </StackPanel>
             <TextBlock Name="MessageText" Text="Ready. Click Start simulation."
                        FontSize="12" Foreground="#cbd5e1" TextWrapping="Wrap"/>

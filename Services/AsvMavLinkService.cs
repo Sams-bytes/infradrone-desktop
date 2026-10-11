@@ -103,6 +103,13 @@ namespace InfraDroneDesktop.Services
         public int GpsMinSatsThreshold => GpsSatsMinimum;
 
         public event Action<string, string>? SafetyAlert; // title, message
+
+        /// <summary>
+        /// Every raw MAVLink packet from the connected VEHICLE (ground stations on the
+        /// same link are filtered out). Raised on a background thread at full rate;
+        /// subscribers must be quick. Used by the Live Telemetry window.
+        /// </summary>
+        public event Action<IPacketV2<IPayload>>? VehiclePacket;
         private bool _lowBatteryAlertSent = false;
         private bool _criticalBatteryAlertSent = false;
         private bool _linkLostAlertSent = false;
@@ -331,6 +338,12 @@ namespace InfraDroneDesktop.Services
                 // connection stream and filter for this specific packet type.
                 _telemetrySubscriptions.Add(_connection!.Subscribe(packet =>
                 {
+                    if (packet.SystemId == identity.TargetSystemId)
+                    {
+                        try { VehiclePacket?.Invoke(packet); }
+                        catch (Exception ex) { Console.WriteLine("[AsvMavLink] VehiclePacket handler error: " + ex.Message); }
+                    }
+
                     if (DebugLogging)
                         Console.WriteLine($"[AsvMavLink DEBUG] Raw packet received: {packet.Name} (payload type: {packet.Payload?.GetType().FullName})");
 

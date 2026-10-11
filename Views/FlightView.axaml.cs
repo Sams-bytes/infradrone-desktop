@@ -878,6 +878,8 @@ public partial class FlightView : UserControl
         }
     }
 
+    private void OnOpenTelemetry(object? s, RoutedEventArgs e) => TelemetryWindow.ShowShared();
+
     /// <summary>Opens the 3D view from elsewhere in the app (e.g. the Simulation tab).</summary>
     public void Open3DView() => OnOpen3DView(this, new RoutedEventArgs());
 

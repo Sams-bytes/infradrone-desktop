@@ -109,6 +109,8 @@ public partial class SimulationView : UserControl
         OpenMissionPlannerRequested?.Invoke();
     }
 
+    private void OnTelemetry(object? sender, RoutedEventArgs e) => TelemetryWindow.ShowShared();
+
     private void OnOpen3D(object? sender, RoutedEventArgs e)
     {
         if (_sim.IsRunning) ConnectRequested?.Invoke();
