@@ -1,0 +1,193 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="InfraDroneDesktop.Views.SuriDemoView"
+             Background="#0f1923">
+  <UserControl.Styles>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="#1a2637"/>
+      <Setter Property="CornerRadius" Value="8"/>
+      <Setter Property="Padding" Value="14"/>
+    </Style>
+    <Style Selector="TextBlock.h">
+      <Setter Property="FontSize" Value="10"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+      <Setter Property="Foreground" Value="#64748b"/>
+      <Setter Property="LetterSpacing" Value="1"/>
+      <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+    <Style Selector="TextBlock.lbl">
+      <Setter Property="Foreground" Value="#94a3b8"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.ctl">
+      <Setter Property="Background" Value="#1e293b"/>
+      <Setter Property="Foreground" Value="#e2e8f0"/>
+      <Setter Property="BorderBrush" Value="#334155"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Padding" Value="12,8"/>
+      <Setter Property="CornerRadius" Value="6"/>
+      <Setter Property="FontSize" Value="13"/>
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="Auto,*">
+    <!-- Header -->
+    <Border Grid.Row="0" Background="#1a2637" Padding="12,8" BorderBrush="#1e3a5f" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock Text="🛡 Suriname Demo — Border Security &amp; Search and Rescue" FontSize="14" FontWeight="Bold" Foreground="#e2e8f0"/>
+          <TextBlock Text="Presenter control panel. The demo itself runs in a separate browser window (put it on the projector)."
+                     FontSize="10" Foreground="#64748b"/>
+        </StackPanel>
+        <Border Grid.Column="1" Name="LinkBadge" Background="#1e293b" BorderBrush="#475569" BorderThickness="1.5" CornerRadius="6" Padding="10,5">
+          <TextBlock Name="LinkText" Text="DISPLAY NOT OPEN" FontSize="12" FontWeight="Bold" Foreground="#94a3b8"/>
+        </Border>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="11*,10*">
+      <ScrollViewer Grid.Column="0">
+        <StackPanel Margin="14,12,7,14" Spacing="12">
+
+          <!-- 1. Present -->
+          <Border Classes="card">
+            <StackPanel Spacing="10">
+              <TextBlock Classes="h" Text="1 · PRESENT"/>
+              <WrapPanel>
+                <Button Classes="ctl" Name="BtnOpen" Content="▶  Open demo display" Click="OnOpen" Margin="0,0,8,8"
+                        Background="#0d3d2e" Foreground="#34d399" BorderBrush="#0d9e75" FontWeight="Bold"/>
+                <Button Classes="ctl" Content="⛶  Open full screen" Click="OnOpenFull" Margin="0,0,8,8"/>
+              </WrapPanel>
+              <TextBlock Text="Tip: open the display, drag it to the projector screen, then press F there for full screen."
+                         FontSize="11" Foreground="#64748b" TextWrapping="Wrap"/>
+              <Border Background="#0f1923" CornerRadius="6" Padding="12,10">
+                <StackPanel Spacing="2">
+                  <TextBlock Name="ChapterText" Text="—" FontSize="18" FontWeight="Bold" Foreground="#e2e8f0" TextWrapping="Wrap"/>
+                  <TextBlock Name="StateText" Text="Open the display to start." FontSize="12" Foreground="#94a3b8"/>
+                </StackPanel>
+              </Border>
+              <WrapPanel>
+                <Button Classes="ctl" Content="⏮ Start" Click="OnHome" Margin="0,0,6,6"/>
+                <Button Classes="ctl" Content="◀ Back" Click="OnPrev" Margin="0,0,6,6"/>
+                <Button Classes="ctl" Content="Next ▶" Click="OnNext" Margin="0,0,6,6" Padding="26,8"
+                        Background="#0e7490" BorderBrush="#22d3ee" FontWeight="Bold"/>
+                <Button Classes="ctl" Name="BtnPause" Content="❚❚ Pause" Click="OnPause" Margin="0,0,6,6"/>
+                <ToggleButton Name="BtnAuto" Content="AUTO-PLAY" Click="OnAuto" Margin="0,0,6,6"
+                              Background="#1e293b" Foreground="#e2e8f0" BorderBrush="#334155" BorderThickness="1" Padding="12,8" CornerRadius="6"/>
+                <Button Classes="ctl" Content="⟲ Restart chapter" Click="OnRestart" Margin="0,0,6,6"/>
+                <Button Classes="ctl" Content="■ Black screen" Click="OnBlack" Margin="0,0,6,6"/>
+                <Button Classes="ctl" Content="🎥 Camera" Click="OnCam" Margin="0,0,6,6"/>
+              </WrapPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- 2. Setup -->
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="h" Text="2 · SETUP"/>
+              <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto,Auto">
+                <TextBlock Classes="lbl" Text="Scenario" Margin="0,0,0,8"/>
+                <ComboBox Grid.Column="1" Name="ScenarioBox" HorizontalAlignment="Stretch" Margin="0,0,0,8">
+                  <ComboBoxItem Content="Eastern border — Albina, Marowijne river"/>
+                  <ComboBoxItem Content="Western border — Nickerie, Corantijn river"/>
+                </ComboBox>
+                <TextBlock Grid.Row="1" Classes="lbl" Text="Language" Margin="0,0,0,8"/>
+                <ComboBox Grid.Row="1" Grid.Column="1" Name="LangBox" HorizontalAlignment="Stretch" Margin="0,0,0,8">
+                  <ComboBoxItem Content="English"/>
+                  <ComboBoxItem Content="Nederlands"/>
+                </ComboBox>
+                <TextBlock Grid.Row="2" Classes="lbl" Text="Map" Margin="0,0,0,8"/>
+                <ComboBox Grid.Row="2" Grid.Column="1" Name="MapBox" HorizontalAlignment="Stretch" Margin="0,0,0,8">
+                  <ComboBoxItem Content="Google photorealistic 3D (needs internet)"/>
+                  <ComboBoxItem Content="Satellite map — offline package (no internet)"/>
+                  <ComboBoxItem Content="Satellite map — online"/>
+                </ComboBox>
+                <TextBlock Grid.Row="3" Classes="lbl" Text="Endurance (min)"/>
+                <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="10">
+                  <TextBox Name="EnduranceBox" Width="80" Watermark="150"/>
+                  <TextBlock Classes="lbl" FontSize="11" TextWrapping="Wrap" MaxWidth="360"
+                             Text="Your aircraft's real flight time with payload. Ferry flights above 80% get an automatic battery stop."/>
+                </StackPanel>
+              </Grid>
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Button Classes="ctl" Content="✓ Apply to display" Click="OnApply"/>
+                <TextBlock Name="ApplyText" Classes="lbl" Text=""/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- 3. Readiness -->
+          <Border Classes="card">
+            <StackPanel Spacing="6">
+              <TextBlock Classes="h" Text="3 · READINESS CHECK"/>
+              <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Name="DotKey" Width="10" Height="10" Fill="#475569"/><TextBlock Name="TxtKey" Classes="lbl" Text="Google Maps key"/></StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Name="DotNet" Width="10" Height="10" Fill="#475569"/><TextBlock Name="TxtNet" Classes="lbl" Text="Internet"/></StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Name="DotLib" Width="10" Height="10" Fill="#475569"/><TextBlock Name="TxtLib" Classes="lbl" Text="Offline 3D library"/></StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Name="DotTiles" Width="10" Height="10" Fill="#475569"/><TextBlock Name="TxtTiles" Classes="lbl" Text="Offline satellite tiles"/></StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Name="DotFiles" Width="10" Height="10" Fill="#475569"/><TextBlock Name="TxtFiles" Classes="lbl" Text="Demo files"/></StackPanel>
+              <Button Classes="ctl" Content="↻ Check again" Click="OnCheck" HorizontalAlignment="Left" Margin="0,4,0,0"/>
+            </StackPanel>
+          </Border>
+
+          <!-- 4. Offline package -->
+          <Border Classes="card">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="h" Text="4 · OFFLINE PACKAGE (do this before you travel)"/>
+              <TextBlock Classes="lbl" TextWrapping="Wrap"
+                         Text="Downloads the 3D map library and Sentinel-2 satellite imagery for both demo areas (about 60 MB, once). Then the demo runs with no internet. Press again any time to resume or repair."/>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Classes="ctl" Name="BtnPrepare" Content="⬇ Prepare offline package" Click="OnPrepare"/>
+                <Button Classes="ctl" Name="BtnCancel" Content="Cancel" Click="OnCancelPrepare" IsEnabled="False"/>
+              </StackPanel>
+              <ProgressBar Name="OfflineBar" Minimum="0" Maximum="100" Value="0" Height="8"/>
+              <TextBlock Name="OfflineText" Classes="lbl" Text="" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Right: presenter notes -->
+      <ScrollViewer Grid.Column="1">
+        <StackPanel Margin="7,12,14,14" Spacing="12">
+          <Border Classes="card" BorderBrush="#0e7490" BorderThickness="1">
+            <StackPanel Spacing="8">
+              <TextBlock Classes="h" Text="PRESENTER NOTES — only on this screen"/>
+              <TextBlock Name="NotesTitle" Text="—" FontSize="16" FontWeight="Bold" Foreground="#22d3ee" TextWrapping="Wrap"/>
+              <TextBlock Name="NotesText" Text="Open the display to see the notes for each chapter here." FontSize="15"
+                         Foreground="#e2e8f0" TextWrapping="Wrap" LineHeight="22"/>
+              <TextBlock Name="OnScreenText" Text="" FontSize="12" Foreground="#94a3b8" TextWrapping="Wrap" FontStyle="Italic"/>
+              <TextBlock Name="NextText" Text="" FontSize="12" Foreground="#64748b" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="card">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="h" Text="KEYS ON THE DISPLAY (also works with a presentation clicker)"/>
+              <TextBlock Classes="lbl" Text="→  PageDown  Space   next chapter"/>
+              <TextBlock Classes="lbl" Text="←  PageUp            previous chapter"/>
+              <TextBlock Classes="lbl" Text="A  auto-play     P  pause     R  restart chapter"/>
+              <TextBlock Classes="lbl" Text="L  English / Nederlands     C  camera (auto, chase, top, orbit, free)"/>
+              <TextBlock Classes="lbl" Text="B or .  black screen     F  full screen     H  hide panels"/>
+              <TextBlock Classes="lbl" Text="N  turn drone model 90° (if its nose points sideways)     M  sound on/off"/>
+              <TextBlock Classes="lbl" Text="1 – 8  jump to chapter"/>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="card">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="h" Text="BEFORE THE MEETING"/>
+              <TextBlock Classes="lbl" TextWrapping="Wrap" Text="1. Prepare the offline package at home (section 4) — all lights green."/>
+              <TextBlock Classes="lbl" TextWrapping="Wrap" Text="2. Set the real endurance of your aircraft (section 2)."/>
+              <TextBlock Classes="lbl" TextWrapping="Wrap" Text="3. Rehearse twice, in both languages, with the projector and clicker you will use."/>
+              <TextBlock Classes="lbl" TextWrapping="Wrap" Text="4. In Google 3D, check the drone's nose points forward (press N on the display if not)."/>
+              <TextBlock Classes="lbl" TextWrapping="Wrap" Text="5. Look at the search areas in Google 3D and confirm they are forest; adjust scenarios.json if not."/>
+              <TextBlock Classes="lbl" TextWrapping="Wrap" Text="6. On the day: laptop on mains power, notifications off, sound on, display opened before guests arrive."/>
+              <TextBlock Classes="lbl" TextWrapping="Wrap" Text="7. If the internet fails, switch Map to the offline package and press Apply — the demo restarts at the same chapter."/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
+</UserControl>

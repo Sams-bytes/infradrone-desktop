@@ -54,6 +54,12 @@ namespace InfraDroneDesktop.Services
             OpenBrowser(Url);
         }
 
+        /// <summary>Starts the server without opening a browser (used by the Suriname demo tab).</summary>
+        public void EnsureStarted()
+        {
+            if (!IsRunning) Start();
+        }
+
         private void Start()
         {
             Exception? last = null;
@@ -83,52 +89,166 @@ namespace InfraDroneDesktop.Services
                 HttpListenerContext ctx;
                 try { ctx = await _listener.GetContextAsync(); }
                 catch { return; } // listener stopped
-                try
-                {
-                    var path = ctx.Request.Url?.AbsolutePath ?? "/";
-                    if (path == "/state")
-                    {
-                        string json;
-                        lock (_stateLock) json = _stateJson;
-                        Write(ctx, "application/json", json);
-                    }
-                    else if (path == "/vehicle")
-                    {
-                        Write(ctx, "application/json", VehicleJson());
-                    }
-                    else if (path == "/drone.glb")
-                    {
-                        WriteBytes(ctx, "model/gltf-binary", Drone3DModel.Glb);
-                    }
-                    else if (path == "/config/google-key" && ctx.Request.HttpMethod == "POST")
-                    {
-                        string body;
-                        using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8))
-                            body = reader.ReadToEnd();
-                        var (ok, msg) = SaveGoogleKey(body);
-                        ctx.Response.StatusCode = ok ? 200 : 400;
-                        Write(ctx, "text/plain; charset=utf-8", msg);
-                    }
-                    else if (path == "/pdok")
-                    {
-                        Write(ctx, "text/html; charset=utf-8", Cesium3DPage.Html);
-                    }
-                    else if (path == "/google")
-                    {
-                        var key = GetGoogleKey();
-                        Write(ctx, "text/html; charset=utf-8",
-                              key == null ? Google3DPage.SetupHtml : Google3DPage.Html.Replace("__GOOGLE_KEY__", key));
-                    }
-                    else
-                    {
-                        // Default: Google photorealistic if a key is set, otherwise PDOK.
-                        var key = GetGoogleKey();
-                        Write(ctx, "text/html; charset=utf-8",
-                              key == null ? Cesium3DPage.Html : Google3DPage.Html.Replace("__GOOGLE_KEY__", key));
-                    }
-                }
-                catch (Exception ex) { Console.WriteLine("[Cesium3D] request error: " + ex.Message); }
+                // Handle requests in parallel: the 3D library loads many files at once.
+                _ = Task.Run(() => Handle(ctx));
             }
+        }
+
+        private void Handle(HttpListenerContext ctx)
+        {
+            try
+            {
+                var path = ctx.Request.Url?.AbsolutePath ?? "/";
+                if (TryServeDemo(ctx, path)) return;
+                if (path == "/state")
+                {
+                    string json;
+                    lock (_stateLock) json = _stateJson;
+                    Write(ctx, "application/json", json);
+                }
+                else if (path == "/vehicle")
+                {
+                    Write(ctx, "application/json", VehicleJson());
+                }
+                else if (path == "/drone.glb")
+                {
+                    WriteBytes(ctx, "model/gltf-binary", Drone3DModel.Glb);
+                }
+                else if (path == "/config/google-key" && ctx.Request.HttpMethod == "POST")
+                {
+                    string body;
+                    using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8))
+                        body = reader.ReadToEnd();
+                    var (ok, msg) = SaveGoogleKey(body);
+                    ctx.Response.StatusCode = ok ? 200 : 400;
+                    Write(ctx, "text/plain; charset=utf-8", msg);
+                }
+                else if (path == "/pdok")
+                {
+                    Write(ctx, "text/html; charset=utf-8", Cesium3DPage.Html);
+                }
+                else if (path == "/google")
+                {
+                    var key = GetGoogleKey();
+                    Write(ctx, "text/html; charset=utf-8",
+                          key == null ? Google3DPage.SetupHtml : Google3DPage.Html.Replace("__GOOGLE_KEY__", key));
+                }
+                else
+                {
+                    // Default: Google photorealistic if a key is set, otherwise PDOK.
+                    var key = GetGoogleKey();
+                    Write(ctx, "text/html; charset=utf-8",
+                          key == null ? Cesium3DPage.Html : Google3DPage.Html.Replace("__GOOGLE_KEY__", key));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[Cesium3D] request error: " + ex.Message);
+                try { ctx.Response.StatusCode = 500; ctx.Response.OutputStream.Close(); } catch { }
+            }
+        }
+
+        // ---- Suriname demo + offline package ------------------------------------------------------
+        private static readonly string DemoRoot = Path.Combine(AppContext.BaseDirectory, "wwwroot", "demo");
+        public static string DemoScenariosPath => Path.Combine(DemoRoot, "scenarios.json");
+
+        private bool TryServeDemo(HttpListenerContext ctx, string path)
+        {
+            if (path == "/demo" || path == "/demo/")
+            {
+                ctx.Response.Redirect("/demo/index.html" + (ctx.Request.Url?.Query ?? ""));
+                ctx.Response.Close();
+                return true;
+            }
+            if (path == "/demo/config.json") { Write(ctx, "application/json", DemoConfigJson()); return true; }
+            if (path == "/demo/cmd")
+            {
+                int.TryParse(ctx.Request.QueryString["after"], out var after);
+                if (ctx.Request.QueryString["after"] == null) after = -1;
+                Write(ctx, "application/json", DemoBridge.CommandsAfterJson(after));
+                return true;
+            }
+            if (path == "/demo/status" && ctx.Request.HttpMethod == "POST")
+            {
+                using (var reader = new StreamReader(ctx.Request.InputStream, Encoding.UTF8))
+                    DemoBridge.SetStatus(reader.ReadToEnd());
+                ctx.Response.StatusCode = 204; ctx.Response.Close();
+                return true;
+            }
+            if (path.StartsWith("/demo/", StringComparison.Ordinal))
+            { ServeFile(ctx, DemoRoot, path.Substring("/demo/".Length), cache: false); return true; }
+            if (path.StartsWith("/offline/cesium/", StringComparison.Ordinal))
+            { ServeFile(ctx, DemoOfflineService.CesiumDir, path.Substring("/offline/cesium/".Length), cache: true); return true; }
+            if (path.StartsWith("/offline/tiles/s2/", StringComparison.Ordinal))
+            { ServeFile(ctx, DemoOfflineService.TilesDir, path.Substring("/offline/tiles/s2/".Length), cache: true); return true; }
+            return false;
+        }
+
+        private static readonly Dictionary<string, string> Mime = new(StringComparer.OrdinalIgnoreCase)
+        {
+            [".html"] = "text/html; charset=utf-8", [".js"] = "application/javascript; charset=utf-8",
+            [".mjs"] = "application/javascript; charset=utf-8", [".css"] = "text/css; charset=utf-8",
+            [".json"] = "application/json", [".xml"] = "application/xml", [".png"] = "image/png",
+            [".jpg"] = "image/jpeg", [".jpeg"] = "image/jpeg", [".svg"] = "image/svg+xml", [".wasm"] = "application/wasm",
+            [".glb"] = "model/gltf-binary", [".gltf"] = "model/gltf+json", [".ktx2"] = "image/ktx2",
+            [".woff"] = "font/woff", [".woff2"] = "font/woff2", [".ttf"] = "font/ttf", [".txt"] = "text/plain; charset=utf-8"
+        };
+
+        // Serves a file under 'root' only (no path escapes). Missing files: 404 with empty body.
+        private static void ServeFile(HttpListenerContext ctx, string root, string rel, bool cache)
+        {
+            var res = ctx.Response;
+            try
+            {
+                rel = Uri.UnescapeDataString(rel).Replace('/', Path.DirectorySeparatorChar);
+                var rootFull = Path.GetFullPath(root) + Path.DirectorySeparatorChar;
+                var full = Path.GetFullPath(Path.Combine(root, rel));
+                if (!full.StartsWith(rootFull, StringComparison.Ordinal) || !File.Exists(full))
+                {
+                    res.StatusCode = 404; res.ContentLength64 = 0; res.OutputStream.Close(); return;
+                }
+                res.ContentType = Mime.TryGetValue(Path.GetExtension(full), out var ct) ? ct : "application/octet-stream";
+                res.Headers["Cache-Control"] = cache ? "max-age=86400" : "no-store";
+                using var fs = File.OpenRead(full);
+                res.ContentLength64 = fs.Length;
+                fs.CopyTo(res.OutputStream);
+                res.OutputStream.Close();
+            }
+            catch (HttpListenerException) { /* browser closed the connection */ }
+        }
+
+        private static string DemoConfigJson()
+        {
+            var s = DemoBridge.Settings;
+            var key = GetGoogleKey();
+            var localCesium = DemoOfflineService.CesiumReady;
+            var localTiles = Directory.Exists(DemoOfflineService.TilesDir);
+            const string cdn = "https://cdn.jsdelivr.net/npm/cesium@" + DemoOfflineService.CesiumVersion + "/Build/Cesium/";
+            const string eox = "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg";
+            var localImg = new Dictionary<string, object> { ["url"] = "/offline/tiles/s2/{z}/{x}/{y}.jpg", ["maxLevel"] = 15 };
+            var onlineImg = new Dictionary<string, object> { ["url"] = eox, ["maxLevel"] = 15 };
+
+            // Satellite map: offline package where available, otherwise straight from the internet.
+            var useOnline = s.Map == "online";
+            var satBase = useOnline || !localCesium ? cdn : "/offline/cesium/";
+            var satImg = useOnline || !localTiles ? onlineImg : localImg;
+            var fbBase = localCesium ? "/offline/cesium/" : cdn;
+            var fbImg = localTiles ? localImg : onlineImg;
+            var renderer = s.Map == "google" && key != null ? "google" : "cesium";
+
+            var cfg = new Dictionary<string, object?>
+            {
+                ["renderer"] = renderer,
+                ["googleKey"] = renderer == "google" ? key : null,
+                ["cesiumBase"] = satBase,
+                ["imagery"] = satImg,
+                ["fallback"] = new Dictionary<string, object> { ["cesiumBase"] = fbBase, ["imagery"] = fbImg },
+                ["modelUrl"] = "/drone.glb",
+                ["lang"] = s.Lang,
+                ["scenario"] = s.Scenario
+            };
+            if (s.EnduranceMin is int e && e > 0) cfg["aircraft"] = new Dictionary<string, object> { ["endurance_min"] = e };
+            return System.Text.Json.JsonSerializer.Serialize(cfg);
         }
 
         private static void Write(HttpListenerContext ctx, string contentType, string body)

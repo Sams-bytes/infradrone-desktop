@@ -298,10 +298,11 @@ setInterval(poll, 500);
 poll();
 
 // ---- Live drone ------------------------------------------------------------
-// Model nose is +X. Cesium heading 0 points the model's +X east, so a compass
-// heading (0 = north, clockwise) needs -90 deg. Change this if the nose looks
-// sideways in some future Cesium version.
-var MODEL_HEADING_OFFSET = -90;
+// Model nose is glTF +X. Cesium treats glTF +Z as forward (east at heading 0),
+// which puts +X (our nose) to the north at heading 0, so the compass heading can
+// be used directly. Verified with a top-down render. Older saved values from the
+// 'Turn model 90' button are ignored once (key renamed).
+var MODEL_HEADING_OFFSET = 0;
 var POLL_MS = 250;
 
 var drone = null;
@@ -424,7 +425,7 @@ function onVehicle(v) {
 // ---- Camera views ------------------------------------------------------------
 var view = 'free';
 var orbitHeading = 0;
-try { var savedNose = localStorage.getItem('infradrone.noseOffset.cesium'); if (savedNose !== null) { MODEL_HEADING_OFFSET = Number(savedNose); } } catch (e) { }
+try { var savedNose = localStorage.getItem('infradrone.noseOffset.cesium.v2'); if (savedNose !== null) { MODEL_HEADING_OFFSET = Number(savedNose); } } catch (e) { }
 function rad(d) { return Cesium.Math.toRadians(d); }
 
 viewer.scene.preRender.addEventListener(function () {
@@ -467,7 +468,7 @@ for (var vb = 0; vb < viewBtns.length; vb++) {
 document.getElementById('btrail').onclick = function () { trail = []; };
 document.getElementById('bnose').onclick = function () {
   MODEL_HEADING_OFFSET = ((MODEL_HEADING_OFFSET + 90 + 180) % 360) - 180;
-  try { localStorage.setItem('infradrone.noseOffset.cesium', String(MODEL_HEADING_OFFSET)); } catch (e) { }
+  try { localStorage.setItem('infradrone.noseOffset.cesium.v2', String(MODEL_HEADING_OFFSET)); } catch (e) { }
 };
 
 function pollVehicle() {

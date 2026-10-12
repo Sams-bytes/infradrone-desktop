@@ -1,0 +1,1719 @@
+{
+ "_readme": "InfraDrone Suriname demo scenarios. Geometry computed from OpenStreetMap/geoBoundaries borders (ODbL); every route was checked to stay inside Suriname and at least 450 m from the land border. Edit texts freely; edit coordinates only with care.",
+ "aircraft": {
+  "_note": "Set endurance_min to the REAL endurance of your aircraft with payload. If a ferry flight needs more than 80% of it, the demo automatically adds a landing and battery swap at a midway town.",
+  "name": {
+   "en": "VTOL fixed-wing drone (Loong 2160 class)",
+   "nl": "VTOL-vleugeldrone (Loong 2160-klasse)"
+  },
+  "cruise_ms": 20,
+  "vtol_climb_ms": 2.5,
+  "vtol_alt_m": 40,
+  "cruise_alt_m": 120,
+  "search_alt_m": 120,
+  "confirm_alt_m": 80,
+  "endurance_min": 150,
+  "reserve_pct": 20
+ },
+ "ui": {
+  "brand": "DAMbv · InfraDrone Command",
+  "simulation": {
+   "en": "SIMULATION · scenario exercise",
+   "nl": "SIMULATIE · scenario-oefening"
+  },
+  "sim_sensor": {
+   "en": "SIMULATED SENSOR VIEW",
+   "nl": "GESIMULEERD CAMERABEELD"
+  },
+  "press_next": {
+   "en": "Press → to continue",
+   "nl": "Druk op → om verder te gaan"
+  },
+  "chapter": {
+   "en": "Chapter",
+   "nl": "Hoofdstuk"
+  },
+  "aircraft": {
+   "en": "AIRCRAFT",
+   "nl": "TOESTEL"
+  },
+  "events": {
+   "en": "EVENTS",
+   "nl": "GEBEURTENISSEN"
+  },
+  "phase": {
+   "en": "Phase",
+   "nl": "Fase"
+  },
+  "alt": {
+   "en": "Altitude",
+   "nl": "Hoogte"
+  },
+  "speed": {
+   "en": "Speed",
+   "nl": "Snelheid"
+  },
+  "heading": {
+   "en": "Heading",
+   "nl": "Koers"
+  },
+  "battery": {
+   "en": "Battery",
+   "nl": "Batterij"
+  },
+  "flight_time": {
+   "en": "Flight time",
+   "nl": "Vliegtijd"
+  },
+  "from_base": {
+   "en": "From base",
+   "nl": "Van basis"
+  },
+  "datalink": {
+   "en": "Datalink",
+   "nl": "Datalink"
+  },
+  "gps": {
+   "en": "GPS",
+   "nl": "GPS"
+  },
+  "geofence": {
+   "en": "Geofence",
+   "nl": "Geofence"
+  },
+  "active": {
+   "en": "active · stays in Suriname",
+   "nl": "actief · blijft in Suriname"
+  },
+  "time_x": {
+   "en": "time ×",
+   "nl": "tijd ×"
+  },
+  "mission_time": {
+   "en": "Mission time",
+   "nl": "Missietijd"
+  },
+  "phases": {
+   "ground": {
+    "en": "On ground",
+    "nl": "Aan de grond"
+   },
+   "vtol_up": {
+    "en": "Vertical take-off",
+    "nl": "Verticale start"
+   },
+   "transition": {
+    "en": "Transition",
+    "nl": "Transitie"
+   },
+   "cruise": {
+    "en": "Cruise",
+    "nl": "Kruisvlucht"
+   },
+   "patrol": {
+    "en": "Patrol",
+    "nl": "Patrouille"
+   },
+   "observe": {
+    "en": "Observing contact",
+    "nl": "Contact observeren"
+   },
+   "search": {
+    "en": "Search pattern",
+    "nl": "Zoekpatroon"
+   },
+   "confirm": {
+    "en": "Confirming",
+    "nl": "Bevestigen"
+   },
+   "rtb": {
+    "en": "Return to base",
+    "nl": "Terug naar basis"
+   },
+   "approach": {
+    "en": "Approach",
+    "nl": "Nadering"
+   },
+   "vtol_down": {
+    "en": "Vertical landing",
+    "nl": "Verticale landing"
+   },
+   "swap": {
+    "en": "Battery swap",
+    "nl": "Batterijwissel"
+   }
+  },
+  "checks": [
+   {
+    "en": "GPS lock — 14 satellites",
+    "nl": "GPS-ontvangst — 14 satellieten"
+   },
+   {
+    "en": "Datalink",
+    "nl": "Datalink"
+   },
+   {
+    "en": "Battery 100%",
+    "nl": "Batterij 100%"
+   },
+   {
+    "en": "Weather within limits",
+    "nl": "Weer binnen limieten"
+   },
+   {
+    "en": "Geofence loaded — Surinamese airspace",
+    "nl": "Geofence geladen — Surinaams luchtruim"
+   },
+   {
+    "en": "Flight corridor approved (CASAS) — simulated",
+    "nl": "Vliegcorridor goedgekeurd (CASAS) — gesimuleerd"
+   }
+  ],
+  "legend": {
+   "border": {
+    "en": "International border",
+    "nl": "Landsgrens"
+   },
+   "geofence": {
+    "en": "Geofence (300 m inside)",
+    "nl": "Geofence (300 m binnen grens)"
+   },
+   "route": {
+    "en": "Planned route",
+    "nl": "Geplande route"
+   },
+   "flown": {
+    "en": "Flown track",
+    "nl": "Gevlogen spoor"
+   },
+   "search": {
+    "en": "Search area",
+    "nl": "Zoekgebied"
+   },
+   "covered": {
+    "en": "Searched",
+    "nl": "Doorzocht"
+   }
+  },
+  "report": {
+   "title": {
+    "en": "Mission report",
+    "nl": "Missierapport"
+   },
+   "flights": {
+    "en": "Flights",
+    "nl": "Vluchten"
+   },
+   "distance": {
+    "en": "Distance flown",
+    "nl": "Gevlogen afstand"
+   },
+   "flight_time": {
+    "en": "Flight time",
+    "nl": "Vliegtijd"
+   },
+   "border": {
+    "en": "Border patrolled",
+    "nl": "Grens gepatrouilleerd"
+   },
+   "area": {
+    "en": "Area searched",
+    "nl": "Gebied doorzocht"
+   },
+   "alerts": {
+    "en": "Alerts sent",
+    "nl": "Meldingen verstuurd"
+   },
+   "found": {
+    "en": "Missing person found after",
+    "nl": "Vermiste persoon gevonden na"
+   },
+   "timeline": {
+    "en": "Timeline",
+    "nl": "Tijdlijn"
+   },
+   "print": {
+    "en": "Print / save as PDF",
+    "nl": "Afdrukken / opslaan als PDF"
+   },
+   "note": {
+    "en": "All positions, times and images are logged and exportable as evidence. Data stays on Surinamese systems.",
+    "nl": "Alle posities, tijden en beelden worden vastgelegd en zijn exporteerbaar als bewijs. Data blijft op Surinaamse systemen."
+   }
+  },
+  "credits": "Boundaries © OpenStreetMap contributors (ODbL), geoBoundaries · Offline imagery: Sentinel-2 cloudless 2016 by EOX IT Services GmbH (Contains modified Copernicus Sentinel data 2016), CC BY 4.0"
+ },
+ "chapters": [
+  {
+   "id": "briefing",
+   "title": {
+    "en": "Mission briefing",
+    "nl": "Missiebriefing"
+   },
+   "captions": [
+    {
+     "en": "Suriname has about 1,700 km of land border — most of it rivers and dense rainforest.",
+     "nl": "Suriname heeft ongeveer 1.700 km landsgrens — grotendeels rivieren en dicht regenwoud."
+    },
+    {
+     "en": "From the ground, these borders are very hard to watch. From the air, it becomes possible.",
+     "nl": "Vanaf de grond is die grens nauwelijks te bewaken. Vanuit de lucht wordt het mogelijk."
+    },
+    {
+     "en": "Today: one drone system, two missions — border surveillance on the {river}, and search & rescue in dense forest.",
+     "nl": "Vandaag: één dronesysteem, twee missies — grensbewaking op de {river}, en zoeken en redden in dicht bos."
+    },
+    {
+     "en": "What you see is a simulation of a real flight plan, on the real geography of Suriname.",
+     "nl": "Wat u ziet is een simulatie van een echt vliegplan, op de echte geografie van Suriname."
+    }
+   ],
+   "notes": {
+    "en": "• Introduce DAMbv: drone inspection & autonomy company, EASA-licensed pilots, own ground-control software (this screen).\n• We operate under EASA Specific-category documents (ConOps, Operations Manual, quality system).\n• Say clearly: this is a simulation on real maps — the flight paths, distances and timings are realistic.\n• Point at the red line: the {river} border sector we will patrol.",
+    "nl": "• Stel DAMbv voor: drone-inspectie en autonome systemen, EASA-gelicentieerde piloten, eigen grondstation-software (dit scherm).\n• We werken volgens EASA Specific-categorie documenten (ConOps, Operations Manual, kwaliteitssysteem).\n• Zeg duidelijk: dit is een simulatie op echte kaarten — routes, afstanden en tijden zijn realistisch.\n• Wijs de rode lijn aan: het grensgedeelte aan de {river} dat we bewaken."
+   }
+  },
+  {
+   "id": "launch",
+   "title": {
+    "en": "Launch from Paramaribo",
+    "nl": "Opstijgen vanuit Paramaribo"
+   },
+   "captions": [
+    {
+     "en": "Pre-flight checks run automatically: GPS, datalink, battery, weather and geofence.",
+     "nl": "Vluchtvoorbereiding gaat automatisch: GPS, datalink, batterij, weer en geofence."
+    },
+    {
+     "en": "Vertical take-off — no runway needed.",
+     "nl": "Verticale start — geen landingsbaan nodig."
+    },
+    {
+     "en": "Hovering at 40 metres — all systems checked, ready to depart.",
+     "nl": "Zweven op 40 meter — alle systemen gecontroleerd, klaar voor vertrek."
+    }
+   ],
+   "notes": {
+    "en": "• VTOL = takes off like a helicopter, flies like an aeroplane: long range without a runway.\n• Real operations need authorisation from CASAS (Civil Aviation Safety Authority Suriname). We prepare the risk assessment and procedures.\n• The geofence is loaded before take-off — the aircraft physically cannot be commanded across the border.",
+    "nl": "• VTOL = start als een helikopter, vliegt als een vliegtuig: groot bereik zonder landingsbaan.\n• Echte operaties vereisen toestemming van CASAS (Civil Aviation Safety Authority Suriname). Wij stellen de risicoanalyse en procedures op.\n• De geofence wordt vóór de start geladen — het toestel kan niet over de grens gestuurd worden."
+   }
+  },
+  {
+   "id": "transit",
+   "title": {
+    "en": "Transit to the {river} border",
+    "nl": "Transit naar de grens aan de {river}"
+   },
+   "captions": [
+    {
+     "en": "Transition to efficient fixed-wing flight, then climb to cruise altitude.",
+     "nl": "Overgang naar zuinige vleugelvlucht, daarna klimmen naar kruishoogte."
+    },
+    {
+     "en": "{transit_km} km from the capital to {fob} — about {transit_min} minutes of flight. Shown here faster.",
+     "nl": "{transit_km} km van de hoofdstad naar {fob} — ongeveer {transit_min} minuten vliegen. Hier versneld getoond."
+    },
+    {
+     "en": "The aircraft flies itself along an approved corridor. The operator supervises.",
+     "nl": "Het toestel vliegt zelfstandig langs een goedgekeurde corridor. De operator houdt toezicht."
+    },
+    {
+     "en": "Landing at the forward base in {fob}. In daily operations the aircraft are stationed here.",
+     "nl": "Landing op de voorwaartse basis in {fob}. In de dagelijkse praktijk staan de toestellen hier gestationeerd."
+    }
+   ],
+   "notes": {
+    "en": "• Honest point on range: radio links reach roughly 15–30 km. Over {transit_km} km we use 4G/LTE where available or a satellite/relay link. This is part of the design for Suriname.\n• Endurance shown is based on the aircraft setting in scenarios.json — confirm real numbers in Surinamese heat and humidity during a pilot.\n• Concept of operations: aircraft are based at forward bases ({fob}); the capital is the command centre.",
+    "nl": "• Eerlijk over bereik: radioverbindingen halen ca. 15–30 km. Over {transit_km} km gebruiken we 4G/LTE waar beschikbaar of een satelliet-/relaisverbinding. Dat is onderdeel van het ontwerp voor Suriname.\n• De getoonde vliegduur volgt de toestelinstelling in scenarios.json — echte waarden bevestigen we tijdens een pilot in Surinaamse hitte en vochtigheid.\n• Werkwijze: toestellen staan op voorwaartse bases ({fob}); de hoofdstad is het commandocentrum."
+   }
+  },
+  {
+   "id": "patrol",
+   "title": {
+    "en": "Border surveillance — {river}",
+    "nl": "Grensbewaking — {river}"
+   },
+   "captions": [
+    {
+     "en": "Battery swapped — second flight from {fob}. Patrolling the {river}, always on the Surinamese side.",
+     "nl": "Batterij gewisseld — tweede vlucht vanuit {fob}. Patrouille langs de {river}, altijd aan Surinaamse zijde."
+    },
+    {
+     "en": "Artificial intelligence scans the camera image continuously for boats, people and vehicles.",
+     "nl": "Kunstmatige intelligentie scant het camerabeeld continu op boten, personen en voertuigen."
+    },
+    {
+     "en": "ALERT — unregistered river crossing. The drone holds position and keeps the boat in view.",
+     "nl": "MELDING — niet-geregistreerde rivierovertocht. De drone blijft in positie en houdt de boot in beeld."
+    },
+    {
+     "en": "Position, time and image go instantly to Border Command and the nearest police unit.",
+     "nl": "Positie, tijd en beeld gaan direct naar het Grenscommando en de dichtstbijzijnde politie-eenheid."
+    },
+    {
+     "en": "The police boat is guided to the landing point — contact handed over.",
+     "nl": "De politieboot wordt naar het landingspunt geleid — contact overgedragen."
+    }
+   ],
+   "notes": {
+    "en": "• The drone never leaves Surinamese airspace: it observes from {standoff} m inside the border (orange geofence line).\n• Day and night: thermal camera sees people and engines in darkness.\n• Honest: the AI detection and camera image here are simulated. In a pilot we train our models on real {river} traffic.\n• Value: one aircraft watches tens of kilometres of river per flight; patrol boats go only where they are needed.",
+    "nl": "• De drone verlaat nooit het Surinaamse luchtruim: hij observeert vanaf {standoff} m binnen de grens (oranje geofence-lijn).\n• Dag en nacht: de warmtecamera ziet mensen en motoren in het donker.\n• Eerlijk: de AI-detectie en het camerabeeld zijn hier gesimuleerd. In een pilot trainen we onze modellen op echt verkeer op de {river}.\n• Waarde: één toestel bewaakt tientallen kilometers rivier per vlucht; patrouilleboten gaan alleen waar ze nodig zijn."
+   }
+  },
+  {
+   "id": "sar",
+   "title": {
+    "en": "Search & rescue — missing person",
+    "nl": "Zoek- en reddingsactie — vermiste persoon"
+   },
+   "captions": [
+    {
+     "en": "New task: a hunter has been missing for 20 hours in the {sar_place}.",
+     "nl": "Nieuwe opdracht: een jager wordt al 20 uur vermist in het {sar_place}."
+    },
+    {
+     "en": "Search area planned automatically around the last known position — lines every 120 metres.",
+     "nl": "Zoekgebied automatisch gepland rond de laatst bekende positie — elke 120 meter een zoeklijn."
+    },
+    {
+     "en": "The thermal camera detects body heat through gaps in the canopy — day and night.",
+     "nl": "De warmtecamera ziet lichaamswarmte door openingen in het bladerdak — dag en nacht."
+    },
+    {
+     "en": "POSSIBLE PERSON — heat signature detected. The drone breaks off the search to confirm.",
+     "nl": "MOGELIJK PERSOON — warmtebron gedetecteerd. De drone onderbreekt de zoektocht om te bevestigen."
+    },
+    {
+     "en": "Confirmed. Exact coordinates and a walking route go to the rescue team.",
+     "nl": "Bevestigd. Exacte coördinaten en een looproute gaan naar het reddingsteam."
+    }
+   ],
+   "notes": {
+    "en": "• Honest expectation: thermal cameras cannot see through closed canopy. They work best at night and early morning, through canopy gaps and along rivers and clearings. That is why we fly systematic lines and work together with ground teams.\n• Speed is the value: {area_km2} km² searched in minutes, where a ground team needs many hours.\n• Optional payload: drop of water, radio and first-aid kit (depends on aircraft configuration).",
+    "nl": "• Eerlijke verwachting: warmtecamera’s kijken niet door een gesloten bladerdak. Ze werken het best ’s nachts en vroeg in de ochtend, door openingen in het bladerdak en langs rivieren en open plekken. Daarom vliegen we systematische lijnen en werken we samen met grondteams.\n• De waarde is snelheid: {area_km2} km² doorzocht in minuten, waar een grondteam vele uren nodig heeft.\n• Optionele lading: afwerpen van water, radio en EHBO-pakket (afhankelijk van toestelconfiguratie)."
+   }
+  },
+  {
+   "id": "return",
+   "title": {
+    "en": "Return and landing",
+    "nl": "Terugkeer en landing"
+   },
+   "captions": [
+    {
+     "en": "Mission complete — automatic return to {fob}.",
+     "nl": "Missie voltooid — automatische terugkeer naar {fob}."
+    },
+    {
+     "en": "Vertical landing. Ready for the next task within minutes.",
+     "nl": "Verticale landing. Binnen enkele minuten klaar voor de volgende opdracht."
+    }
+   ],
+   "notes": {
+    "en": "• Everything was flown by the autopilot; the operator only approved decisions.\n• Same aircraft, same day: border patrol and search & rescue.",
+    "nl": "• Alles is door de automatische piloot gevlogen; de operator keurde alleen beslissingen goed.\n• Hetzelfde toestel, dezelfde dag: grensbewaking én zoeken en redden."
+   }
+  },
+  {
+   "id": "report",
+   "title": {
+    "en": "Mission report",
+    "nl": "Missierapport"
+   },
+   "captions": [],
+   "notes": {
+    "en": "• Every alert has a position, a time and an image — usable as evidence and for planning.\n• Data stays on Surinamese systems (data sovereignty).",
+    "nl": "• Elke melding heeft een positie, een tijd en een beeld — bruikbaar als bewijs en voor planning.\n• Data blijft op Surinaamse systemen (datasoevereiniteit)."
+   }
+  },
+  {
+   "id": "closing",
+   "title": {
+    "en": "What this means for Suriname",
+    "nl": "Wat dit betekent voor Suriname"
+   },
+   "captions": [],
+   "points": [
+    {
+     "en": "Eyes on the border rivers — day and night",
+     "nl": "Ogen op de grensrivieren — dag en nacht"
+    },
+    {
+     "en": "Missing persons found in hours instead of days",
+     "nl": "Vermiste personen gevonden in uren in plaats van dagen"
+    },
+    {
+     "en": "A fraction of the cost of helicopter flight hours",
+     "nl": "Een fractie van de kosten van helikoptervlieguren"
+    },
+    {
+     "en": "Data stays in Suriname — your system, your control",
+     "nl": "Data blijft in Suriname — uw systeem, uw controle"
+    },
+    {
+     "en": "Local operators and technicians trained by DAMbv",
+     "nl": "Lokale operators en technici opgeleid door DAMbv"
+    },
+    {
+     "en": "Start: a 3-month pilot on one border sector",
+     "nl": "Start: een pilot van 3 maanden op één grenssector"
+    }
+   ],
+   "notes": {
+    "en": "• Ask for the next step: a pilot on one border sector, with Surinamese operators in the team from day one.\n• Offer: a joint workshop with Border Command, Police and the Fire Service/SAR to define the first missions.",
+    "nl": "• Vraag om de volgende stap: een pilot op één grenssector, met Surinaamse operators vanaf dag één in het team.\n• Aanbod: een gezamenlijke workshop met Grenscommando, Politie en Brandweer/SAR om de eerste missies te bepalen."
+   }
+  }
+ ],
+ "scenarios": {
+  "albina": {
+   "title": {
+    "en": "Eastern border — Albina, Marowijne river",
+    "nl": "Oostgrens — Albina, Marowijnerivier"
+   },
+   "names": {
+    "river": {
+     "en": "Marowijne",
+     "nl": "Marowijne"
+    },
+    "fob": {
+     "en": "Albina",
+     "nl": "Albina"
+    },
+    "sar_place": {
+     "en": "forest south of the Albina–Moengo road",
+     "nl": "bos ten zuiden van de weg Albina–Moengo"
+    },
+    "neighbour": {
+     "en": "French Guiana",
+     "nl": "Frans-Guyana"
+    }
+   },
+   "contact": {
+    "title": {
+     "en": "Unregistered river crossing",
+     "nl": "Niet-geregistreerde rivierovertocht"
+    },
+    "detail": {
+     "en": "Boat · 2 persons · heading to Surinamese bank",
+     "nl": "Boot · 2 personen · koers naar Surinaamse oever"
+    },
+    "recipients": {
+     "en": "Border Command · Police boat Albina",
+     "nl": "Grenscommando · Politieboot Albina"
+    },
+    "unit": {
+     "en": "Police boat Albina",
+     "nl": "Politieboot Albina"
+    },
+    "unit_kmh": 35
+   },
+   "sar_info": {
+    "team": {
+     "en": "Search team from the Albina–Moengo road",
+     "nl": "Zoekteam vanaf de weg Albina–Moengo"
+    },
+    "team_kmh": 3
+   },
+   "standoff_m": 650,
+   "hq": [
+    5.8108,
+    -55.1907
+   ],
+   "fob": [
+    5.505,
+    -54.068
+   ],
+   "transit": [
+    [
+     5.8108,
+     -55.1907
+    ],
+    [
+     5.6167,
+     -54.4
+    ],
+    [
+     5.505,
+     -54.068
+    ]
+   ],
+   "patrol": [
+    [
+     5.505762,
+     -54.047095
+    ],
+    [
+     5.494404,
+     -54.05499
+    ],
+    [
+     5.48677,
+     -54.066664
+    ],
+    [
+     5.476339,
+     -54.07596
+    ],
+    [
+     5.465907,
+     -54.085255
+    ],
+    [
+     5.455103,
+     -54.094024
+    ],
+    [
+     5.44285,
+     -54.100751
+    ],
+    [
+     5.433373,
+     -54.110982
+    ],
+    [
+     5.423988,
+     -54.121327
+    ],
+    [
+     5.41328,
+     -54.130225
+    ],
+    [
+     5.400765,
+     -54.136306
+    ],
+    [
+     5.387532,
+     -54.140582
+    ],
+    [
+     5.375904,
+     -54.148335
+    ],
+    [
+     5.364794,
+     -54.156751
+    ],
+    [
+     5.3558,
+     -54.167298
+    ],
+    [
+     5.345418,
+     -54.176498
+    ],
+    [
+     5.334462,
+     -54.185172
+    ],
+    [
+     5.323506,
+     -54.193845
+    ],
+    [
+     5.313156,
+     -54.203196
+    ],
+    [
+     5.305939,
+     -54.215121
+    ]
+   ],
+   "border_focus": [
+    [
+     5.282222,
+     -54.249167
+    ],
+    [
+     5.290278,
+     -54.236944
+    ],
+    [
+     5.2925,
+     -54.232222
+    ],
+    [
+     5.296106,
+     -54.228706
+    ],
+    [
+     5.297867,
+     -54.223366
+    ],
+    [
+     5.300556,
+     -54.212778
+    ],
+    [
+     5.3025,
+     -54.208333
+    ],
+    [
+     5.308056,
+     -54.2
+    ],
+    [
+     5.315,
+     -54.193056
+    ],
+    [
+     5.318889,
+     -54.190556
+    ],
+    [
+     5.3225,
+     -54.186667
+    ],
+    [
+     5.326389,
+     -54.184167
+    ],
+    [
+     5.33,
+     -54.180556
+    ],
+    [
+     5.334167,
+     -54.178056
+    ],
+    [
+     5.3375,
+     -54.174444
+    ],
+    [
+     5.341389,
+     -54.171944
+    ],
+    [
+     5.345,
+     -54.168333
+    ],
+    [
+     5.350278,
+     -54.165
+    ],
+    [
+     5.355278,
+     -54.1575
+    ],
+    [
+     5.358611,
+     -54.154167
+    ],
+    [
+     5.361944,
+     -54.151944
+    ],
+    [
+     5.365278,
+     -54.148333
+    ],
+    [
+     5.369444,
+     -54.145833
+    ],
+    [
+     5.373056,
+     -54.142222
+    ],
+    [
+     5.386812,
+     -54.134102
+    ],
+    [
+     5.396667,
+     -54.131944
+    ],
+    [
+     5.406389,
+     -54.128056
+    ],
+    [
+     5.410278,
+     -54.125278
+    ],
+    [
+     5.413889,
+     -54.121944
+    ],
+    [
+     5.418056,
+     -54.119167
+    ],
+    [
+     5.425184,
+     -54.111439
+    ],
+    [
+     5.427405,
+     -54.108014
+    ],
+    [
+     5.430831,
+     -54.104335
+    ],
+    [
+     5.442065,
+     -54.09343
+    ],
+    [
+     5.450648,
+     -54.089863
+    ],
+    [
+     5.454104,
+     -54.087896
+    ],
+    [
+     5.46389,
+     -54.079176
+    ],
+    [
+     5.474694,
+     -54.068411
+    ],
+    [
+     5.478954,
+     -54.064829
+    ],
+    [
+     5.482936,
+     -54.062113
+    ],
+    [
+     5.485466,
+     -54.058626
+    ],
+    [
+     5.487717,
+     -54.054326
+    ],
+    [
+     5.491582,
+     -54.048421
+    ],
+    [
+     5.494444,
+     -54.047778
+    ],
+    [
+     5.5025,
+     -54.042222
+    ],
+    [
+     5.505833,
+     -54.038889
+    ],
+    [
+     5.518333,
+     -54.030833
+    ],
+    [
+     5.521667,
+     -54.027222
+    ],
+    [
+     5.529722,
+     -54.021667
+    ]
+   ],
+   "geofence": [
+    [
+     5.284479,
+     -54.250665
+    ],
+    [
+     5.292628,
+     -54.238314
+    ],
+    [
+     5.294745,
+     -54.233814
+    ],
+    [
+     5.298474,
+     -54.230178
+    ],
+    [
+     5.30047,
+     -54.224125
+    ],
+    [
+     5.303131,
+     -54.213653
+    ],
+    [
+     5.304889,
+     -54.209633
+    ],
+    [
+     5.310165,
+     -54.201721
+    ],
+    [
+     5.316713,
+     -54.195172
+    ],
+    [
+     5.320645,
+     -54.192644
+    ],
+    [
+     5.324256,
+     -54.188755
+    ],
+    [
+     5.328102,
+     -54.186283
+    ],
+    [
+     5.331683,
+     -54.182702
+    ],
+    [
+     5.335898,
+     -54.180173
+    ],
+    [
+     5.33926,
+     -54.17653
+    ],
+    [
+     5.343102,
+     -54.17406
+    ],
+    [
+     5.346761,
+     -54.170401
+    ],
+    [
+     5.352187,
+     -54.167019
+    ],
+    [
+     5.357386,
+     -54.159221
+    ],
+    [
+     5.36034,
+     -54.156267
+    ],
+    [
+     5.363719,
+     -54.154013
+    ],
+    [
+     5.367008,
+     -54.150451
+    ],
+    [
+     5.371127,
+     -54.147979
+    ],
+    [
+     5.374749,
+     -54.144358
+    ],
+    [
+     5.387817,
+     -54.136644
+    ],
+    [
+     5.397426,
+     -54.134552
+    ],
+    [
+     5.407712,
+     -54.130437
+    ],
+    [
+     5.411994,
+     -54.127378
+    ],
+    [
+     5.415573,
+     -54.124074
+    ],
+    [
+     5.419805,
+     -54.121254
+    ],
+    [
+     5.427351,
+     -54.113075
+    ],
+    [
+     5.429552,
+     -54.109682
+    ],
+    [
+     5.443538,
+     -54.095746
+    ],
+    [
+     5.451841,
+     -54.092298
+    ],
+    [
+     5.455724,
+     -54.090088
+    ],
+    [
+     5.465724,
+     -54.081169
+    ],
+    [
+     5.476554,
+     -54.070384
+    ],
+    [
+     5.480596,
+     -54.066985
+    ],
+    [
+     5.484855,
+     -54.06408
+    ],
+    [
+     5.487776,
+     -54.060053
+    ],
+    [
+     5.490048,
+     -54.055716
+    ],
+    [
+     5.493298,
+     -54.050808
+    ],
+    [
+     5.495575,
+     -54.050296
+    ],
+    [
+     5.504229,
+     -54.044322
+    ],
+    [
+     5.507562,
+     -54.040989
+    ],
+    [
+     5.520063,
+     -54.032951
+    ],
+    [
+     5.523441,
+     -54.029292
+    ],
+    [
+     5.531299,
+     -54.023867
+    ]
+   ],
+   "boat": {
+    "start": [
+     5.407812,
+     -54.122604
+    ],
+    "cross": [
+     5.409916,
+     -54.125536
+    ],
+    "end": [
+     5.412607,
+     -54.129287
+    ],
+    "track_index": 9
+   },
+   "ground_unit": {
+    "path": [
+     [
+      5.505762,
+      -54.047095
+     ],
+     [
+      5.494404,
+      -54.05499
+     ],
+     [
+      5.48677,
+      -54.066664
+     ],
+     [
+      5.476339,
+      -54.07596
+     ],
+     [
+      5.465907,
+      -54.085255
+     ],
+     [
+      5.455103,
+      -54.094024
+     ],
+     [
+      5.44285,
+      -54.100751
+     ],
+     [
+      5.433373,
+      -54.110982
+     ],
+     [
+      5.423988,
+      -54.121327
+     ],
+     [
+      5.41328,
+      -54.130225
+     ],
+     [
+      5.412607,
+      -54.129287
+     ]
+    ],
+    "mode": "boat"
+   },
+   "sar": {
+    "area": [
+     [
+      5.52962,
+      -54.249043
+     ],
+     [
+      5.529536,
+      -54.231007
+     ],
+     [
+      5.540379,
+      -54.230957
+     ],
+     [
+      5.540464,
+      -54.248993
+     ]
+    ],
+    "lines": [
+     [
+      [
+       5.53016,
+       -54.2485
+      ],
+      [
+       5.530081,
+       -54.231546
+      ]
+     ],
+     [
+      [
+       5.531165,
+       -54.231541
+      ],
+      [
+       5.531244,
+       -54.248495
+      ]
+     ],
+     [
+      [
+       5.532329,
+       -54.24849
+      ],
+      [
+       5.53225,
+       -54.231536
+      ]
+     ],
+     [
+      [
+       5.533334,
+       -54.231531
+      ],
+      [
+       5.533413,
+       -54.248484
+      ]
+     ],
+     [
+      [
+       5.534497,
+       -54.248479
+      ],
+      [
+       5.534418,
+       -54.231526
+      ]
+     ],
+     [
+      [
+       5.535503,
+       -54.231521
+      ],
+      [
+       5.535582,
+       -54.248474
+      ]
+     ],
+     [
+      [
+       5.536666,
+       -54.248469
+      ],
+      [
+       5.536587,
+       -54.231516
+      ]
+     ],
+     [
+      [
+       5.537671,
+       -54.23151
+      ],
+      [
+       5.53775,
+       -54.248464
+      ]
+     ],
+     [
+      [
+       5.538835,
+       -54.248459
+      ],
+      [
+       5.538755,
+       -54.231505
+      ]
+     ],
+     [
+      [
+       5.53984,
+       -54.2315
+      ],
+      [
+       5.539919,
+       -54.248454
+      ]
+     ]
+    ],
+    "target": [
+     5.536638,
+     -54.242535
+    ],
+    "lkp": [
+     5.538192,
+     -54.246298
+    ],
+    "team_start": [
+     5.5635,
+     -54.2395
+    ],
+    "alt_m": 120,
+    "spacing_m": 120
+   },
+   "places": [
+    {
+     "name": "Paramaribo",
+     "lat": 5.852,
+     "lon": -55.2038,
+     "kind": "capital"
+    },
+    {
+     "name": "Moengo",
+     "lat": 5.6167,
+     "lon": -54.4,
+     "kind": "town"
+    },
+    {
+     "name": "Albina",
+     "lat": 5.4977,
+     "lon": -54.0544,
+     "kind": "town"
+    },
+    {
+     "name": "Saint-Laurent-du-Maroni (FR)",
+     "lat": 5.4986,
+     "lon": -54.0283,
+     "kind": "foreign"
+    }
+   ],
+   "transit_names": [
+    "Paramaribo",
+    "Moengo",
+    "Albina"
+   ]
+  },
+  "nickerie": {
+   "title": {
+    "en": "Western border — Nickerie, Corantijn river",
+    "nl": "Westgrens — Nickerie, Corantijnrivier"
+   },
+   "names": {
+    "river": {
+     "en": "Corantijn",
+     "nl": "Corantijn"
+    },
+    "fob": {
+     "en": "Nieuw Nickerie",
+     "nl": "Nieuw Nickerie"
+    },
+    "sar_place": {
+     "en": "forest east of the Corantijn",
+     "nl": "bos ten oosten van de Corantijn"
+    },
+    "neighbour": {
+     "en": "Guyana",
+     "nl": "Guyana"
+    }
+   },
+   "contact": {
+    "title": {
+     "en": "Unregistered river crossing",
+     "nl": "Niet-geregistreerde rivierovertocht"
+    },
+    "detail": {
+     "en": "Boat · 2 persons · off the ferry route",
+     "nl": "Boot · 2 personen · buiten de veerroute"
+    },
+    "recipients": {
+     "en": "Border Command · Police boat South Drain",
+     "nl": "Grenscommando · Politieboot South Drain"
+    },
+    "unit": {
+     "en": "Police boat South Drain",
+     "nl": "Politieboot South Drain"
+    },
+    "unit_kmh": 35
+   },
+   "sar_info": {
+    "team": {
+     "en": "Rescue team by boat on the Corantijn",
+     "nl": "Reddingsteam per boot op de Corantijn"
+    },
+    "team_kmh": 3
+   },
+   "standoff_m": 700,
+   "hq": [
+    5.8108,
+    -55.1907
+   ],
+   "fob": [
+    5.945,
+    -56.98
+   ],
+   "transit": [
+    [
+     5.8108,
+     -55.1907
+    ],
+    [
+     5.78,
+     -55.6
+    ],
+    [
+     5.76,
+     -56.0
+    ],
+    [
+     5.82,
+     -56.28
+    ],
+    [
+     5.8833,
+     -56.3167
+    ],
+    [
+     5.87,
+     -56.6
+    ],
+    [
+     5.9,
+     -56.85
+    ],
+    [
+     5.945,
+     -56.98
+    ]
+   ],
+   "patrol": [
+    [
+     5.839993,
+     -57.126011
+    ],
+    [
+     5.825786,
+     -57.12761
+    ],
+    [
+     5.81158,
+     -57.12921
+    ],
+    [
+     5.797373,
+     -57.130809
+    ],
+    [
+     5.783167,
+     -57.132409
+    ],
+    [
+     5.76909,
+     -57.134894
+    ],
+    [
+     5.755018,
+     -57.13742
+    ],
+    [
+     5.740918,
+     -57.136378
+    ],
+    [
+     5.726808,
+     -57.134081
+    ],
+    [
+     5.71261,
+     -57.132931
+    ],
+    [
+     5.698313,
+     -57.133056
+    ],
+    [
+     5.68414,
+     -57.134501
+    ],
+    [
+     5.670063,
+     -57.136998
+    ],
+    [
+     5.655987,
+     -57.139494
+    ],
+    [
+     5.643006,
+     -57.145442
+    ],
+    [
+     5.630055,
+     -57.151488
+    ],
+    [
+     5.616427,
+     -57.155777
+    ],
+    [
+     5.60276,
+     -57.159966
+    ]
+   ],
+   "border_focus": [
+    [
+     5.880879,
+     -57.122399
+    ],
+    [
+     5.840703,
+     -57.132294
+    ],
+    [
+     5.783465,
+     -57.138738
+    ],
+    [
+     5.75141,
+     -57.144491
+    ],
+    [
+     5.718895,
+     -57.139198
+    ],
+    [
+     5.692561,
+     -57.139428
+    ],
+    [
+     5.657523,
+     -57.145642
+    ],
+    [
+     5.631645,
+     -57.157724
+    ],
+    [
+     5.60462,
+     -57.166008
+    ]
+   ],
+   "geofence": [
+    [
+     5.880229,
+     -57.119767
+    ],
+    [
+     5.840224,
+     -57.129621
+    ],
+    [
+     5.783073,
+     -57.136055
+    ],
+    [
+     5.751388,
+     -57.141742
+    ],
+    [
+     5.719103,
+     -57.136487
+    ],
+    [
+     5.69231,
+     -57.136721
+    ],
+    [
+     5.656697,
+     -57.143037
+    ],
+    [
+     5.630667,
+     -57.15519
+    ],
+    [
+     5.603823,
+     -57.163419
+    ]
+   ],
+   "boat": {
+    "start": [
+     5.739812,
+     -57.143152
+    ],
+    "cross": [
+     5.739899,
+     -57.142617
+    ],
+    "end": [
+     5.740459,
+     -57.139186
+    ],
+    "track_index": 7
+   },
+   "ground_unit": {
+    "path": [
+     [
+      5.839993,
+      -57.126011
+     ],
+     [
+      5.825786,
+      -57.12761
+     ],
+     [
+      5.81158,
+      -57.12921
+     ],
+     [
+      5.797373,
+      -57.130809
+     ],
+     [
+      5.783167,
+      -57.132409
+     ],
+     [
+      5.76909,
+      -57.134894
+     ],
+     [
+      5.755018,
+      -57.13742
+     ],
+     [
+      5.740918,
+      -57.136378
+     ],
+     [
+      5.740459,
+      -57.139186
+     ]
+    ],
+    "mode": "boat"
+   },
+   "sar": {
+    "area": [
+     [
+      5.694571,
+      -57.059031
+     ],
+     [
+      5.694573,
+      -57.040969
+     ],
+     [
+      5.705429,
+      -57.040969
+     ],
+     [
+      5.705427,
+      -57.059032
+     ]
+    ],
+    "lines": [
+     [
+      [
+       5.695114,
+       -57.058489
+      ],
+      [
+       5.695116,
+       -57.04151
+      ]
+     ],
+     [
+      [
+       5.696201,
+       -57.04151
+      ],
+      [
+       5.6962,
+       -57.058489
+      ]
+     ],
+     [
+      [
+       5.697285,
+       -57.058489
+      ],
+      [
+       5.697287,
+       -57.041511
+      ]
+     ],
+     [
+      [
+       5.698372,
+       -57.041511
+      ],
+      [
+       5.698371,
+       -57.058489
+      ]
+     ],
+     [
+      [
+       5.699456,
+       -57.058489
+      ],
+      [
+       5.699458,
+       -57.041511
+      ]
+     ],
+     [
+      [
+       5.700543,
+       -57.041511
+      ],
+      [
+       5.700542,
+       -57.058489
+      ]
+     ],
+     [
+      [
+       5.701628,
+       -57.058489
+      ],
+      [
+       5.701629,
+       -57.041511
+      ]
+     ],
+     [
+      [
+       5.702715,
+       -57.041511
+      ],
+      [
+       5.702713,
+       -57.05849
+      ]
+     ],
+     [
+      [
+       5.703799,
+       -57.05849
+      ],
+      [
+       5.7038,
+       -57.041511
+      ]
+     ],
+     [
+      [
+       5.704886,
+       -57.041511
+      ],
+      [
+       5.704884,
+       -57.05849
+      ]
+     ]
+    ],
+    "target": [
+     5.701629,
+     -57.048302
+    ],
+    "lkp": [
+     5.703167,
+     -57.043678
+    ],
+    "team_start": [
+     5.7,
+     -57.115
+    ],
+    "alt_m": 120,
+    "spacing_m": 120
+   },
+   "places": [
+    {
+     "name": "Paramaribo",
+     "lat": 5.852,
+     "lon": -55.2038,
+     "kind": "capital"
+    },
+    {
+     "name": "Totness",
+     "lat": 5.8833,
+     "lon": -56.3167,
+     "kind": "town"
+    },
+    {
+     "name": "Nieuw Nickerie",
+     "lat": 5.95,
+     "lon": -56.9833,
+     "kind": "town"
+    },
+    {
+     "name": "Corriverton (GY)",
+     "lat": 5.88,
+     "lon": -57.13,
+     "kind": "foreign"
+    }
+   ],
+   "transit_names": [
+    "Paramaribo",
+    "",
+    "",
+    "",
+    "Totness",
+    "",
+    "",
+    "Nieuw Nickerie"
+   ]
+  }
+ }
+}

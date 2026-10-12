@@ -30,4 +30,9 @@
 
   <ItemGroup>
   </ItemGroup>
+
+  <!-- Suriname demo display (web page served by the app) is copied next to the executable. -->
+  <ItemGroup>
+    <None Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

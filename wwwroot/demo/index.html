@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InfraDrone Command — Suriname</title>
+<link rel="stylesheet" href="demo.css">
+</head>
+<body>
+<div id="map"></div>
+<div id="vignette"></div>
+
+<header id="top">
+  <div class="brand"><span class="logo">◆</span><span id="brand">DAMbv · InfraDrone Command</span></div>
+  <div class="mid"><div id="scenTitle"></div><div id="chapTitle"></div></div>
+  <div class="right">
+    <span id="simBadge" class="badge sim"></span>
+    <span id="scaleChip" class="badge scale" hidden></span>
+    <span class="clock"><small id="clockLbl"></small><b id="clock">06:30:00</b></span>
+  </div>
+</header>
+
+<aside id="left" class="panel">
+  <h3 id="acTitle"></h3>
+  <div id="acName" class="sub"></div>
+  <div class="rows" id="acRows"></div>
+</aside>
+
+<aside id="right" class="panel">
+  <h3 id="evTitle"></h3>
+  <ul id="events"></ul>
+</aside>
+
+<div id="legend" class="panel"></div>
+
+<div id="sensorWrap" class="panel">
+  <canvas id="sensor" width="440" height="276"></canvas>
+</div>
+
+<div id="caption"><div id="captionText"></div></div>
+<div id="hint"></div>
+
+<div id="banner"></div>
+<div id="titlecard"><div class="num" id="tcNum"></div><div class="ttl" id="tcTitle"></div><div class="sub" id="tcSub"></div></div>
+<div id="checklist" class="panel"></div>
+<div id="swap" class="panel"><div id="swapText"></div><div class="bar"><i id="swapBar"></i></div></div>
+<div id="report" class="overlay"></div>
+<div id="closing" class="overlay"></div>
+
+<nav id="controls">
+  <button data-k="home" title="Start (Home)">⏮</button>
+  <button data-k="prev" title="Previous (←)">◀</button>
+  <button data-k="play" id="bPlay" title="Pause / play (P)">❚❚</button>
+  <button data-k="next" title="Next (→)">▶</button>
+  <button data-k="auto" id="bAuto" title="Auto-play (A)">AUTO</button>
+  <button data-k="lang" id="bLang" title="Language (L)">EN</button>
+  <button data-k="cam" id="bCam" title="Camera (C)">CAM</button>
+  <button data-k="full" title="Full screen (F)">⛶</button>
+</nav>
+
+<div id="credits"></div>
+<div id="notice"></div>
+<div id="black"></div>
+<div id="loading"><div class="spin"></div><div id="loadText">Loading…</div></div>
+
+<script src="engine.js"></script>
+<script src="sensor.js"></script>
+<script src="render-cesium.js"></script>
+<script src="render-google.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

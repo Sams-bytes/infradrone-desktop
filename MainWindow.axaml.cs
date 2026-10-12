@@ -331,6 +331,7 @@ public partial class MainWindow : Window
     private Views.MavLinkTestView? _mavLinkTestView;
     private Views.FailsafeMonitorView? _failsafeMonitorView;
     private Views.SimulationView? _simulationView;
+    private Views.SuriDemoView? _suriDemoView;
     private Views.StoryModeView? _storyModeView;
     private Views.AssetMonitorView? _assetMonitorView;
     private void OnAssetMonitorView(object? sender, RoutedEventArgs e)
@@ -413,6 +414,12 @@ public partial class MainWindow : Window
         ContentArea.Child = _mavLinkTestView;
     }
     private void OnTelemetryWindow(object? sender, RoutedEventArgs e) => Views.TelemetryWindow.ShowShared();
+
+    private void OnSuriDemoView(object? sender, RoutedEventArgs e)
+    {
+        _suriDemoView ??= new Views.SuriDemoView();
+        ContentArea.Child = _suriDemoView;
+    }
 
     private void OnSimulationView(object? sender, RoutedEventArgs e)
     {
