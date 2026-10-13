@@ -74,6 +74,13 @@ namespace InfraDroneDesktop.Services
         private bool _stopping;
 
         public bool IsRunning { get; private set; }
+
+        /// <summary>
+        /// Link-degradation drill: percentage (0-100) of vehicle packets the relay
+        /// drops on their way to the app. Only affects what THIS APP sees; the
+        /// simulated autopilot still hears MAVProxy normally.
+        /// </summary>
+        public volatile int DropPercent;
         public long PacketsToApp;
         public long PacketsFromApp;
         public bool ArduPlaneAlive => _arduplane != null && !_arduplane.HasExited;
@@ -183,6 +190,7 @@ namespace InfraDroneDesktop.Services
             try { _relayA?.Dispose(); } catch { }
             try { _relayB?.Dispose(); } catch { }
             _relayA = null; _relayB = null; _mavproxyEndpoint = null;
+            DropPercent = 0;
 
             Kill(_mavproxy); _mavproxy = null;
             Kill(_arduplane); _arduplane = null;
@@ -213,6 +221,8 @@ namespace InfraDroneDesktop.Services
                     {
                         var r = await _relayA!.ReceiveAsync(ct);
                         _mavproxyEndpoint = r.RemoteEndPoint;
+                        var drop = DropPercent;
+                        if (drop > 0 && Random.Shared.Next(100) < drop) continue; // drill: lose this packet
                         await _relayB!.SendAsync(r.Buffer, r.Buffer.Length, appEp);
                         Interlocked.Increment(ref PacketsToApp);
                     }

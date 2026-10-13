@@ -143,7 +143,8 @@ public partial class SimulationView : UserControl
         BtnDrillRc.IsEnabled = canDrill;
         BtnDrillBattery.IsEnabled = canDrill;
         BtnDrillFence.IsEnabled = canDrill;
-        BtnDrillStop.IsEnabled = _drills.IsRunning;
+        BtnDrillLink.IsEnabled = canDrill && _linkDrill == null;
+        BtnDrillStop.IsEnabled = _drills.IsRunning || _linkDrill != null;
         LockLocation(!running && !_starting);
 
         if (_starting) return; // keep the STARTING badge until StartAsync returns
@@ -178,11 +179,66 @@ public partial class SimulationView : UserControl
     private async void OnDrillStop(object? s, RoutedEventArgs e)
     {
         BtnDrillStop.IsEnabled = false;
+        if (_linkDrill != null)
+        {
+            _linkDrill.Cancel();      // the drill's finally block restores the link
+            return;
+        }
         AppendDrillLog("Stopping the drill and restoring simulator settings ...");
         await _drills.StopAsync();
         SetDrillBadge("STOPPED", "#1e293b", "#94a3b8");
         DrillResultText.Text = "Drill stopped. Simulator settings restored.";
         RefreshStatus();
+    }
+
+    // Drill 6: degrade the relay's link to this app, so the Flight View link box
+    // and the LINK DEGRADED / LINK LOST alerts can be seen working. Pure C#: it
+    // only changes SimulatorService.DropPercent and always resets it to 0.
+    private System.Threading.CancellationTokenSource? _linkDrill;
+
+    private async void OnDrillLink(object? s, RoutedEventArgs e)
+    {
+        if (_linkDrill != null || !_sim.IsRunning) return;
+        _linkDrill = new System.Threading.CancellationTokenSource();
+        var ct = _linkDrill.Token;
+        _drillLog.Clear(); DrillLog.Text = "";
+        SetDrillBadge("RUNNING", "#3d2e0d", "#f59e0b");
+        DrillResultText.Text = "Bad radio link ...";
+        DrillResultText.Foreground = new SolidColorBrush(Color.Parse("#cbd5e1"));
+        AppendDrillLog("== Bad radio link (what this app receives) ==");
+        AppendDrillLog("Open Mission Planner to watch the LINK box (top left of the map).");
+        RefreshStatus();
+        try
+        {
+            (int pct, int secs, string what)[] phases =
+            {
+                (10, 15, "10% packet loss - expect LINK: FAIR"),
+                (40, 15, "40% packet loss - expect LINK: POOR and a LINK DEGRADED alert after 5 s"),
+                (100, 12, "100% loss (link cut) - expect LINK: LOST and the LINK LOST alert"),
+            };
+            foreach (var (pct, secs, what) in phases)
+            {
+                _sim.DropPercent = pct;
+                AppendDrillLog($"{what} ({secs} s)");
+                await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(secs), ct);
+            }
+            _sim.DropPercent = 0;
+            AppendDrillLog("Link restored - expect LINK: GOOD and LINK RESTORED within a few seconds.");
+            ShowDrillResult("RESULT: DONE - link drill finished. Note: only this app's view was degraded; " +
+                            "the autopilot still heard MAVProxy, so its own link-loss failsafe did not trigger " +
+                            "(drill 3 tests that).");
+        }
+        catch (OperationCanceledException)
+        {
+            ShowDrillResult("RESULT: DONE - link drill stopped.");
+        }
+        finally
+        {
+            _sim.DropPercent = 0;
+            _linkDrill.Dispose();
+            _linkDrill = null;
+            RefreshStatus();
+        }
     }
 
     private void RunDrill(string args, string title)

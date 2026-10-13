@@ -159,6 +159,9 @@
               <Button Name="BtnDrillFence" Content="⬡  5. Fence breach (altitude)" Click="OnDrillFence"
                       Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
                       BorderThickness="1" Padding="12,7" CornerRadius="6" Margin="0,0,8,8"/>
+              <Button Name="BtnDrillLink" Content="📶  6. Bad radio link (app view)" Click="OnDrillLink"
+                      Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
+                      BorderThickness="1" Padding="12,7" CornerRadius="6" Margin="0,0,8,8"/>
               <Button Name="BtnDrillStop" Content="■  Stop drill" Click="OnDrillStop" IsEnabled="False"
                       Background="#2a1215" Foreground="#f87171" BorderBrush="#ef4444"
                       BorderThickness="1" Padding="12,7" CornerRadius="6" Margin="0,0,8,8"/>

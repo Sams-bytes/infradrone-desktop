@@ -25,6 +25,23 @@ namespace InfraDroneDesktop.Services
         public double Pitch { get; set; }
     }
 
+    /// <summary>
+    /// Link quality to the vehicle, measured from the MAVLink packets themselves:
+    /// gaps in the per-packet sequence numbers = packets lost on the way. Works with
+    /// any radio (SIYI, B-cube, SiK, simulator). RSSI only when the radio reports
+    /// RADIO_STATUS (SiK-type radios do; SIYI does not).
+    /// </summary>
+    public sealed class LinkQuality
+    {
+        public string Grade { get; init; } = "NO DATA";   // GOOD / FAIR / POOR / LOST / NO DATA
+        public double LossPercent { get; init; }           // over the last 5 s
+        public int PacketsPerSecond { get; init; }
+        public double HeartbeatAgeSeconds { get; init; }
+        public int? Rssi { get; init; }                    // RADIO_STATUS, radio's own units
+        public int? RemoteRssi { get; init; }
+        public string Summary { get; init; } = "";
+    }
+
     public class AsvMavLinkService
     {
         private IMavlinkV2Connection? _connection;
@@ -60,6 +77,18 @@ namespace InfraDroneDesktop.Services
         private readonly Dictionary<uint, int> _collisionThreat = new();
         private const double TrafficExpirySeconds = 20;
         public event Action<List<AdsbAircraft>>? OnboardTrafficUpdated;
+
+        // ---- Link quality ---------------------------------------------------
+        private int _lastRxSeq = -1;
+        private int _secRecv, _secLost;                       // current 1-second bucket
+        private readonly Queue<(int recv, int lost)> _lossWindow = new();
+        private int? _radioRssi, _radioRemRssi;
+        private DateTime _radioStatusTime = DateTime.MinValue;
+        private int _poorSeconds;
+        private bool _linkDegradedAlertSent;
+        private readonly object _linkLock = new();
+        public LinkQuality CurrentLinkQuality { get; private set; } = new LinkQuality();
+        public event Action<LinkQuality>? LinkQualityUpdated;
         public event Action<AsvTelemetryData>? TelemetryUpdated;
         public event Action<string, bool>? CommandResult; // command name, accepted
         public class FailsafeAlertRecord
@@ -307,9 +336,22 @@ namespace InfraDroneDesktop.Services
                 // Onboard ADS-B traffic and collision warnings, straight from the
                 // vehicle's own packets (only the target vehicle, never another GCS).
                 var trafficSysId = identity.TargetSystemId;
+                var trafficCompId = identity.TargetComponentId;
+                lock (_linkLock) { _lastRxSeq = -1; _lossWindow.Clear(); _secRecv = _secLost = 0; }
                 _telemetrySubscriptions.Add(_connection!.Subscribe(packet =>
                 {
+                    // RADIO_STATUS comes from the radio itself (its own system ID).
+                    if (packet.Payload is RadioStatusPayload rs)
+                    {
+                        lock (_linkLock)
+                        {
+                            _radioRssi = rs.Rssi; _radioRemRssi = rs.Remrssi;
+                            _radioStatusTime = DateTime.UtcNow;
+                        }
+                        return;
+                    }
                     if (packet.SystemId != trafficSysId) return;
+                    if (packet.ComponentId == trafficCompId) CountSequence(packet.Sequence);
                     try
                     {
                         switch (packet.Payload)
@@ -321,7 +363,7 @@ namespace InfraDroneDesktop.Services
                     catch (Exception ex) { Console.WriteLine("[AsvMavLink] traffic packet error: " + ex.Message); }
                 }));
                 _trafficTimer?.Dispose();
-                _trafficTimer = new System.Threading.Timer(_ => PruneTraffic(), null, 1000, 1000);
+                _trafficTimer = new System.Threading.Timer(_ => { PruneTraffic(); UpdateLinkQuality(); }, null, 1000, 1000);
                 // ArduPilot's ADS-B stream rate defaults to 0, so ask for ADSB_VEHICLE
                 // explicitly (2 Hz). COLLISION messages are always sent.
                 _ = RequestAdsbStreamAsync();
@@ -628,6 +670,72 @@ namespace InfraDroneDesktop.Services
             catch (Exception ex)
             {
                 Console.WriteLine("[AsvMavLink] ADS-B traffic stream request failed: " + ex.Message);
+            }
+        }
+
+        private void CountSequence(byte seq)
+        {
+            lock (_linkLock)
+            {
+                if (_lastRxSeq >= 0)
+                {
+                    int gap = (seq - ((_lastRxSeq + 1) & 0xFF)) & 0xFF;
+                    // A gap over 128 is a duplicate or reordered packet, not 128+ lost ones.
+                    if (gap > 0 && gap < 128) _secLost += gap;
+                }
+                _lastRxSeq = seq;
+                _secRecv++;
+            }
+        }
+
+        private void UpdateLinkQuality()
+        {
+            LinkQuality q;
+            lock (_linkLock)
+            {
+                _lossWindow.Enqueue((_secRecv, _secLost));
+                _secRecv = _secLost = 0;
+                while (_lossWindow.Count > 5) _lossWindow.Dequeue();
+                int recv = 0, lost = 0;
+                foreach (var (r, l) in _lossWindow) { recv += r; lost += l; }
+                double loss = recv + lost > 0 ? 100.0 * lost / (recv + lost) : 0;
+                int pps = _lossWindow.Count > 0 ? recv / _lossWindow.Count : 0;
+                double hbAge = _lastTelemetryTime == DateTime.MinValue ? double.PositiveInfinity
+                             : (DateTime.UtcNow - _lastTelemetryTime).TotalSeconds;
+                bool radioFresh = (DateTime.UtcNow - _radioStatusTime).TotalSeconds < 5;
+
+                string grade = !Telemetry.Connected ? "NO DATA"
+                             : hbAge > LinkLostTimeoutSeconds ? "LOST"
+                             : loss < 5 ? "GOOD"
+                             : loss < 20 ? "FAIR" : "POOR";
+                q = new LinkQuality
+                {
+                    Grade = grade,
+                    LossPercent = loss,
+                    PacketsPerSecond = pps,
+                    HeartbeatAgeSeconds = hbAge,
+                    Rssi = radioFresh ? _radioRssi : null,
+                    RemoteRssi = radioFresh ? _radioRemRssi : null,
+                    Summary = grade == "NO DATA" ? "no vehicle data"
+                            : $"{loss:F0}% loss · {pps} pkt/s · last heartbeat {Math.Min(hbAge, 99):F1} s ago" +
+                              (radioFresh ? $" · RSSI {_radioRssi}/{_radioRemRssi}" : ""),
+                };
+                _poorSeconds = grade is "POOR" ? _poorSeconds + 1 : 0;
+            }
+            CurrentLinkQuality = q;
+            LinkQualityUpdated?.Invoke(q);
+
+            // Warn once when the link has been POOR for 5 s; re-arm when it recovers.
+            if (_poorSeconds >= 5 && !_linkDegradedAlertSent)
+            {
+                _linkDegradedAlertSent = true;
+                RaiseSafetyAlert("LINK DEGRADED",
+                    $"{q.LossPercent:F0}% of telemetry packets lost over the last 5 s. Check antennas and distance; " +
+                    "if it gets worse the autopilot's link-loss failsafe will take over.");
+            }
+            else if (q.Grade == "GOOD" && _linkDegradedAlertSent)
+            {
+                _linkDegradedAlertSent = false;
             }
         }
 

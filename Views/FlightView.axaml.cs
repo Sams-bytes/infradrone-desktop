@@ -414,6 +414,26 @@ public partial class FlightView : UserControl
             : $"{_openSkyCount} aircraft nearby (internet, OpenSky)";
     }
 
+    private void OnLinkQuality(LinkQuality q)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var color = q.Grade switch
+            {
+                "GOOD" => "#22c55e",
+                "FAIR" => "#f59e0b",
+                "POOR" => "#f97316",
+                "LOST" => "#ef4444",
+                _ => "#94a3b8",
+            };
+            var brush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(color));
+            LinkGradeText.Text = $"📶 LINK: {q.Grade}";
+            LinkGradeText.Foreground = brush;
+            LinkQualityBox.BorderBrush = brush;
+            LinkDetailText.Text = q.Summary;
+        });
+    }
+
     private void OnOnboardTraffic(System.Collections.Generic.List<Services.AdsbAircraft> aircraft)
     {
         Dispatcher.UIThread.Post(() =>
@@ -651,6 +671,8 @@ public partial class FlightView : UserControl
         // -= first: SetMavLink can be called more than once for the same service.
         _mav.OnboardTrafficUpdated -= OnOnboardTraffic;
         _mav.OnboardTrafficUpdated += OnOnboardTraffic;
+        _mav.LinkQualityUpdated -= OnLinkQuality;
+        _mav.LinkQualityUpdated += OnLinkQuality;
     }
 
     private void OnCommandAck(string command, bool success)

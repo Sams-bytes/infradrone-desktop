@@ -343,6 +343,14 @@
             Background="#c0131f2e" CornerRadius="6" Padding="10,6" BorderBrush="#3b82f6" BorderThickness="1">
       <TextBlock Name="AdsbCountText" Text="Loading ADS-B..." Foreground="#3b82f6" FontSize="12" FontWeight="Bold"/>
     </Border>
+    <!-- Link quality to the vehicle (packet loss from MAVLink sequence numbers) -->
+    <Border Name="LinkQualityBox" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16,52,16,16"
+            Background="#c0131f2e" CornerRadius="6" Padding="10,6" BorderBrush="#475569" BorderThickness="1">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <TextBlock Name="LinkGradeText" Text="📶 LINK: NO DATA" Foreground="#94a3b8" FontSize="12" FontWeight="Bold"/>
+        <TextBlock Name="LinkDetailText" Text="" Foreground="#cbd5e1" FontSize="11" VerticalAlignment="Center"/>
+      </StackPanel>
+    </Border>
     <Border Name="StatusBanner" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top"
             Margin="0,64,0,0" MinWidth="320" MaxWidth="520"
             Background="#e0141e2b" CornerRadius="10" Padding="0"
