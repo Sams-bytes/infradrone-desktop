@@ -55,6 +55,7 @@ namespace InfraDroneDesktop.Services
         public const string AreaFence = "GEOFENCE";
         public const string AreaReturn = "RETURN & LANDING";
         public const string AreaArming = "ARMING";
+        public const string AreaTraffic = "TRAFFIC (ADS-B)";
 
         private readonly Func<string, CancellationToken, Task<float?>> _readParam;
         private readonly Func<CancellationToken, Task<int>>? _readFencePointCount;
@@ -86,6 +87,7 @@ namespace InfraDroneDesktop.Services
             "FENCE_ENABLE", "FENCE_AUTOENABLE", "FENCE_TYPE", "FENCE_ACTION", "FENCE_ALT_MAX",
             "RTL_ALTITUDE", "RTL_AUTOLAND", "Q_ENABLE", "Q_RTL_MODE", "Q_OPTIONS",
             "ARMING_SKIPCHK", "MAV_GCS_SYSID",
+            "ADSB_TYPE", "AVD_ENABLE", "AVD_F_ACTION",
         };
 
         private static readonly Dictionary<string, string> Fallbacks = new()
@@ -421,6 +423,66 @@ namespace InfraDroneDesktop.Services
             {
                 r.Add(new Result(AreaReturn, "Vehicle type", Status.Info,
                     "Q_ENABLE is 0 or missing: treated as a plain fixed-wing (no VTOL checks)."));
+            }
+
+            // ---------------- TRAFFIC (ADS-B) ----------------
+            // Values from ArduPilot source: AP_ADSB.cpp (ADSB_TYPE) and
+            // AP_Avoidance.cpp (AVD_*); actions Plane implements in avoidance_adsb.cpp.
+            var adsbType = I("ADSB_TYPE");
+            switch (adsbType)
+            {
+                case null:
+                    r.Add(new Result(AreaTraffic, "Onboard ADS-B receiver (ADSB_TYPE)", Status.Caution,
+                        "Could not read ADSB_TYPE - this firmware may be built without ADS-B support.",
+                        "Check in QGroundControl (Vehicle Setup > Parameters).")); break;
+                case 0:
+                    r.Add(new Result(AreaTraffic, "Onboard ADS-B receiver (ADSB_TYPE)", Status.Caution,
+                        "0 = Disabled. The aircraft cannot see manned traffic itself; the map's OpenSky feed is internet-based, delayed and not a separation means.",
+                        "Fit an ADS-B receiver (e.g. a uAvionix ping) and set ADSB_TYPE = 1. Your authorisation may also require observers or FLARM.")); break;
+                case 1:
+                    r.Add(new Result(AreaTraffic, "Onboard ADS-B receiver (ADSB_TYPE)", Status.Go,
+                        "1 = MAVLink receiver (e.g. uAvionix ping). Live traffic appears orange on the Flight View map.")); break;
+                default:
+                    r.Add(new Result(AreaTraffic, "Onboard ADS-B receiver (ADSB_TYPE)", Status.Go,
+                        adsbType.Value switch { 2 => "2 = Sagetech.", 3 => "3 = uAvionix UCP.", 4 => "4 = Sagetech MX series.",
+                                                _ => $"{adsbType.Value} = receiver type set." })); break;
+            }
+
+            if (adsbType is > 0)
+            {
+                var avdEn = I("AVD_ENABLE");
+                var avdAct = I("AVD_F_ACTION");
+                if (avdEn == null)
+                    r.Add(new Result(AreaTraffic, "Automatic avoidance (AVD_ENABLE)", Status.Caution,
+                        "Could not read AVD_ENABLE.", "Check in QGroundControl."));
+                else if (avdEn.Value == 0)
+                    r.Add(new Result(AreaTraffic, "Automatic avoidance (AVD_ENABLE)", Status.Caution,
+                        "0 = Disabled. Traffic is received and shown, but the autopilot will not act on a conflict.",
+                        "Set AVD_ENABLE = 1 and choose AVD_F_ACTION."));
+                else
+                {
+                    r.Add(new Result(AreaTraffic, "Automatic avoidance (AVD_ENABLE)", Status.Go, "1 = Enabled."));
+                    switch (avdAct)
+                    {
+                        case null: r.Add(Missing(AreaTraffic, "Avoidance action (AVD_F_ACTION)")); break;
+                        case 0:
+                        case 1:
+                            r.Add(new Result(AreaTraffic, "Avoidance action (AVD_F_ACTION)", Status.Caution,
+                                avdAct == 0 ? "0 = None: a collision threat triggers nothing." : "1 = Report only: the autopilot warns but does not move.",
+                                "For BVLOS choose 5 (RTL), 6 (Hover) or 2 (Climb or Descend).")); break;
+                        case 2: case 3: case 4: case 5: case 6:
+                            r.Add(new Result(AreaTraffic, "Avoidance action (AVD_F_ACTION)", Status.Go,
+                                avdAct.Value switch
+                                {
+                                    2 => "2 = Climb or descend away from the traffic.",
+                                    3 => "3 = Move horizontally away.",
+                                    4 => "4 = Move perpendicular in 3D.",
+                                    5 => "5 = RTL.",
+                                    _ => "6 = Hover (QLOITER if flying as a VTOL, otherwise LOITER).",
+                                })); break;
+                        default: r.Add(Unknown(AreaTraffic, "Avoidance action (AVD_F_ACTION)", avdAct.Value)); break;
+                    }
+                }
             }
 
             // ---------------- ARMING ----------------

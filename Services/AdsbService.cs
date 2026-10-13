@@ -18,6 +18,9 @@ public class AdsbAircraft
     public bool OnGround { get; set; }
     public double? Velocity { get; set; }
     public double? TrueTrack { get; set; }
+    /// <summary>"OpenSky" (internet, ~15 s old) or "Onboard" (the drone's own ADS-B receiver, live).</summary>
+    public string Source { get; set; } = "OpenSky";
+    public DateTime LastSeenUtc { get; set; } = DateTime.UtcNow;
 }
 
 public class AdsbService

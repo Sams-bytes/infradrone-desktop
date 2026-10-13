@@ -42,12 +42,24 @@ namespace InfraDroneDesktop.Services
 
         private static readonly System.Collections.Generic.Dictionary<uint, string> PlaneModes = new()
         {
-            {0,"Manual"},{2,"Stabilize"},{5,"FBWA"},{6,"FBWB"},{7,"Cruise"},{10,"Auto"},
-            {11,"RTL"},{12,"Loiter"},{15,"Guided"},{17,"QSTABILIZE"},{18,"QHOVER"},
-            {19,"QLOITER"},{20,"QLAND"},{21,"QRTL"}
+            {0,"Manual"},{1,"Circle"},{2,"Stabilize"},{3,"Training"},{4,"Acro"},{5,"FBWA"},{6,"FBWB"},
+            {7,"Cruise"},{8,"Autotune"},{10,"Auto"},{11,"RTL"},{12,"Loiter"},{13,"Takeoff"},
+            {14,"AVOID_ADSB"},{15,"Guided"},{17,"QSTABILIZE"},{18,"QHOVER"},
+            {19,"QLOITER"},{20,"QLAND"},{21,"QRTL"},{22,"QAUTOTUNE"},{23,"QACRO"},{24,"Thermal"},
+            {25,"Loiter to QLand"},{26,"AUTOLAND"}
         };
 
         public AsvTelemetryData Telemetry { get; private set; } = new AsvTelemetryData();
+
+        // ---- Onboard ADS-B traffic (ADSB_VEHICLE from the autopilot) -------
+        // When the aircraft carries an ADS-B receiver (ADSB_TYPE != 0), the
+        // autopilot forwards every aircraft it hears as ADSB_VEHICLE (msg 246),
+        // live and independent of the internet. Entries expire after 20 s.
+        private readonly Dictionary<uint, AdsbAircraft> _onboardTraffic = new();
+        private System.Threading.Timer? _trafficTimer;
+        private readonly Dictionary<uint, int> _collisionThreat = new();
+        private const double TrafficExpirySeconds = 20;
+        public event Action<List<AdsbAircraft>>? OnboardTrafficUpdated;
         public event Action<AsvTelemetryData>? TelemetryUpdated;
         public event Action<string, bool>? CommandResult; // command name, accepted
         public class FailsafeAlertRecord
@@ -291,6 +303,28 @@ namespace InfraDroneDesktop.Services
                     }
                     TelemetryUpdated?.Invoke(Telemetry);
                 }));
+
+                // Onboard ADS-B traffic and collision warnings, straight from the
+                // vehicle's own packets (only the target vehicle, never another GCS).
+                var trafficSysId = identity.TargetSystemId;
+                _telemetrySubscriptions.Add(_connection!.Subscribe(packet =>
+                {
+                    if (packet.SystemId != trafficSysId) return;
+                    try
+                    {
+                        switch (packet.Payload)
+                        {
+                            case AdsbVehiclePayload av: OnAdsbVehicle(av); break;
+                            case CollisionPayload col: OnCollision(col); break;
+                        }
+                    }
+                    catch (Exception ex) { Console.WriteLine("[AsvMavLink] traffic packet error: " + ex.Message); }
+                }));
+                _trafficTimer?.Dispose();
+                _trafficTimer = new System.Threading.Timer(_ => PruneTraffic(), null, 1000, 1000);
+                // ArduPilot's ADS-B stream rate defaults to 0, so ask for ADSB_VEHICLE
+                // explicitly (2 Hz). COLLISION messages are always sent.
+                _ = RequestAdsbStreamAsync();
 
                 _lastTelemetryTime = DateTime.UtcNow;
                 _linkWatchdogTimer = new System.Threading.Timer(_ =>
@@ -579,6 +613,99 @@ namespace InfraDroneDesktop.Services
             }
         }
 
+        private async Task RequestAdsbStreamAsync()
+        {
+            try
+            {
+                await Task.Delay(2000); // let the link settle after discovery
+                if (_commandClient == null) return;
+                // MAV_CMD_SET_MESSAGE_INTERVAL: param1 = message id (246 ADSB_VEHICLE),
+                // param2 = interval in microseconds.
+                var r = await _commandClient.CommandLong(MavCmd.MavCmdSetMessageInterval,
+                    246, 500_000, 0, 0, 0, 0, 0, CancellationToken.None);
+                Console.WriteLine($"[AsvMavLink] ADS-B traffic stream request: {r.Result}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("[AsvMavLink] ADS-B traffic stream request failed: " + ex.Message);
+            }
+        }
+
+        private void OnAdsbVehicle(AdsbVehiclePayload av)
+        {
+            const uint FlagValidCoords = 1;          // ADSB_FLAGS_VALID_COORDS
+            const uint FlagValidAltitude = 2;        // ADSB_FLAGS_VALID_ALTITUDE
+            const uint FlagValidHeading = 4;         // ADSB_FLAGS_VALID_HEADING
+            const uint FlagValidVelocity = 8;        // ADSB_FLAGS_VALID_VELOCITY
+            const uint FlagValidCallsign = 16;       // ADSB_FLAGS_VALID_CALLSIGN
+            uint flags = (uint)av.Flags;
+            if ((flags & FlagValidCoords) == 0) return;
+
+            string? callsign = null;
+            if ((flags & FlagValidCallsign) != 0 && av.Callsign != null)
+                callsign = new string(av.Callsign).TrimEnd('\0', ' ');
+
+            var ac = new AdsbAircraft
+            {
+                Icao24 = av.IcaoAddress.ToString("X6"),
+                Callsign = string.IsNullOrWhiteSpace(callsign) ? null : callsign,
+                Latitude = av.Lat / 1e7,
+                Longitude = av.Lon / 1e7,
+                BaroAltitude = (flags & FlagValidAltitude) != 0 ? av.Altitude / 1000.0 : null, // mm -> m (AMSL)
+                TrueTrack = (flags & FlagValidHeading) != 0 ? av.Heading / 100.0 : null,       // cdeg -> deg
+                Velocity = (flags & FlagValidVelocity) != 0 ? av.HorVelocity / 100.0 : null,   // cm/s -> m/s
+                Source = "Onboard",
+                LastSeenUtc = DateTime.UtcNow,
+            };
+            List<AdsbAircraft> snapshot;
+            lock (_onboardTraffic)
+            {
+                _onboardTraffic[av.IcaoAddress] = ac;
+                snapshot = new List<AdsbAircraft>(_onboardTraffic.Values);
+            }
+            OnboardTrafficUpdated?.Invoke(snapshot);
+        }
+
+        private void PruneTraffic()
+        {
+            List<AdsbAircraft>? snapshot = null;
+            lock (_onboardTraffic)
+            {
+                var cutoff = DateTime.UtcNow.AddSeconds(-TrafficExpirySeconds);
+                var stale = new List<uint>();
+                foreach (var kv in _onboardTraffic)
+                    if (kv.Value.LastSeenUtc < cutoff) stale.Add(kv.Key);
+                foreach (var k in stale) _onboardTraffic.Remove(k);
+                if (stale.Count > 0) snapshot = new List<AdsbAircraft>(_onboardTraffic.Values);
+            }
+            if (snapshot != null) OnboardTrafficUpdated?.Invoke(snapshot);
+        }
+
+        /// <summary>
+        /// COLLISION (msg 247): the autopilot's own avoidance has rated an aircraft
+        /// a threat. Alert once per aircraft per threat level, so the operator
+        /// knows why the drone may switch to AVOID_ADSB / RTL by itself.
+        /// </summary>
+        private void OnCollision(CollisionPayload col)
+        {
+            int level = (int)col.ThreatLevel;   // 0 none, 1 low, 2 high
+            lock (_collisionThreat)
+            {
+                _collisionThreat.TryGetValue(col.Id, out var prev);
+                if (prev == level) return;
+                _collisionThreat[col.Id] = level;
+            }
+            if (level == 0) return;
+            string who;
+            lock (_onboardTraffic)
+                who = _onboardTraffic.TryGetValue(col.Id, out var ac) && ac.Callsign != null
+                    ? ac.Callsign : col.Id.ToString("X6");
+            RaiseSafetyAlert(level >= 2 ? "TRAFFIC CONFLICT" : "TRAFFIC ADVISORY",
+                $"Aircraft {who}: closest approach in {col.TimeToMinimumDelta:F0} s, " +
+                $"{col.HorizontalMinimumDelta:F0} m horizontally, {col.AltitudeMinimumDelta:F0} m vertically. " +
+                (level >= 2 ? "The autopilot will act per AVD_F_ACTION." : "Monitoring."));
+        }
+
         public async Task<float?> ReadParamAsync(string name, CancellationToken ct = default)
         {
             if (_paramsClient == null) return null;
@@ -600,6 +727,10 @@ namespace InfraDroneDesktop.Services
             _telemetrySubscriptions.Clear();
             _linkWatchdogTimer?.Dispose();
             _linkWatchdogTimer = null;
+            _trafficTimer?.Dispose();
+            _trafficTimer = null;
+            lock (_onboardTraffic) _onboardTraffic.Clear();
+            lock (_collisionThreat) _collisionThreat.Clear();
             _deviceSubscription?.Dispose();
             _browser?.Dispose();
             _vehicle?.Dispose();

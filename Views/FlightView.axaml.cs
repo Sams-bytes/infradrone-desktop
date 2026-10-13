@@ -401,6 +401,54 @@ public partial class FlightView : UserControl
         _adsb.Start(laMin: 52.9, loMin: 6.0, laMax: 53.5, loMax: 7.2, pollSeconds: 15);
     }
 
+    // Traffic from two sources, drawn in separate layers and colours:
+    //   blue   = OpenSky internet feed (about 15 s or more old, needs internet)
+    //   orange = the drone's own ADS-B receiver via the autopilot (live)
+    private int _openSkyCount, _onboardCount;
+    private MemoryLayer? _adsbOnboardLayer;
+
+    private void UpdateTrafficCountText()
+    {
+        AdsbCountText.Text = _onboardCount > 0 || _mav?.Telemetry.Connected == true
+            ? $"{_onboardCount} onboard ADS-B · {_openSkyCount} internet (OpenSky)"
+            : $"{_openSkyCount} aircraft nearby (internet, OpenSky)";
+    }
+
+    private void OnOnboardTraffic(System.Collections.Generic.List<Services.AdsbAircraft> aircraft)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_adsbOnboardLayer == null) return;
+            var features = new System.Collections.Generic.List<IFeature>();
+            foreach (var ac in aircraft)
+            {
+                var (x, y) = SphericalMercator.FromLonLat(ac.Longitude, ac.Latitude);
+                var f = new PointFeature(new MPoint(x, y));
+                f.Styles.Add(new SymbolStyle
+                {
+                    Fill = new MBrush(new MColor(249, 115, 22)),   // orange: live, onboard
+                    Outline = new MPen(MColor.White, 2f),
+                    SymbolScale = 0.6,
+                    SymbolRotation = ac.TrueTrack ?? 0
+                });
+                var altText = ac.BaroAltitude.HasValue ? $"{ac.BaroAltitude:F0}m" : "alt?";
+                var spd = ac.Velocity.HasValue ? $" {ac.Velocity * 3.6:F0}km/h" : "";
+                f.Styles.Add(new LabelStyle
+                {
+                    Text = $"{ac.Callsign ?? ac.Icao24} ({altText}{spd}) LIVE",
+                    Font = new Mapsui.Styles.Font { Size = 10 }, ForeColor = MColor.White,
+                    BackColor = new MBrush(new MColor(124, 45, 18, 210)),
+                    Offset = new Mapsui.Styles.Offset(0, -20)
+                });
+                features.Add(f);
+            }
+            _adsbOnboardLayer.Features = features;
+            _mapControl?.Map.Refresh();
+            _onboardCount = aircraft.Count;
+            UpdateTrafficCountText();
+        });
+    }
+
     private void OnAdsbUpdated(System.Collections.Generic.List<Services.AdsbAircraft> aircraft)
     {
         Dispatcher.UIThread.Post(() =>
@@ -430,7 +478,8 @@ public partial class FlightView : UserControl
             }
             _adsbLayer.Features = features;
             _mapControl?.Map.Refresh();
-            AdsbCountText.Text = $"{aircraft.Count} aircraft nearby";
+            _openSkyCount = aircraft.Count;
+            UpdateTrafficCountText();
         });
     }
 
@@ -450,6 +499,8 @@ public partial class FlightView : UserControl
         map.Layers.Add(_droneLayer);
         _adsbLayer = new MemoryLayer { Name = "ADS-B Aircraft" };
         map.Layers.Add(_adsbLayer);
+        _adsbOnboardLayer = new MemoryLayer { Name = "ADS-B Onboard (live)" };
+        map.Layers.Add(_adsbOnboardLayer);
         _routeLayer = new MemoryLayer { Name = "Mission Route" };
         map.Layers.Add(_routeLayer);
         _wpLayer = new MemoryLayer { Name = "Mission Waypoints" };
@@ -597,6 +648,9 @@ public partial class FlightView : UserControl
         _mav = mav;
         _mav.TelemetryUpdated += OnTelemetry;
         _mav.CommandResult += OnCommandAck;
+        // -= first: SetMavLink can be called more than once for the same service.
+        _mav.OnboardTrafficUpdated -= OnOnboardTraffic;
+        _mav.OnboardTrafficUpdated += OnOnboardTraffic;
     }
 
     private void OnCommandAck(string command, bool success)
