@@ -183,8 +183,7 @@ namespace InfraDroneDesktop.Services
         {
             if (_connection == null || _missionClient == null || _lastIdentity == null || _lastSeq == null)
                 return null;
-            return new FenceUploadService(_connection, _missionClient, _paramsClient,
-                                          _lastIdentity, _lastSeq);
+            return new FenceUploadService(_connection, _paramsClient, _lastIdentity, _lastSeq);
         }
 
         private MavlinkClientIdentity? _lastIdentity;

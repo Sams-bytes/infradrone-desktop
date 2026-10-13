@@ -57,14 +57,19 @@ namespace InfraDroneDesktop.Services
         public const string AreaArming = "ARMING";
 
         private readonly Func<string, CancellationToken, Task<float?>> _readParam;
+        private readonly Func<CancellationToken, Task<int>>? _readFencePointCount;
         private readonly TimeSpan _perParamTimeout;
         private readonly Dictionary<string, float> _values = new();
         private readonly List<string> _unreadable = new();
 
         /// <param name="readParam">Reads one parameter by name; returns null if it doesn't exist or can't be read.</param>
-        public FailsafeParamCheck(Func<string, CancellationToken, Task<float?>> readParam, TimeSpan? perParamTimeout = null)
+        /// <param name="readFencePointCount">Optional: downloads the vehicle's fence store and returns its point count.</param>
+        public FailsafeParamCheck(Func<string, CancellationToken, Task<float?>> readParam,
+                                  TimeSpan? perParamTimeout = null,
+                                  Func<CancellationToken, Task<int>>? readFencePointCount = null)
         {
             _readParam = readParam;
+            _readFencePointCount = readFencePointCount;
             _perParamTimeout = perParamTimeout ?? TimeSpan.FromSeconds(4);
         }
 
@@ -110,7 +115,19 @@ namespace InfraDroneDesktop.Services
                 else _unreadable.Add(name);
             }
 
-            return Evaluate(_values, _unreadable);
+            // If polygon fences are switched on, check one is actually loaded:
+            // with none, ArduPilot refuses to arm ("Polygon fence(s) invalid").
+            int? fencePoints = null;
+            bool polygonOn = _values.TryGetValue("FENCE_TYPE", out var ft) && (((int)Math.Round(ft)) & 4) != 0;
+            if (polygonOn && _readFencePointCount != null)
+            {
+                Progress?.Invoke("fence points", Wanted.Length, Wanted.Length);
+                try { fencePoints = await _readFencePointCount(ct); }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch { fencePoints = null; }
+            }
+
+            return Evaluate(_values, _unreadable, fencePoints);
         }
 
         private async Task<float?> ReadOne(string name, CancellationToken ct)
@@ -140,7 +157,9 @@ namespace InfraDroneDesktop.Services
         // ------------------------------------------------------------------
         // Rules. Static and pure so they can be read top to bottom.
         // ------------------------------------------------------------------
-        public static Report Evaluate(IReadOnlyDictionary<string, float> p, IReadOnlyList<string> unreadable)
+        /// <param name="fencePoints">Polygon points stored on the vehicle, or null if not read.</param>
+        public static Report Evaluate(IReadOnlyDictionary<string, float> p, IReadOnlyList<string> unreadable,
+                                      int? fencePoints = null)
         {
             var r = new List<Result>();
             int? I(string n) => p.TryGetValue(n, out var v) ? (int)Math.Round(v) : null;
@@ -314,10 +333,25 @@ namespace InfraDroneDesktop.Services
                             "Add bit 0 (value 1) to FENCE_TYPE."));
                     else if ((fType.Value & 4) == 0)
                         r.Add(new Result(AreaFence, "Fence types (FENCE_TYPE)", Status.Caution,
-                            $"{fType.Value} = {desc}. Polygon fences are off, so an uploaded SORA (Specific Operations Risk Assessment) boundary would not be enforced.",
-                            "Add bit 2 (value 4) to FENCE_TYPE once fence upload is in place."));
+                            $"{fType.Value} = {desc}. Polygon fences are off, so no SORA (Specific Operations Risk Assessment) boundary is enforced - only the altitude ceiling.",
+                            "Plot the route in Mission Planner and click Upload Fence - it uploads the boundary and switches polygons on."));
                     else
                         r.Add(new Result(AreaFence, "Fence types (FENCE_TYPE)", Status.Go, $"{fType.Value} = {desc}."));
+
+                    if ((fType.Value & 4) != 0)
+                    {
+                        if (fencePoints == null)
+                            r.Add(new Result(AreaFence, "Polygon fence loaded", Status.Caution,
+                                "Could not read the fence stored on the vehicle.",
+                                "Read again, or check the fence in QGroundControl (Plan > Fence)."));
+                        else if (fencePoints.Value < 3)
+                            r.Add(new Result(AreaFence, "Polygon fence loaded", Status.NoGo,
+                                $"Polygon fences are switched on, but the vehicle holds {fencePoints.Value} fence points. ArduPilot will refuse to arm ('Polygon fence(s) invalid').",
+                                "Plot the route in Mission Planner and click Upload Fence."));
+                        else
+                            r.Add(new Result(AreaFence, "Polygon fence loaded", Status.Go,
+                                $"{fencePoints.Value} points stored on the vehicle."));
+                    }
                 }
 
                 var fAct = I("FENCE_ACTION");

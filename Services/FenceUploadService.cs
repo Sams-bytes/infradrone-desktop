@@ -1,35 +1,44 @@
 // Services/FenceUploadService.cs
 //
-// Uploads the SORA-derived inclusion fence to an ArduPilot vehicle over MAVLink 2.
+// Uploads the SORA-derived inclusion fence to an ArduPilot vehicle over MAVLink 2,
+// reads it back, and turns on polygon enforcement.
 //
-// WHY THIS DRIVES THE HANDSHAKE BY HAND
-// Asv.Mavlink 3.4.1's MissionClientEx.Upload() takes no MavMissionType, so it can
-// only transfer regular missions. IMissionClient.MissionSetCount() and ClearAll()
-// are likewise mission-only. Only WriteMissionIntItem() exposes MissionType.
-// So the MISSION_COUNT that opens the transfer is sent directly on the connection
-// with MissionType = Fence. Sending it as type Mission would put the autopilot
-// into a mission upload and the fence vertices would land in the wrong store.
+// HOW IT TALKS TO THE VEHICLE
+// Asv.Mavlink 3.4.1's MissionClient helpers only handle regular missions (no
+// MissionType), so the fence handshake is driven by hand on the raw connection,
+// the same proven pattern as AsvMavLinkService.UploadMissionAsync. Every packet
+// is filtered on the target system ID AND MissionType = Fence, so a mission
+// transfer or another ground station on the link can never be mistaken for it.
 //
-// SEQUENCE (MAVLink mission protocol, fence variant):
-//   GCS -> MISSION_COUNT (type=FENCE, count=N)
-//   veh -> MISSION_REQUEST (seq=0..N-1)
-//   GCS -> MISSION_ITEM_INT (type=FENCE, cmd=5001, param1=N, x/y = deg*1e7)
-//   veh -> MISSION_ACK
+//   Upload:    GCS MISSION_COUNT(fence, N)
+//              veh MISSION_REQUEST / MISSION_REQUEST_INT(fence, seq)  x N
+//              GCS MISSION_ITEM_INT(fence, cmd 5001, param1 = N, x/y = deg*1e7)
+//              veh MISSION_ACK(fence)
+//   Read-back: GCS MISSION_REQUEST_LIST(fence) -> veh MISSION_COUNT(fence)
+//              GCS MISSION_REQUEST_INT(fence, seq) -> veh MISSION_ITEM_INT  x N
+//              GCS MISSION_ACK(fence, accepted)
+//
+// A new MISSION_COUNT replaces the vehicle's whole fence store, so no separate
+// "clear" is sent. (The previous version sent a clear first; ArduPilot ACKs that
+// clear as ACCEPTED, and that ACK was mistaken for the upload's - reporting
+// success before a single point was sent.)
+//
+// PARAMETERS (values from ArduPilot source, libraries/AC_Fence/AC_Fence.h):
+//   FENCE_TYPE bits: 1 = max altitude, 2 = circle, 4 = POLYGON, 8 = min altitude.
+//   After a verified upload the polygon bit (4) is added, read-modify-write, so
+//   the uploaded polygon is actually enforced. Nothing else is changed:
+//   FENCE_ACTION is left exactly as the operator set it (the Pre-flight failsafe
+//   check grades it), and FENCE_ENABLE is never touched here.
 //
 // SCOPE: Cube Orange / Loong 2160 only. The BCube link is MAVLink v1, which
-// ArduPilot does not accept fences over; it needs the legacy FENCE_POINT path.
+// ArduPilot does not accept fences over.
 //
-// SAFETY:
-//  - Upload does NOT enable the fence. FENCE_ENABLE is a separate, deliberate call.
-//  - breachAction is required, no default. FenceAction.Report is the conservative
-//    choice while validating: the autopilot reports and takes no autonomous action.
-//  - Points must come from SoraFenceBuilder, which caps at 70 vertices and proves
-//    the polygon lies inside the approved ground risk buffer.
+// SAFETY: the caller must refuse to upload while armed (FlightView does). Points
+// must come from SoraFenceBuilder, which caps at 70 vertices and proves the
+// polygon lies inside the approved ground risk buffer.
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Asv.Mavlink;
@@ -37,25 +46,6 @@ using Asv.Mavlink.V2.Common;
 
 namespace InfraDroneDesktop.Services
 {
-    /// <summary>ArduPilot FENCE_ACTION values.</summary>
-    public enum FenceAction
-    {
-        None = 0,
-        Guided = 1,
-        Report = 2,
-        GuidedThrottlePass = 3,
-        ReturnToLaunch = 4,
-        Hold = 5,
-        Terminate = 6,
-        Land = 7
-    }
-
-    [Flags]
-    public enum FenceType
-    {
-        None = 0, MaxAltitude = 1, CircleAroundHome = 2, MinAltitude = 4, Polygon = 8
-    }
-
     public sealed class FenceUploadOutcome
     {
         public bool Success { get; init; }
@@ -65,27 +55,29 @@ namespace InfraDroneDesktop.Services
 
     public sealed class FenceUploadService
     {
+        /// <summary>FENCE_TYPE bit for polygon fences (AC_FENCE_TYPE_POLYGON).</summary>
+        public const int FenceTypePolygonBit = 4;
+
         private readonly IMavlinkV2Connection _connection;
-        private readonly IMissionClient _mission;
         private readonly IParamsClient? _params;
         private readonly MavlinkClientIdentity _identity;
         private readonly IPacketSequenceCalculator _seq;
 
         public FenceUploadService(IMavlinkV2Connection connection,
-                                  IMissionClient mission,
                                   IParamsClient? paramsClient,
                                   MavlinkClientIdentity identity,
                                   IPacketSequenceCalculator seq)
         {
             _connection = connection;
-            _mission = mission;
             _params = paramsClient;
             _identity = identity;
             _seq = seq;
         }
 
+        // ------------------------------------------------------------------
+        // Upload
+        // ------------------------------------------------------------------
         public async Task<FenceUploadOutcome> UploadAsync(FenceBuildResult fence,
-                                                          FenceAction breachAction,
                                                           int timeoutMs = 15000,
                                                           CancellationToken ct = default)
         {
@@ -99,83 +91,84 @@ namespace InfraDroneDesktop.Services
             timeoutCts.CancelAfter(timeoutMs);
             var tct = timeoutCts.Token;
 
-            var total = (float)fence.Points.Count;
-            var ackTcs = new TaskCompletionSource<MavMissionResult>();
+            var count = (ushort)fence.Points.Count;
+            var ackTcs = new TaskCompletionSource<MavMissionResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var served = new HashSet<ushort>();
 
-            using var ackSub = _mission.OnMissionAck
-                .Subscribe(a => ackTcs.TrySetResult(a.Type));
-
-            // Serve each vertex as the vehicle asks for it.
-            using var reqSub = _mission.OnMissionRequest
-                .Subscribe(async req =>
+            async Task SendVertex(ushort seq)
+            {
+                if (seq >= count) return;
+                lock (served) served.Add(seq);
+                var (lat, lon) = fence.Points[seq];
+                var pkt = new MissionItemIntPacket
                 {
-                    try
+                    SystemId = _identity.SystemId,
+                    ComponentId = _identity.ComponentId,
+                    Sequence = _seq.GetNextSequenceNumber()
+                };
+                var p = pkt.Payload;
+                p.TargetSystem = _identity.TargetSystemId;
+                p.TargetComponent = _identity.TargetComponentId;
+                p.Seq = seq;
+                p.Frame = MavFrame.MavFrameGlobal;
+                p.Command = MavCmd.MavCmdNavFencePolygonVertexInclusion;
+                p.MissionType = MavMissionType.MavMissionTypeFence;
+                p.Current = 0;
+                p.Autocontinue = 1;
+                p.Param1 = count;          // vertex count of this polygon, same on EVERY point
+                p.Param2 = 0; p.Param3 = 0; p.Param4 = 0;
+                p.X = (int)Math.Round(lat * 1e7);
+                p.Y = (int)Math.Round(lon * 1e7);
+                p.Z = 0;
+                await _connection.Send(pkt, tct);
+            }
+
+            using var sub = _connection.Subscribe(packet =>
+            {
+                if (packet.SystemId != _identity.TargetSystemId) return;
+                try
+                {
+                    switch (packet.Payload)
                     {
-                        var i = req.Seq;
-                        if (i >= fence.Points.Count) return;
-                        var (lat, lon) = fence.Points[i];
-                        await _mission.WriteMissionIntItem(p =>
-                        {
-                            p.TargetSystem = _identity.TargetSystemId;
-                            p.TargetComponent = _identity.TargetComponentId;
-                            p.Seq = i;
-                            p.Frame = MavFrame.MavFrameGlobal;
-                            p.Command = MavCmd.MavCmdNavFencePolygonVertexInclusion;
-                            p.MissionType = MavMissionType.MavMissionTypeFence;
-                            p.Current = 0;
-                            p.Autocontinue = 1;
-                            p.Param1 = total;              // vertex count, same on EVERY point
-                            p.Param2 = 0; p.Param3 = 0; p.Param4 = 0;
-                            p.X = (int)Math.Round(lat * 1e7);   // degrees * 1e7
-                            p.Y = (int)Math.Round(lon * 1e7);
-                            p.Z = 0;
-                        }, tct);
+                        case MissionRequestIntPayload rqi when rqi.MissionType == MavMissionType.MavMissionTypeFence:
+                            _ = SendVertex(rqi.Seq);
+                            break;
+                        case MissionRequestPayload rq when rq.MissionType == MavMissionType.MavMissionTypeFence:
+                            _ = SendVertex(rq.Seq);
+                            break;
+                        case MissionAckPayload ack when ack.MissionType == MavMissionType.MavMissionTypeFence:
+                            ackTcs.TrySetResult(ack.Type);
+                            break;
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("[Fence] item send failed: " + ex.Message);
-                    }
-                });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("[Fence] vertex send failed: " + ex.Message);
+                }
+            });
 
             try
             {
-                // Clear any existing fence first: MISSION_COUNT of 0, fence type.
-                await SendMissionCountAsync(0, tct);
-                await Task.Delay(300, tct);
+                await SendCountAsync(count, tct);
+                var result = await ackTcs.Task.WaitAsync(tct);
+                int n; lock (served) n = served.Count;
 
-                await SendMissionCountAsync((ushort)fence.Points.Count, tct);
-
-                var ack = await ackTcs.Task.WaitAsync(tct);
-                if (ack != MavMissionResult.MavMissionAccepted)
-                    return Fail($"Vehicle rejected the fence: {ack}");
-
-                if (_params != null)
-                {
-                    // ArduPilot exposes FENCE_* as INT32-typed parameters.
-                    await _params.Write("FENCE_ACTION", MavParamType.MavParamTypeInt32,
-                                        (float)(int)breachAction, tct);
-
-                    // Read-modify-write so an existing altitude or circle fence the
-                    // operator configured is not silently dropped.
-                    var current = await _params.Read("FENCE_TYPE", tct);
-                    var currentType = (int)current.ParamValue;
-                    var newType = currentType | (int)FenceType.Polygon;
-                    if (newType != currentType)
-                        await _params.Write("FENCE_TYPE", MavParamType.MavParamTypeInt32,
-                                            newType, tct);
-                }
+                if (result != MavMissionResult.MavMissionAccepted)
+                    return Fail($"Vehicle rejected the fence: {result}.");
+                if (n < count)
+                    return Fail($"Vehicle acknowledged after only {n} of {count} points - treat as failed and upload again.");
 
                 return new FenceUploadOutcome
                 {
                     Success = true,
-                    PointsSent = fence.Points.Count,
-                    Message = $"Fence uploaded: {fence.Points.Count} points, breach action " +
-                              $"{breachAction}. NOT yet enabled - enable it separately."
+                    PointsSent = count,
+                    Message = $"Fence accepted by the vehicle: {count} points."
                 };
             }
             catch (OperationCanceledException)
             {
-                return Fail("Fence upload timed out. Nothing was enabled.");
+                int n; lock (served) n = served.Count;
+                return Fail($"Fence upload timed out ({n} of {count} points requested by the vehicle). Nothing was enabled.");
             }
             catch (Exception ex)
             {
@@ -183,11 +176,137 @@ namespace InfraDroneDesktop.Services
             }
         }
 
+        // ------------------------------------------------------------------
+        // Read-back: downloads the FENCE store (not the mission)
+        // ------------------------------------------------------------------
+        public async Task<IReadOnlyList<(double lat, double lon)>> DownloadAsync(int timeoutMs = 15000,
+                                                                               CancellationToken ct = default)
+        {
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeoutCts.CancelAfter(timeoutMs);
+            var tct = timeoutCts.Token;
+
+            var countTcs = new TaskCompletionSource<ushort>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var items = new Dictionary<ushort, MissionItemIntPayload>();
+            TaskCompletionSource<bool>? itemTcs = null;
+            ushort waitingFor = 0;
+
+            using var sub = _connection.Subscribe(packet =>
+            {
+                if (packet.SystemId != _identity.TargetSystemId) return;
+                switch (packet.Payload)
+                {
+                    case MissionCountPayload c when c.MissionType == MavMissionType.MavMissionTypeFence:
+                        countTcs.TrySetResult(c.Count);
+                        break;
+                    case MissionItemIntPayload it when it.MissionType == MavMissionType.MavMissionTypeFence:
+                        lock (items) items[it.Seq] = it;
+                        if (it.Seq == waitingFor) itemTcs?.TrySetResult(true);
+                        break;
+                }
+            });
+
+            // Ask for the count (retry once - UDP can drop a packet).
+            ushort total = 0;
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                var list = new MissionRequestListPacket
+                {
+                    SystemId = _identity.SystemId,
+                    ComponentId = _identity.ComponentId,
+                    Sequence = _seq.GetNextSequenceNumber()
+                };
+                list.Payload.TargetSystem = _identity.TargetSystemId;
+                list.Payload.TargetComponent = _identity.TargetComponentId;
+                list.Payload.MissionType = MavMissionType.MavMissionTypeFence;
+                await _connection.Send(list, tct);
+                var done = await Task.WhenAny(countTcs.Task, Task.Delay(2500, tct));
+                if (done == countTcs.Task) { total = countTcs.Task.Result; break; }
+            }
+            if (!countTcs.Task.IsCompleted)
+                throw new TimeoutException("Vehicle did not report its fence size.");
+
+            var pts = new List<(double, double)>();
+            for (ushort i = 0; i < total; i++)
+            {
+                bool got = false;
+                for (int attempt = 0; attempt < 3 && !got; attempt++)
+                {
+                    waitingFor = i;
+                    itemTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    lock (items) if (items.ContainsKey(i)) { got = true; break; }
+
+                    var req = new MissionRequestIntPacket
+                    {
+                        SystemId = _identity.SystemId,
+                        ComponentId = _identity.ComponentId,
+                        Sequence = _seq.GetNextSequenceNumber()
+                    };
+                    req.Payload.TargetSystem = _identity.TargetSystemId;
+                    req.Payload.TargetComponent = _identity.TargetComponentId;
+                    req.Payload.Seq = i;
+                    req.Payload.MissionType = MavMissionType.MavMissionTypeFence;
+                    await _connection.Send(req, tct);
+                    var done = await Task.WhenAny(itemTcs.Task, Task.Delay(1500, tct));
+                    got = done == itemTcs.Task;
+                }
+                if (!got) throw new TimeoutException($"Vehicle did not send fence point {i}.");
+
+                MissionItemIntPayload item;
+                lock (items) item = items[i];
+                if (item.Command == MavCmd.MavCmdNavFencePolygonVertexInclusion)
+                    pts.Add((item.X / 1e7, item.Y / 1e7));
+            }
+
+            // Close the transfer politely so the vehicle doesn't keep waiting.
+            var ackPkt = new MissionAckPacket
+            {
+                SystemId = _identity.SystemId,
+                ComponentId = _identity.ComponentId,
+                Sequence = _seq.GetNextSequenceNumber()
+            };
+            ackPkt.Payload.TargetSystem = _identity.TargetSystemId;
+            ackPkt.Payload.TargetComponent = _identity.TargetComponentId;
+            ackPkt.Payload.Type = MavMissionResult.MavMissionAccepted;
+            ackPkt.Payload.MissionType = MavMissionType.MavMissionTypeFence;
+            await _connection.Send(ackPkt, tct);
+
+            return pts;
+        }
+
+        // ------------------------------------------------------------------
+        // Polygon enforcement: FENCE_TYPE |= 4 (read-modify-write)
+        // ------------------------------------------------------------------
         /// <summary>
-        /// MISSION_COUNT with MissionType = Fence - the packet the library's own
-        /// MissionSetCount cannot send, since it hardcodes the mission type.
+        /// Adds the polygon bit to FENCE_TYPE so the uploaded polygon is enforced,
+        /// keeping any altitude/circle fences the operator configured. Returns the
+        /// before/after values for the status line.
         /// </summary>
-        private async Task SendMissionCountAsync(ushort count, CancellationToken ct)
+        public async Task<(bool Ok, string Message)> EnablePolygonTypeAsync(CancellationToken ct = default)
+        {
+            if (_params == null) return (false, "No parameter link - set FENCE_TYPE bit 4 in QGroundControl.");
+            try
+            {
+                var current = await _params.Read("FENCE_TYPE", ct);
+                int before = (int)Math.Round(current.ParamValue);
+                int after = before | FenceTypePolygonBit;
+                if (after == before)
+                    return (true, $"FENCE_TYPE already includes polygons ({before}).");
+                // ArduPilot converts the float to the parameter's own integer type.
+                await _params.Write("FENCE_TYPE", MavParamType.MavParamTypeReal32, after, ct);
+                var check = await _params.Read("FENCE_TYPE", ct);
+                int now = (int)Math.Round(check.ParamValue);
+                return now == after
+                    ? (true, $"FENCE_TYPE {before} -> {after} (polygon fence now enforced).")
+                    : (false, $"Tried to set FENCE_TYPE to {after}, vehicle reports {now}. Set it in QGroundControl.");
+            }
+            catch (Exception ex)
+            {
+                return (false, "Could not change FENCE_TYPE: " + ex.Message + ". Set bit 4 in QGroundControl.");
+            }
+        }
+
+        private async Task SendCountAsync(ushort count, CancellationToken ct)
         {
             var pkt = new MissionCountPacket
             {
@@ -200,43 +319,6 @@ namespace InfraDroneDesktop.Services
             pkt.Payload.Count = count;
             pkt.Payload.MissionType = MavMissionType.MavMissionTypeFence;
             await _connection.Send(pkt, ct);
-        }
-
-        /// <summary>
-        /// Turns the fence on or off. Separate from upload on purpose, so a fence can
-        /// be loaded and read back before it is made live.
-        /// </summary>
-        public async Task<FenceUploadOutcome> SetEnabledAsync(bool enabled, CancellationToken ct = default)
-        {
-            if (_params == null) return Fail("No params client - cannot change FENCE_ENABLE.");
-            try
-            {
-                await _params.Write("FENCE_ENABLE", MavParamType.MavParamTypeInt32,
-                                    enabled ? 1f : 0f, ct);
-                return new FenceUploadOutcome
-                {
-                    Success = true,
-                    Message = enabled ? "Fence ENABLED on vehicle." : "Fence disabled on vehicle."
-                };
-            }
-            catch (Exception ex) { return Fail("Could not change FENCE_ENABLE: " + ex.Message); }
-        }
-
-        /// <summary>
-        /// Reads the fence back so it can be compared against what was sent.
-        /// Worth doing before the first flight with any new fence.
-        /// </summary>
-        public async Task<IReadOnlyList<(double lat, double lon)>> DownloadAsync(CancellationToken ct = default)
-        {
-            var count = await _mission.MissionRequestCount(ct);
-            var pts = new List<(double, double)>();
-            for (ushort i = 0; i < count; i++)
-            {
-                var item = await _mission.MissionRequestItem(i, ct);
-                if (item.Command == MavCmd.MavCmdNavFencePolygonVertexInclusion)
-                    pts.Add((item.X / 1e7, item.Y / 1e7));
-            }
-            return pts;
         }
 
         private static FenceUploadOutcome Fail(string msg) =>

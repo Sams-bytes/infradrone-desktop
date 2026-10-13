@@ -529,7 +529,15 @@ public partial class PreflightView : UserControl
         _failsafeCts = new System.Threading.CancellationTokenSource();
 
         var mav = _mav;
-        var check = new FailsafeParamCheck((name, ct) => mav.ReadParamAsync(name, ct));
+        var check = new FailsafeParamCheck(
+            (name, ct) => mav.ReadParamAsync(name, ct),
+            readFencePointCount: async ct =>
+            {
+                var uploader = mav.CreateFenceUploader()
+                               ?? throw new InvalidOperationException("No fence link.");
+                var pts = await uploader.DownloadAsync(10000, ct);
+                return pts.Count;
+            });
         check.Progress += (name, i, total) =>
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 FailsafeHint.Text = $"Reading {name} ({i} of {total})...");

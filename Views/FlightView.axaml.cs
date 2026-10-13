@@ -910,40 +910,77 @@ public partial class FlightView : UserControl
                                      "The BCube link is v1 and cannot accept fences.";
             return;
         }
+        if (_mav!.Telemetry.Armed)
+        {
+            // Changing the fence in flight can cause an instant breach and RTL.
+            MissionStatusText.Text = "Refused: the aircraft is ARMED. Upload the fence on the ground, disarmed.";
+            return;
+        }
 
-        var uploader = _mav?.CreateFenceUploader();
+        var uploader = _mav.CreateFenceUploader();
         if (uploader == null) { MissionStatusText.Text = "Vehicle not ready for fence upload."; return; }
 
-        MissionStatusText.Text = $"Uploading fence ({_lastFence.Points.Count} points)...";
-        var result = await uploader.UploadAsync(_lastFence, FenceAction.Report);
-        MissionStatusText.Text = result.Message;
-        if (!result.Success) return;
+        var fence = _lastFence; // the route may be edited while we work
+        MissionStatusText.Text = $"Uploading fence ({fence.Points.Count} points)...";
+        var result = await uploader.UploadAsync(fence);
+        if (!result.Success) { MissionStatusText.Text = result.Message; return; }
 
-        // Read back and compare against what was sent. A fence that uploads but
-        // reads back different is worse than one that fails outright.
+        // Read back the FENCE store and compare point by point. A fence that
+        // uploads but reads back different is worse than one that fails outright.
+        MissionStatusText.Text = "Fence accepted - reading it back to verify...";
+        IReadOnlyList<(double lat, double lon)> readBack;
         try
         {
-            var readBack = await uploader.DownloadAsync();
-            if (readBack.Count != _lastFence.Points.Count)
-            {
-                MissionStatusText.Text = $"WARNING: sent {_lastFence.Points.Count} points, " +
-                                         $"vehicle reports {readBack.Count}. Do not enable this fence.";
-                return;
-            }
-            double worst = 0;
-            for (var i = 0; i < readBack.Count; i++)
-            {
-                worst = Math.Max(worst, Math.Abs(readBack[i].lat - _lastFence.Points[i].lat));
-                worst = Math.Max(worst, Math.Abs(readBack[i].lon - _lastFence.Points[i].lon));
-            }
-            MissionStatusText.Text = $"Fence verified: {readBack.Count} points match, " +
-                                     $"worst deviation {worst * 111000:F2} m. Still disabled.";
+            readBack = await uploader.DownloadAsync();
         }
         catch (Exception ex)
         {
             MissionStatusText.Text = "Uploaded, but read-back failed: " + ex.Message +
-                                     " - verify in Mission Planner before enabling.";
+                                     ". Polygon enforcement NOT switched on - try again.";
+            return;
         }
+        if (readBack.Count != fence.Points.Count)
+        {
+            MissionStatusText.Text = $"Read-back mismatch: sent {fence.Points.Count} points, vehicle has " +
+                                     $"{readBack.Count}. Polygon enforcement NOT switched on - upload again.";
+            return;
+        }
+        double worstM = 0;
+        for (var i = 0; i < readBack.Count; i++)
+        {
+            double dLat = (readBack[i].lat - fence.Points[i].lat) * 111_320.0;
+            double dLon = (readBack[i].lon - fence.Points[i].lon) * 111_320.0 *
+                          Math.Cos(fence.Points[i].lat * Math.PI / 180.0);
+            worstM = Math.Max(worstM, Math.Sqrt(dLat * dLat + dLon * dLon));
+        }
+        if (worstM > 0.5) // MAVLink stores 1e-7 degrees (~1 cm); anything bigger is corruption
+        {
+            MissionStatusText.Text = $"Read-back mismatch: a point is {worstM:F1} m off. " +
+                                     "Polygon enforcement NOT switched on - upload again.";
+            return;
+        }
+
+        // Verified: make sure the polygon is actually enforced (FENCE_TYPE bit 4).
+        var (typeOk, typeMsg) = await uploader.EnablePolygonTypeAsync();
+
+        // Warn if the aircraft is sitting outside the fence: ArduPilot will then
+        // refuse to arm, which is correct, but better to know now.
+        string where = "";
+        var t = _mav.Telemetry;
+        if (t.Lat != 0 || t.Lon != 0)
+        {
+            var (x, y) = Mapsui.Projections.SphericalMercator.FromLonLat(t.Lon, t.Lat);
+            var here = NetTopologySuite.NtsGeometryServices.Instance.CreateGeometryFactory()
+                           .CreatePoint(new NetTopologySuite.Geometries.Coordinate(x, y));
+            where = fence.Polygon.Contains(here)
+                ? " Aircraft is inside the fence."
+                : " WARNING: the aircraft is OUTSIDE this fence - it will refuse to arm here.";
+        }
+
+        MissionStatusText.Text = $"Fence verified: {readBack.Count} points match (worst {worstM * 100:F0} cm). " +
+                                 typeMsg + where +
+                                 " Enforced when FENCE_ENABLE = 1 - check it in Pre-flight.";
+        if (!typeOk) MissionStatusText.Text = "Fence verified, but: " + typeMsg + where;
     }
 
     internal void RefreshWpMap()
