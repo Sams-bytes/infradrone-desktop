@@ -98,8 +98,9 @@ public partial class PreflightView : UserControl
         {
             // Auto-check GPS if sufficient satellites
             AutoCheck("GPS lock acquired (minimum 6 satellites)", t.GpsSats >= 6 && t.GpsFix >= 3);
-            // Auto-check pre-arm from armed state
-            AutoCheck("All pre-arm checks passed in GCS", t.Connected);
+            // NOTE: "All pre-arm checks passed in GCS" used to be auto-ticked here
+            // whenever the vehicle was merely CONNECTED - that said nothing about
+            // pre-arm checks, so it was removed. The pilot ticks it manually.
             // Auto-check GCS connected
             AutoCheck("InfraDrone GCS connected and showing live telemetry", t.Connected);
             // Auto-check battery
@@ -253,7 +254,22 @@ public partial class PreflightView : UserControl
             mandatory_passed = _items.Count(i => i.IsMandatory && i.IsChecked),
             mandatory_total = _items.Count(i => i.IsMandatory),
             status = "GO",
-            items = _items.Select(i => new { i.Category, i.Text, i.IsChecked, i.IsMandatory })
+            items = _items.Select(i => new { i.Category, i.Text, i.IsChecked, i.IsMandatory }),
+            // Autopilot failsafe parameters as actually read from the vehicle -
+            // the flight record an authority will ask for.
+            failsafe_check = _lastFailsafeReport == null ? null : new
+            {
+                checked_utc = _lastFailsafeCheckUtc.ToString("o"),
+                overall = StatusWord(_lastFailsafeReport.Overall),
+                no_go = _lastFailsafeReport.NoGoCount,
+                caution = _lastFailsafeReport.CautionCount,
+                parameters = _lastFailsafeReport.Values,
+                unreadable = _lastFailsafeReport.Unreadable,
+                results = _lastFailsafeReport.Results.Select(r => new
+                {
+                    area = r.Area, label = r.Label, status = StatusWord(r.Status), detail = r.Detail, fix = r.Fix
+                })
+            }
         };
         var json = JsonSerializer.Serialize(record);
         File.AppendAllText(_logPath, json + "\n");
@@ -263,6 +279,12 @@ public partial class PreflightView : UserControl
 
     private void OnReset(object? s, RoutedEventArgs e)
     {
+        // A new checklist needs a fresh read of the autopilot settings.
+        _lastFailsafeReport = null;
+        FailsafeResults.Items.Clear();
+        SetFailsafeBadge("NOT CHECKED", "#1a2637", "#64748b");
+        FailsafeHint.Text = "Connect the Cube Orange, then read its failsafe settings. Reads only - nothing on the aircraft is changed.";
+        foreach (var cb in _checkboxes) { cb.IsEnabled = true; cb.Foreground = new SolidColorBrush(Color.Parse("#e2e8f0")); }
         foreach (var cb in _checkboxes) cb.IsChecked = false;
         SignOffText.Text = "";
         DateText.Text = DateTime.UtcNow.ToString("dd MMMM yyyy — HH:mm UTC");
@@ -396,9 +418,25 @@ public partial class PreflightView : UserControl
 
     private void AddValidatorResult(string label, string status, string detail)
     {
-        var color = status == "GO" ? "#0d9e75" : status == "CAUTION" ? "#f59e0b" : "#ef4444";
-        var bg = status == "GO" ? "#0d3d2e" : status == "CAUTION" ? "#3d2e0d" : "#3d0d0d";
-        var row = new Border
+        ValidatorResults.Items.Add(BuildResultRow(label, status, detail, ""));
+    }
+
+    private static Border BuildResultRow(string label, string status, string detail, string fix)
+    {
+        var color = status == "GO" ? "#0d9e75" : status == "CAUTION" ? "#f59e0b" : status == "INFO" ? "#60a5fa" : "#ef4444";
+        var bg = status == "GO" ? "#0d3d2e" : status == "CAUTION" ? "#3d2e0d" : status == "INFO" ? "#1e3a5f" : "#3d0d0d";
+        var texts = new StackPanel { [Grid.ColumnProperty] = 1 };
+        texts.Children.Add(new TextBlock { Text = label, FontSize = 11,
+            Foreground = new SolidColorBrush(Color.Parse("#e2e8f0")) });
+        texts.Children.Add(new TextBlock { Text = detail, FontSize = 10,
+            Foreground = new SolidColorBrush(Color.Parse("#94a3b8")),
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap });
+        if (!string.IsNullOrEmpty(fix))
+            texts.Children.Add(new TextBlock { Text = "Fix: " + fix, FontSize = 10,
+                Foreground = new SolidColorBrush(Color.Parse(color)),
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap });
+
+        return new Border
         {
             Background = new SolidColorBrush(Color.Parse("#1a2637")),
             CornerRadius = new Avalonia.CornerRadius(6),
@@ -415,6 +453,7 @@ public partial class PreflightView : UserControl
                         CornerRadius = new Avalonia.CornerRadius(4),
                         Padding = new Avalonia.Thickness(6, 2),
                         Margin = new Avalonia.Thickness(0, 0, 8, 0),
+                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
                         [Grid.ColumnProperty] = 0,
                         Child = new TextBlock
                         {
@@ -422,21 +461,172 @@ public partial class PreflightView : UserControl
                             Foreground = new SolidColorBrush(Color.Parse(color))
                         }
                     },
-                    new StackPanel
-                    {
-                        [Grid.ColumnProperty] = 1,
-                        Children =
-                        {
-                            new TextBlock { Text = label, FontSize = 11,
-                                Foreground = new SolidColorBrush(Color.Parse("#e2e8f0")) },
-                            new TextBlock { Text = detail, FontSize = 10,
-                                Foreground = new SolidColorBrush(Color.Parse("#64748b")),
-                                TextWrapping = Avalonia.Media.TextWrapping.Wrap }
-                        }
-                    }
+                    texts
                 }
             }
         };
-        ValidatorResults.Items.Add(row);
+    }
+
+    // ------------------------------------------------------------------
+    // Autopilot failsafe check (Cube Orange / ArduPlane). Reads only.
+    // ------------------------------------------------------------------
+    private const string ChecklistFailsafeItem = "Failsafe actions configured (RTL on link loss)";
+    private const string ChecklistGeofenceItem = "Geofence configured and active";
+
+    private FailsafeParamCheck.Report? _lastFailsafeReport;
+    private DateTime _lastFailsafeCheckUtc;
+    private System.Threading.CancellationTokenSource? _failsafeCts;
+
+    private static string StatusWord(FailsafeParamCheck.Status s) => s switch
+    {
+        FailsafeParamCheck.Status.Go => "GO",
+        FailsafeParamCheck.Status.Caution => "CAUTION",
+        FailsafeParamCheck.Status.NoGo => "NO-GO",
+        _ => "INFO",
+    };
+
+    private void SetFailsafeBadge(string text, string bg, string fg)
+    {
+        FailsafeBadge.Background = new SolidColorBrush(Color.Parse(bg));
+        FailsafeBadgeText.Text = text;
+        FailsafeBadgeText.Foreground = new SolidColorBrush(Color.Parse(fg));
+    }
+
+    private void OnCancelFailsafeCheck(object? s, RoutedEventArgs e) => _failsafeCts?.Cancel();
+
+    private async void OnRunFailsafeCheck(object? s, RoutedEventArgs e)
+    {
+        if (_failsafeCts != null) return; // already running
+
+        if (_mav == null || !_mav.Telemetry.Connected)
+        {
+            FailsafeHint.Text = "No Cube Orange connected. Connect it (or start the simulator) first, then try again.";
+            return;
+        }
+        if (_mav.DetectedFirmware == AsvMavLinkService.FirmwareType.Px4)
+        {
+            FailsafeHint.Text = "This check is for ArduPilot (ArduPlane). The connected vehicle runs PX4.";
+            return;
+        }
+
+        FailsafeResults.Items.Clear();
+        SetFailsafeBadge("READING...", "#1e3a5f", "#60a5fa");
+        BtnFailsafeCheck.IsEnabled = false;
+        BtnFailsafeCancel.IsVisible = true;
+        _failsafeCts = new System.Threading.CancellationTokenSource();
+
+        var mav = _mav;
+        var check = new FailsafeParamCheck((name, ct) => mav.ReadParamAsync(name, ct));
+        check.Progress += (name, i, total) =>
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                FailsafeHint.Text = $"Reading {name} ({i} of {total})...");
+
+        try
+        {
+            var report = await check.RunAsync(_failsafeCts.Token);
+            _lastFailsafeReport = report;
+            _lastFailsafeCheckUtc = DateTime.UtcNow;
+            ShowFailsafeReport(report);
+            SaveFailsafeLog(report);
+        }
+        catch (OperationCanceledException)
+        {
+            SetFailsafeBadge("STOPPED", "#1a2637", "#64748b");
+            FailsafeHint.Text = "Check stopped. Nothing was changed on the aircraft.";
+        }
+        catch (Exception ex)
+        {
+            SetFailsafeBadge("ERROR", "#3d0d0d", "#ef4444");
+            FailsafeHint.Text = "Check failed: " + ex.Message;
+        }
+        finally
+        {
+            _failsafeCts?.Dispose();
+            _failsafeCts = null;
+            BtnFailsafeCheck.IsEnabled = true;
+            BtnFailsafeCancel.IsVisible = false;
+        }
+    }
+
+    private void ShowFailsafeReport(FailsafeParamCheck.Report report)
+    {
+        FailsafeResults.Items.Clear();
+        string? area = null;
+        foreach (var r in report.Results)
+        {
+            if (r.Area != area)
+            {
+                area = r.Area;
+                FailsafeResults.Items.Add(new TextBlock
+                {
+                    Text = area, FontSize = 9, FontWeight = Avalonia.Media.FontWeight.Bold,
+                    Foreground = new SolidColorBrush(Color.Parse("#60a5fa")),
+                    Margin = new Avalonia.Thickness(2, 6, 0, 2)
+                });
+            }
+            FailsafeResults.Items.Add(BuildResultRow(r.Label, StatusWord(r.Status), r.Detail, r.Fix));
+        }
+
+        switch (report.Overall)
+        {
+            case FailsafeParamCheck.Status.NoGo:
+                SetFailsafeBadge($"NO-GO ({report.NoGoCount})", "#3d0d0d", "#ef4444");
+                FailsafeHint.Text = $"{report.NoGoCount} setting(s) must be fixed before a BVLOS flight. Change them in QGroundControl, then read again.";
+                break;
+            case FailsafeParamCheck.Status.Caution:
+                SetFailsafeBadge($"CAUTION ({report.CautionCount})", "#3d2e0d", "#f59e0b");
+                FailsafeHint.Text = "No blocking problems. Review the CAUTION items before flying.";
+                break;
+            default:
+                SetFailsafeBadge("GO", "#0d3d2e", "#0d9e75");
+                FailsafeHint.Text = "All failsafe settings look correct.";
+                break;
+        }
+        FailsafeHint.Text += $" Read at {DateTime.Now:HH:mm:ss}.";
+
+        // The checklist items are now decided by the real parameters, not a
+        // manual tick: locked green if they pass, locked red/unticked if not.
+        SetLockedCheck(ChecklistFailsafeItem,
+            report.AreaPasses(FailsafeParamCheck.AreaLink) && report.AreaPasses(FailsafeParamCheck.AreaBattery)
+            && report.AreaPasses(FailsafeParamCheck.AreaReturn));
+        SetLockedCheck(ChecklistGeofenceItem, report.AreaPasses(FailsafeParamCheck.AreaFence));
+    }
+
+    private void SetLockedCheck(string itemText, bool pass)
+    {
+        for (int i = 0; i < _items.Count; i++)
+        {
+            if (_items[i].Text != itemText) continue;
+            _checkboxes[i].IsChecked = pass;
+            _checkboxes[i].IsEnabled = false;
+            _checkboxes[i].Foreground = new SolidColorBrush(Color.Parse(pass ? "#0d9e75" : "#ef4444"));
+        }
+    }
+
+    private static void SaveFailsafeLog(FailsafeParamCheck.Report report)
+    {
+        try
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "agri_drone");
+            Directory.CreateDirectory(dir);
+            var record = new
+            {
+                timestamp = DateTime.UtcNow.ToString("o"),
+                overall = StatusWord(report.Overall),
+                no_go = report.NoGoCount,
+                caution = report.CautionCount,
+                parameters = report.Values,
+                unreadable = report.Unreadable,
+                results = report.Results.Select(r => new
+                {
+                    area = r.Area, label = r.Label, status = StatusWord(r.Status), detail = r.Detail, fix = r.Fix
+                })
+            };
+            File.AppendAllText(Path.Combine(dir, "failsafe_param_check.jsonl"), JsonSerializer.Serialize(record) + "\n");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Preflight] Could not save failsafe check log: {ex.Message}");
+        }
     }
 }

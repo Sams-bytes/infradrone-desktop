@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="InfraDroneDesktop.Views.PreflightView"
              Background="#0f1923">
-  <Grid RowDefinitions="Auto,*,Auto,Auto">
+  <Grid RowDefinitions="Auto,*,Auto,Auto,Auto">
 
     <!-- Header -->
     <Border Grid.Row="0" Background="#1a2637" Padding="12,8"
@@ -29,8 +29,41 @@
       <StackPanel Name="ChecklistPanel" Margin="16,8" Spacing="4"/>
     </ScrollViewer>
 
-    <!-- Mission validator -->
+    <!-- Autopilot failsafe check: reads the real ArduPlane parameters (Cube Orange) -->
     <Border Grid.Row="2" Background="#131f2e" Padding="12,10"
+            BorderBrush="#1e3a5f" BorderThickness="0,1,0,0">
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="*,Auto,Auto">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <TextBlock Text="🛡 Autopilot Failsafe Check" FontSize="12" FontWeight="Bold"
+                       Foreground="#e2e8f0" VerticalAlignment="Center"/>
+            <Border Name="FailsafeBadge" Background="#1a2637" CornerRadius="4" Padding="6,2">
+              <TextBlock Name="FailsafeBadgeText" Text="NOT CHECKED" FontSize="9"
+                         FontWeight="Bold" Foreground="#64748b"/>
+            </Border>
+          </StackPanel>
+          <Button Grid.Column="1" Name="BtnFailsafeCancel" Content="■ Stop"
+                  Click="OnCancelFailsafeCheck" IsVisible="False"
+                  Background="#3d1515" Foreground="#ef4444"
+                  BorderBrush="#ef4444" BorderThickness="0.5"
+                  Padding="8,4" CornerRadius="6" FontSize="11" Margin="0,0,6,0"/>
+          <Button Grid.Column="2" Name="BtnFailsafeCheck" Content="▶ Read failsafe settings"
+                  Click="OnRunFailsafeCheck"
+                  Background="#0d3d2e" Foreground="#0d9e75"
+                  BorderBrush="#0d9e75" BorderThickness="0.5"
+                  Padding="8,4" CornerRadius="6" FontSize="11"/>
+        </Grid>
+        <TextBlock Name="FailsafeHint"
+                   Text="Connect the Cube Orange, then read its failsafe settings. Reads only - nothing on the aircraft is changed."
+                   FontSize="10" Foreground="#64748b" TextWrapping="Wrap"/>
+        <ScrollViewer MaxHeight="260">
+          <ItemsControl Name="FailsafeResults"/>
+        </ScrollViewer>
+      </StackPanel>
+    </Border>
+
+    <!-- Mission validator -->
+    <Border Grid.Row="3" Background="#131f2e" Padding="12,10"
             BorderBrush="#1e3a5f" BorderThickness="0,1,0,0">
       <StackPanel Spacing="8">
         <Grid ColumnDefinitions="*,Auto">
@@ -49,7 +82,7 @@
     </Border>
 
     <!-- Sign-off strip -->
-    <Border Grid.Row="3" Background="#1a2637" Padding="12,10"
+    <Border Grid.Row="4" Background="#1a2637" Padding="12,10"
             BorderBrush="#1e3a5f" BorderThickness="0,1,0,0">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <StackPanel Orientation="Horizontal" Spacing="8">
