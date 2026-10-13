@@ -351,6 +351,22 @@
         <TextBlock Name="LinkDetailText" Text="" Foreground="#cbd5e1" FontSize="11" VerticalAlignment="Center"/>
       </StackPanel>
     </Border>
+    <!-- Official LVNL airspace: source line, click-to-inspect and route check -->
+    <Border Name="AirspaceBox" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16,88,16,16"
+            Background="#d9131f2e" CornerRadius="6" Padding="10,6" BorderBrush="#7c3aed" BorderThickness="1">
+      <StackPanel Spacing="4" MaxWidth="460">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <TextBlock Name="AirspaceSourceText" Text="🛩 Airspace: loading..." Foreground="#c4b5fd"
+                     FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+          <Button Name="BtnAirspaceRefresh" Content="⟳" Click="OnAirspaceRefresh" Padding="6,0" FontSize="11"
+                  Background="#1e293b" Foreground="#c4b5fd" BorderBrush="#7c3aed" BorderThickness="1"
+                  ToolTip.Tip="Download the latest airspace from LVNL"/>
+          <Button Name="BtnAirspaceClose" Content="✕" Click="OnAirspaceClose" IsVisible="False" Padding="6,0" FontSize="11"
+                  Background="#1e293b" Foreground="#94a3b8" BorderBrush="#334155" BorderThickness="1"/>
+        </StackPanel>
+        <TextBlock Name="AirspaceDetailText" IsVisible="False" TextWrapping="Wrap" FontSize="11" Foreground="#e2e8f0"/>
+      </StackPanel>
+    </Border>
     <Border Name="StatusBanner" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Top"
             Margin="0,64,0,0" MinWidth="320" MaxWidth="520"
             Background="#e0141e2b" CornerRadius="10" Padding="0"

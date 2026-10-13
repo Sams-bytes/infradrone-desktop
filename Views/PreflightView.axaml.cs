@@ -328,34 +328,31 @@ public partial class PreflightView : UserControl
             altOk ? "GO" : "NO-GO",
             $"Max altitude: {maxAlt:F0}m — {(altOk ? "within limit" : "EXCEEDS 120m limit")}");
 
-        // Check 3: Airspace check
-        try
+        // Check 3: official LVNL airspace along the whole route (every leg, real
+        // zone shapes and lower limits) - Services/LvnlAirspaceService.cs.
+        var airspace = LvnlAirspaceService.Instance;
+        if (airspace.Zones.Count == 0) airspace.LoadCachedThenRefresh();
+        if (airspace.Zones.Count == 0)
         {
-            var geojsonPath = "/home/sam/agri_drone/airspace_nl.geojson";
-            if (System.IO.File.Exists(geojsonPath))
-            {
-                var geojson = System.IO.File.ReadAllText(geojsonPath);
-                var conflicts = new List<string>();
-                foreach (var wp in MissionWaypoints)
-                {
-                    // Simple point-in-bounding-box check for each zone
-                    var zones = FindConflictingZones(geojson, wp.Lat, wp.Lon);
-                    conflicts.AddRange(zones.Where(z => !conflicts.Contains(z)));
-                }
-                if (conflicts.Count == 0)
-                    AddValidatorResult("LVNL airspace clearance", "GO", "No airspace conflicts detected.");
-                else
-                    AddValidatorResult("LVNL airspace clearance", "CAUTION",
-                        $"Possible conflicts: {string.Join(", ", conflicts.Take(3))}");
-            }
-            else
-            {
-                AddValidatorResult("LVNL airspace clearance", "CAUTION", "Airspace file not found — check ~/agri_drone/airspace_nl.geojson");
-            }
+            AddValidatorResult("LVNL airspace", "CAUTION",
+                "Airspace not loaded yet (no cache, LVNL not reachable). Open Mission Planner once while online, then validate again.");
         }
-        catch (Exception ex)
+        else
         {
-            AddValidatorResult("LVNL airspace clearance", "CAUTION", $"Check failed: {ex.Message}");
+            var conflicts = airspace.CheckRoute(MissionWaypoints);
+            if (conflicts.Count == 0)
+                AddValidatorResult("LVNL airspace", "GO",
+                    $"Route and 500 m around it are clear of CTR, ATZ, restricted, danger and other LVNL zones. " +
+                    $"Also check NOTAMs and local drone rules. ({airspace.SourceText})");
+            foreach (var c in conflicts.Take(8))
+            {
+                var status = c.RouteEnters && c.Zone.Severity == AirspaceSeverity.NoGo ? "NO-GO" : "CAUTION";
+                var where = c.RouteEnters ? "Route enters" : $"Route passes {c.DistanceM:F0} m from";
+                AddValidatorResult($"{c.Zone.Label} - {c.Zone.Category}", status,
+                    $"{where} it ({c.Zone.Limits}). {c.Zone.Advice}");
+            }
+            if (conflicts.Count > 8)
+                AddValidatorResult("More airspace", "CAUTION", $"{conflicts.Count - 8} more zones - see the Mission Planner map.");
         }
 
         // Check 4: Battery estimate
@@ -386,47 +383,6 @@ public partial class PreflightView : UserControl
         }
 
         ValidatorHint.Text = "Validation complete.";
-    }
-
-    private List<string> FindConflictingZones(string geojson, double lat, double lon)
-    {
-        var conflicts = new List<string>();
-        try
-        {
-            var doc = System.Text.Json.JsonDocument.Parse(geojson);
-            var features = doc.RootElement.GetProperty("features");
-            foreach (var feature in features.EnumerateArray())
-            {
-                try
-                {
-                    var props = feature.GetProperty("properties");
-                    var name = props.TryGetProperty("name", out var n) ? n.GetString() ?? "" :
-                               props.TryGetProperty("designator", out var d) ? d.GetString() ?? "" : "Unknown";
-                    var geom = feature.GetProperty("geometry");
-                    var type = geom.GetProperty("type").GetString();
-                    if (type != "Polygon" && type != "MultiPolygon") continue;
-
-                    // Get bounding box of first ring
-                    var coords = type == "Polygon"
-                        ? geom.GetProperty("coordinates")[0]
-                        : geom.GetProperty("coordinates")[0][0];
-
-                    double minLat = 90, maxLat = -90, minLon = 180, maxLon = -180;
-                    foreach (var coord in coords.EnumerateArray())
-                    {
-                        var cLon = coord[0].GetDouble();
-                        var cLat = coord[1].GetDouble();
-                        minLat = Math.Min(minLat, cLat); maxLat = Math.Max(maxLat, cLat);
-                        minLon = Math.Min(minLon, cLon); maxLon = Math.Max(maxLon, cLon);
-                    }
-                    if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon)
-                        conflicts.Add(name);
-                }
-                catch { }
-            }
-        }
-        catch { }
-        return conflicts;
     }
 
     private void AddValidatorResult(string label, string status, string detail)

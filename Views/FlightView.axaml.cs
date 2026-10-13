@@ -534,44 +534,130 @@ public partial class FlightView : UserControl
         _mapControl!.Map = map;
     }
 
+    // ------------------------------------------------------------------
+    // Official LVNL airspace (Services/LvnlAirspaceService.cs). Fill and outline
+    // are separate layers because Mapsui ignores per-feature brush alpha - layer
+    // Opacity is what makes fills see-through.
+    // ------------------------------------------------------------------
+    private MemoryLayer? _airspaceFillLayer, _airspaceLineLayer;
+
+    private static readonly System.Collections.Generic.Dictionary<string, string> AirspaceColors = new()
+    {
+        ["Prohibited area"] = "#dc2626", ["Restricted area"] = "#ef4444", ["CTR"] = "#7c3aed",
+        ["ATZ"] = "#a855f7", ["HPZ/HTZ"] = "#db2777", ["Danger area"] = "#f97316",
+        ["TSA"] = "#eab308", ["TRA"] = "#eab308", ["Parajump"] = "#06b6d4",
+        ["Low flying area"] = "#84cc16", ["Glider area"] = "#22c55e", ["TMZ/RTMZ"] = "#3b82f6",
+        ["RMZ"] = "#60a5fa", ["TMA"] = "#64748b", ["CTA"] = "#64748b",
+    };
+
     private void LoadAirspace(Map map)
     {
-        try
+        _airspaceFillLayer = new MemoryLayer { Name = "Airspace", IsMapInfoLayer = true, Opacity = 0.15 };
+        _airspaceLineLayer = new MemoryLayer { Name = "Airspace outline", Opacity = 0.9 };
+        map.Layers.Add(_airspaceFillLayer);
+        map.Layers.Add(_airspaceLineLayer);
+        map.Info += OnAirspaceMapInfo;
+
+        var svc = LvnlAirspaceService.Instance;
+        svc.ZonesChanged -= OnAirspaceZonesChanged;
+        svc.ZonesChanged += OnAirspaceZonesChanged;
+        svc.LoadCachedThenRefresh();
+        RenderAirspace();
+    }
+
+    private void OnAirspaceZonesChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        RenderAirspace();
+        CheckRouteAirspace();
+    });
+
+    private void RenderAirspace()
+    {
+        if (_airspaceFillLayer == null || _airspaceLineLayer == null) return;
+        var svc = LvnlAirspaceService.Instance;
+        var fills = new List<IFeature>();
+        var lines = new List<IFeature>();
+        foreach (var z in svc.Zones)
         {
-            var geojsonPath = "/home/sam/agri_drone/airspace_nl.geojson";
-            if (!System.IO.File.Exists(geojsonPath)) return;
-            var reader = new NetTopologySuite.IO.GeoJsonReader();
-            var fc = reader.Read<NetTopologySuite.Features.FeatureCollection>(
-                System.IO.File.ReadAllText(geojsonPath));
-            var features = new List<IFeature>();
-            foreach (var f in fc)
-            {
-                if (f.Geometry == null) continue;
-                var colorHex = f.Attributes?["_color"]?.ToString() ?? "#dc2626";
-                byte r = 220, g = 38, b = 38;
-                try {
-                    r = Convert.ToByte(colorHex.Substring(1,2), 16);
-                    g = Convert.ToByte(colorHex.Substring(3,2), 16);
-                    b = Convert.ToByte(colorHex.Substring(5,2), 16);
-                } catch {}
-                var mf = new GeometryFeature { Geometry = ProjectGeometry(f.Geometry) };
-                mf.Styles.Add(new VectorStyle
-                {
-                    Fill = new Mapsui.Styles.Brush(new Mapsui.Styles.Color((int)r, (int)g, (int)b)),
-                    Outline = new Mapsui.Styles.Pen(new Mapsui.Styles.Color((int)r, (int)g, (int)b), 2.0f)
-                });
-                features.Add(mf);
-            }
-            map.Layers.Add(new MemoryLayer
-            {
-                Name = "Airspace",
-                Features = features,
-                IsMapInfoLayer = true,
-                Opacity = 0.25
-            });
-            Console.WriteLine("[Airspace] Loaded " + features.Count + " zones");
+            var hex = AirspaceColors.TryGetValue(z.Category, out var h) ? h : "#dc2626";
+            var c = new MColor(Convert.ToInt32(hex.Substring(1, 2), 16),
+                               Convert.ToInt32(hex.Substring(3, 2), 16),
+                               Convert.ToInt32(hex.Substring(5, 2), 16));
+            NetTopologySuite.Geometries.Geometry g;
+            try { g = ProjectGeometry(z.Geometry); } catch { continue; }
+            var fill = new GeometryFeature { Geometry = g };
+            fill.Styles.Add(new VectorStyle { Fill = new MBrush(c), Outline = null });
+            fills.Add(fill);
+            var line = new GeometryFeature { Geometry = g };
+            line.Styles.Add(new VectorStyle { Fill = null, Outline = new MPen(c, z.Severity == AirspaceSeverity.NoGo ? 2.0 : 1.2) });
+            lines.Add(line);
         }
-        catch (Exception ex) { Console.WriteLine("[Airspace] " + ex.Message); }
+        _airspaceFillLayer.Features = fills;
+        _airspaceLineLayer.Features = lines;
+        _mapControl?.Map.Refresh();
+        AirspaceSourceText.Text = "🛩 " + svc.SourceText;
+        Console.WriteLine("[Airspace] " + svc.SourceText);
+    }
+
+    private async void OnAirspaceRefresh(object? s, RoutedEventArgs e)
+    {
+        BtnAirspaceRefresh.IsEnabled = false;
+        AirspaceSourceText.Text = "🛩 Downloading airspace from LVNL...";
+        var msg = await LvnlAirspaceService.Instance.RefreshAsync();
+        AirspaceSourceText.Text = "🛩 " + LvnlAirspaceService.Instance.SourceText;
+        ShowAirspaceDetail(msg);
+        BtnAirspaceRefresh.IsEnabled = true;
+    }
+
+    private void OnAirspaceClose(object? s, RoutedEventArgs e)
+    {
+        AirspaceDetailText.IsVisible = false;
+        BtnAirspaceClose.IsVisible = false;
+    }
+
+    private void ShowAirspaceDetail(string text)
+    {
+        AirspaceDetailText.Text = text;
+        AirspaceDetailText.IsVisible = true;
+        BtnAirspaceClose.IsVisible = true;
+    }
+
+    /// <summary>Click on the airspace layer: list EVERY zone at that point (they often overlap).</summary>
+    private void OnAirspaceMapInfo(object? sender, Mapsui.MapInfoEventArgs e)
+    {
+        if (_addWpMode) return;                                  // clicks are placing waypoints
+        if (e.MapInfo?.Layer != _airspaceFillLayer) return;      // another layer's feature was on top
+        var pos = e.MapInfo?.WorldPosition;
+        if (pos == null) return;
+        var (lon, lat) = SphericalMercator.ToLonLat(pos.X, pos.Y);
+        var zones = LvnlAirspaceService.Instance.ZonesAt(lat, lon);
+        if (zones.Count == 0) return;
+        var lines = zones.Select(z =>
+            $"{(z.Severity == AirspaceSeverity.NoGo ? "⛔" : "⚠")} {z.Label}\n" +
+            $"    {z.Category}{(string.IsNullOrWhiteSpace(z.Class) ? "" : ", class " + z.Class)} · {z.Limits}\n" +
+            $"    {z.Advice}");
+        ShowAirspaceDetail($"At {lat:F4}, {lon:F4}:\n" + string.Join("\n", lines));
+    }
+
+    /// <summary>Checks the planned route (all legs) against the airspace and shows the result.</summary>
+    private void CheckRouteAirspace()
+    {
+        if (_waypoints.Count == 0) return;
+        var conflicts = LvnlAirspaceService.Instance.CheckRoute(
+            _waypoints.Select(w => (w.Lat, w.Lon, w.AltM)).ToList());
+        if (conflicts.Count == 0)
+        {
+            ShowAirspaceDetail("✅ Route check: no LVNL airspace on or within 500 m of the route. " +
+                               "Still check NOTAMs and local drone rules.");
+            return;
+        }
+        var lines = conflicts.Take(6).Select(c =>
+            (c.RouteEnters
+                ? (c.Zone.Severity == AirspaceSeverity.NoGo ? "⛔ Route ENTERS " : "⚠ Route enters ")
+                : $"⚠ {c.DistanceM:F0} m from ") +
+            $"{c.Zone.Label} - {c.Zone.Category}, {c.Zone.Limits}. {c.Zone.Advice}");
+        ShowAirspaceDetail("Route check:\n" + string.Join("\n", lines) +
+                           (conflicts.Count > 6 ? $"\n... and {conflicts.Count - 6} more" : ""));
     }
 
     private NetTopologySuite.Geometries.Geometry ProjectGeometry(NetTopologySuite.Geometries.Geometry geom)
@@ -1096,6 +1182,7 @@ public partial class FlightView : UserControl
         _wpLayer.Features = wpFeatures;
         _routeLayer.Features = routeFeatures;
         RefreshSoraVolume();
+        CheckRouteAirspace();
         _mapControl?.Map.Refresh();
     }
     internal void RefreshWaypointList()
