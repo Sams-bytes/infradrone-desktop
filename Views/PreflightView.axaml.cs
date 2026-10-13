@@ -220,7 +220,20 @@ public partial class PreflightView : UserControl
         ProgressText.Text = $"{checked_}/{total} items checked ({mandatoryChecked}/{mandatory} required)";
 
         bool allMandatoryDone = mandatoryChecked == mandatory;
-        if (allMandatoryDone)
+        // A NO-GO from the autopilot failsafe check always blocks sign-off, even
+        // when the related checklist item is optional (e.g. geofence) - a safety
+        // finding from the real aircraft settings outranks a checklist tick.
+        int failsafeNoGo = _lastFailsafeReport?.NoGoCount ?? 0;
+        if (allMandatoryDone && failsafeNoGo > 0)
+        {
+            StatusBadge.Background = new SolidColorBrush(Color.Parse("#3d1515"));
+            StatusText.Text = $"NOT READY - FAILSAFE NO-GO ({failsafeNoGo})";
+            StatusText.Foreground = new SolidColorBrush(Color.Parse("#ef4444"));
+            BtnSignOff.IsEnabled = false;
+            BtnSignOff.Background = new SolidColorBrush(Color.Parse("#1a2637"));
+            BtnSignOff.Foreground = new SolidColorBrush(Color.Parse("#64748b"));
+        }
+        else if (allMandatoryDone)
         {
             StatusBadge.Background = new SolidColorBrush(Color.Parse("#0d3d2e"));
             StatusText.Text = "GO FOR FLIGHT";
@@ -590,6 +603,7 @@ public partial class PreflightView : UserControl
             report.AreaPasses(FailsafeParamCheck.AreaLink) && report.AreaPasses(FailsafeParamCheck.AreaBattery)
             && report.AreaPasses(FailsafeParamCheck.AreaReturn));
         SetLockedCheck(ChecklistGeofenceItem, report.AreaPasses(FailsafeParamCheck.AreaFence));
+        UpdateProgress(); // re-evaluate GO / NOT READY with the new failsafe result
     }
 
     private void SetLockedCheck(string itemText, bool pass)
