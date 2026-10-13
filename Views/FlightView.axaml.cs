@@ -552,8 +552,8 @@ public partial class FlightView : UserControl
 
     private void LoadAirspace(Map map)
     {
-        _airspaceFillLayer = new MemoryLayer { Name = "Airspace", IsMapInfoLayer = true, Opacity = 0.15 };
-        _airspaceLineLayer = new MemoryLayer { Name = "Airspace outline", Opacity = 0.9 };
+        _airspaceFillLayer = new MemoryLayer { Name = "Airspace", IsMapInfoLayer = true, Opacity = 0.12 };
+        _airspaceLineLayer = new MemoryLayer { Name = "Airspace outline", IsMapInfoLayer = true, Opacity = 0.9 };
         map.Layers.Add(_airspaceFillLayer);
         map.Layers.Add(_airspaceLineLayer);
         map.Info += OnAirspaceMapInfo;
@@ -577,26 +577,39 @@ public partial class FlightView : UserControl
         var svc = LvnlAirspaceService.Instance;
         var fills = new List<IFeature>();
         var lines = new List<IFeature>();
+        int shown = 0;
         foreach (var z in svc.Zones)
         {
+            // Map shows only airspace that reaches down to drone heights. Large TMA/CTA
+            // blocks start at 1500 ft+ and would blanket the whole country. (The route
+            // check still evaluates every zone against the planned altitude.)
+            if (z.LowerFt > 1000) continue;
+            shown++;
             var hex = AirspaceColors.TryGetValue(z.Category, out var h) ? h : "#dc2626";
             var c = new MColor(Convert.ToInt32(hex.Substring(1, 2), 16),
                                Convert.ToInt32(hex.Substring(3, 2), 16),
                                Convert.ToInt32(hex.Substring(5, 2), 16));
             NetTopologySuite.Geometries.Geometry g;
             try { g = ProjectGeometry(z.Geometry); } catch { continue; }
-            var fill = new GeometryFeature { Geometry = g };
-            fill.Styles.Add(new VectorStyle { Fill = new MBrush(c), Outline = null });
-            fills.Add(fill);
+            // Fill only zones that need permission or are hazardous; the large
+            // advisory areas (TMZ, RMZ, glider, low flying, ...) get an outline only,
+            // so overlapping fills don't wash out the map.
+            bool filled = z.Severity == AirspaceSeverity.NoGo || z.Category == "Danger area";
+            if (filled)
+            {
+                var fill = new GeometryFeature { Geometry = g };
+                fill.Styles.Add(new VectorStyle { Fill = new MBrush(c), Outline = null });
+                fills.Add(fill);
+            }
             var line = new GeometryFeature { Geometry = g };
-            line.Styles.Add(new VectorStyle { Fill = null, Outline = new MPen(c, z.Severity == AirspaceSeverity.NoGo ? 2.0 : 1.2) });
+            line.Styles.Add(new VectorStyle { Fill = null, Outline = new MPen(c, filled ? 2.0 : 1.0) });
             lines.Add(line);
         }
         _airspaceFillLayer.Features = fills;
         _airspaceLineLayer.Features = lines;
         _mapControl?.Map.Refresh();
-        AirspaceSourceText.Text = "🛩 " + svc.SourceText;
-        Console.WriteLine("[Airspace] " + svc.SourceText);
+        AirspaceSourceText.Text = "🛩 " + svc.SourceText + $" · {shown} below 1000 ft shown";
+        Console.WriteLine("[Airspace] " + svc.SourceText + $", {shown} shown");
     }
 
     private async void OnAirspaceRefresh(object? s, RoutedEventArgs e)
@@ -626,7 +639,8 @@ public partial class FlightView : UserControl
     private void OnAirspaceMapInfo(object? sender, Mapsui.MapInfoEventArgs e)
     {
         if (_addWpMode) return;                                  // clicks are placing waypoints
-        if (e.MapInfo?.Layer != _airspaceFillLayer) return;      // another layer's feature was on top
+        var hitLayer = e.MapInfo?.Layer;                          // another layer's feature on top -> not ours
+        if (hitLayer != _airspaceFillLayer && hitLayer != _airspaceLineLayer) return;
         var pos = e.MapInfo?.WorldPosition;
         if (pos == null) return;
         var (lon, lat) = SphericalMercator.ToLonLat(pos.X, pos.Y);
