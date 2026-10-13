@@ -126,6 +126,52 @@
           </StackPanel>
         </Border>
 
+        <!-- 5. Failsafe drills -->
+        <Border Background="#1a2637" CornerRadius="8" Padding="14">
+          <StackPanel Spacing="8">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="5 · FAILSAFE DRILLS" FontSize="10" FontWeight="Bold"
+                         Foreground="#64748b" LetterSpacing="1" VerticalAlignment="Center"/>
+              <Border Grid.Column="1" Name="DrillBadge" Background="#1e293b" CornerRadius="4" Padding="8,2">
+                <TextBlock Name="DrillBadgeText" Text="IDLE" FontSize="10" FontWeight="Bold" Foreground="#94a3b8"/>
+              </Border>
+            </Grid>
+            <TextBlock Foreground="#94a3b8" FontSize="11" TextWrapping="Wrap"
+                       Text="Make something go wrong on purpose and check the autopilot handles it by itself. Simulator only - the drills refuse to run against a real aircraft. For drills 2-5 the drone must be flying a mission in AUTO first. Every change is undone when the drill ends."/>
+            <WrapPanel Orientation="Horizontal">
+              <Button Name="BtnDrillSetup" Content="⚙  1. Apply BVLOS failsafe settings" Click="OnDrillSetup"
+                      Background="#0d3d2e" Foreground="#34d399" BorderBrush="#0d9e75"
+                      BorderThickness="1" Padding="12,7" CornerRadius="6" Margin="0,0,8,8"/>
+            </WrapPanel>
+            <WrapPanel Orientation="Horizontal">
+              <Button Name="BtnDrillTrafficRtl" Content="✈  2a. Traffic conflict - RTL" Click="OnDrillTrafficRtl"
+                      Background="#1e293b" Foreground="#fdba74" BorderBrush="#f97316"
+                      BorderThickness="1" Padding="12,7" CornerRadius="6" Margin="0,0,8,8"/>
+              <Button Name="BtnDrillTrafficClimb" Content="✈  2b. Traffic conflict - climb/descend" Click="OnDrillTrafficClimb"
+                      Background="#1e293b" Foreground="#fdba74" BorderBrush="#f97316"
+                      BorderThickness="1" Padding="12,7" CornerRadius="6" Margin="0,0,8,8"/>
+              <Button Name="BtnDrillRc" Content="📡  3. Radio link lost" Click="OnDrillRc"
+                      Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
+                      BorderThickness="1" Padding="12,7" CornerRadius="6" Margin="0,0,8,8"/>
+              <Button Name="BtnDrillBattery" Content="🔋  4. Battery low, then critical" Click="OnDrillBattery"
+                      Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
+                      BorderThickness="1" Padding="12,7" CornerRadius="6" Margin="0,0,8,8"/>
+              <Button Name="BtnDrillFence" Content="⬡  5. Fence breach (altitude)" Click="OnDrillFence"
+                      Background="#1e293b" Foreground="#cbd5e1" BorderBrush="#334155"
+                      BorderThickness="1" Padding="12,7" CornerRadius="6" Margin="0,0,8,8"/>
+              <Button Name="BtnDrillStop" Content="■  Stop drill" Click="OnDrillStop" IsEnabled="False"
+                      Background="#2a1215" Foreground="#f87171" BorderBrush="#ef4444"
+                      BorderThickness="1" Padding="12,7" CornerRadius="6" Margin="0,0,8,8"/>
+            </WrapPanel>
+            <TextBlock Name="DrillResultText" Text="" FontSize="12" FontWeight="Bold"
+                       Foreground="#cbd5e1" TextWrapping="Wrap"/>
+            <TextBox Name="DrillLog" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                     FontFamily="Consolas,monospace" FontSize="11" MinHeight="120" MaxHeight="260"
+                     Background="#0f1923" Foreground="#cbd5e1" BorderBrush="#334155"
+                     Text="Drill output appears here."/>
+          </StackPanel>
+        </Border>
+
       </StackPanel>
     </ScrollViewer>
   </Grid>

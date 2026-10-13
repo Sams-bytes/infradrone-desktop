@@ -16,6 +16,8 @@ public partial class SimulationView : UserControl
     public event Action? Open3DViewRequested;
 
     private readonly SimulatorService _sim = SimulatorService.Instance;
+    private readonly SimDrillService _drills = SimDrillService.Instance;
+    private readonly System.Text.StringBuilder _drillLog = new();
     private readonly DispatcherTimer _timer;
     private bool _starting;
 
@@ -39,6 +41,8 @@ public partial class SimulationView : UserControl
         ApplyGroningen();
 
         _sim.StatusMessage += msg => Dispatcher.UIThread.Post(() => MessageText.Text = msg);
+        _drills.Output += line => Dispatcher.UIThread.Post(() => AppendDrillLog(line));
+        _drills.Finished += res => Dispatcher.UIThread.Post(() => ShowDrillResult(res));
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += (_, _) => RefreshStatus();
@@ -96,8 +100,10 @@ public partial class SimulationView : UserControl
         }
     }
 
-    private void OnStop(object? sender, RoutedEventArgs e)
+    private async void OnStop(object? sender, RoutedEventArgs e)
     {
+        // Undo a running drill's changes while the simulator can still hear us.
+        if (_drills.IsRunning) await _drills.StopAsync();
         _sim.Stop();
         MessageText.Text = "Simulator stopped.";
         RefreshStatus();
@@ -130,6 +136,14 @@ public partial class SimulationView : UserControl
 
         BtnStart.IsEnabled = !running && !_starting;
         BtnStop.IsEnabled = running;
+        bool canDrill = running && !_starting && !_drills.IsRunning;
+        BtnDrillSetup.IsEnabled = canDrill;
+        BtnDrillTrafficRtl.IsEnabled = canDrill;
+        BtnDrillTrafficClimb.IsEnabled = canDrill;
+        BtnDrillRc.IsEnabled = canDrill;
+        BtnDrillBattery.IsEnabled = canDrill;
+        BtnDrillFence.IsEnabled = canDrill;
+        BtnDrillStop.IsEnabled = _drills.IsRunning;
         LockLocation(!running && !_starting);
 
         if (_starting) return; // keep the STARTING badge until StartAsync returns
@@ -149,5 +163,73 @@ public partial class SimulationView : UserControl
         LonBox.IsEnabled = editable;
         AltBox.IsEnabled = editable;
         HdgBox.IsEnabled = editable;
+    }
+
+    // ------------------------------------------------------------------
+    // Failsafe drills (tools/sim_drills.py via SimDrillService)
+    // ------------------------------------------------------------------
+    private void OnDrillSetup(object? s, RoutedEventArgs e) => RunDrill("setup", "Applying BVLOS failsafe settings");
+    private void OnDrillTrafficRtl(object? s, RoutedEventArgs e) => RunDrill("traffic 5", "Traffic conflict (avoid by RTL)");
+    private void OnDrillTrafficClimb(object? s, RoutedEventArgs e) => RunDrill("traffic 2", "Traffic conflict (avoid by climb/descend)");
+    private void OnDrillRc(object? s, RoutedEventArgs e) => RunDrill("rcloss", "Radio link lost");
+    private void OnDrillBattery(object? s, RoutedEventArgs e) => RunDrill("battery", "Battery low, then critical");
+    private void OnDrillFence(object? s, RoutedEventArgs e) => RunDrill("fence", "Fence breach");
+
+    private async void OnDrillStop(object? s, RoutedEventArgs e)
+    {
+        BtnDrillStop.IsEnabled = false;
+        AppendDrillLog("Stopping the drill and restoring simulator settings ...");
+        await _drills.StopAsync();
+        SetDrillBadge("STOPPED", "#1e293b", "#94a3b8");
+        DrillResultText.Text = "Drill stopped. Simulator settings restored.";
+        RefreshStatus();
+    }
+
+    private void RunDrill(string args, string title)
+    {
+        _drillLog.Clear();
+        DrillLog.Text = "";
+        DrillResultText.Text = title + " ...";
+        DrillResultText.Foreground = new SolidColorBrush(Color.Parse("#cbd5e1"));
+        var (ok, msg) = _drills.Start(args);
+        if (!ok)
+        {
+            DrillResultText.Text = msg;
+            DrillResultText.Foreground = Red;
+            return;
+        }
+        SetDrillBadge("RUNNING", "#3d2e0d", "#f59e0b");
+        AppendDrillLog($"== {title} ==");
+        RefreshStatus();
+    }
+
+    private void AppendDrillLog(string line)
+    {
+        _drillLog.AppendLine(line);
+        if (_drillLog.Length > 20000) _drillLog.Remove(0, _drillLog.Length - 15000);
+        DrillLog.Text = _drillLog.ToString();
+        DrillLog.CaretIndex = DrillLog.Text.Length; // keep the newest line in view
+    }
+
+    private void ShowDrillResult(string resultLine)
+    {
+        var text = resultLine.StartsWith("RESULT:") ? resultLine.Substring(7).Trim() : resultLine;
+        DrillResultText.Text = text;
+        if (text.StartsWith("PASS"))
+        { SetDrillBadge("PASS", "#0d3d2e", "#22c55e"); DrillResultText.Foreground = Green; }
+        else if (text.StartsWith("FAIL"))
+        { SetDrillBadge("FAIL", "#3d0d0d", "#ef4444"); DrillResultText.Foreground = Red; }
+        else if (text.StartsWith("DONE"))
+        { SetDrillBadge("DONE", "#0d3d2e", "#22c55e"); DrillResultText.Foreground = Green; }
+        else
+        { SetDrillBadge("NOT STARTED", "#3d2e0d", "#f59e0b"); DrillResultText.Foreground = Amber; }
+        RefreshStatus();
+    }
+
+    private void SetDrillBadge(string text, string bg, string fg)
+    {
+        DrillBadge.Background = new SolidColorBrush(Color.Parse(bg));
+        DrillBadgeText.Text = text;
+        DrillBadgeText.Foreground = new SolidColorBrush(Color.Parse(fg));
     }
 }
