@@ -67,7 +67,7 @@ namespace InfraDroneDesktop.Views
                 BtnTestConnect.IsEnabled = false;
                 BtnCheckFence.IsEnabled = true;
                 _mavService = new AsvMavLinkService();
-                _mavService.Start("udp://127.0.0.1:14571?rhost=127.0.0.1&rport=14445");
+                _mavService.Start(Services.LinkPorts.RealConnection);
 
                 _uiTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
                 _uiTimer.Tick += (s, args) =>

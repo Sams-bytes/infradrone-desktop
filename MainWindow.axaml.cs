@@ -16,6 +16,9 @@ public partial class MainWindow : Window
     private readonly AsvMavLinkService _mav = new AsvMavLinkService();
     private readonly BatteryHealthService _batteryHealth = new BatteryHealthService();
     private bool _mavRunning = false;
+    // Which link the Cube Orange service is on: LinkPorts.RealConnection or
+    // LinkPorts.SimulatorConnection. Chosen automatically in OnConnect.
+    private string? _mavConnection;
 
     public MainWindow()
     {
@@ -431,6 +434,17 @@ public partial class MainWindow : Window
             _simulationView.ConnectRequested += () =>
             {
                 if (!_mavRunning) OnConnect(this, new RoutedEventArgs());
+                else if (_mavConnection != Services.LinkPorts.SimulatorConnection)
+                {
+                    // Already connected on the real-drone ports: move the Cube
+                    // Orange link over to the simulator's own ports. BCube and
+                    // Bluegrass are left as they are.
+                    _mav.Stop();
+                    _mavConnection = Services.LinkPorts.SimulatorConnection;
+                    _mav.Start(_mavConnection);
+                    Console.WriteLine($"[MainWindow] Switched Cube Orange link to simulator: {_mavConnection}");
+                    ConnText.Text = "Connecting (simulator)...";
+                }
             };
             _simulationView.OpenMissionPlannerRequested += () => OnFlightView(this, new RoutedEventArgs());
             _simulationView.Open3DViewRequested += () =>
@@ -479,7 +493,14 @@ public partial class MainWindow : Window
             // despite compiling correctly. Fixed by giving it mavproxy's real input
             // port as an explicit destination, same fix that resolved fence-breach
             // testing.
-            _mav.Start("udp://127.0.0.1:14571?rhost=127.0.0.1&rport=14445");
+            //
+            // Ports come from LinkPorts.cs: the simulator has its own pair, so it
+            // never collides with the mavproxy-router service used for the real drone.
+            bool simulator = Services.SimulatorService.Instance.IsRunning;
+            _mavConnection = simulator ? Services.LinkPorts.SimulatorConnection
+                                       : Services.LinkPorts.RealConnection;
+            Console.WriteLine($"[MainWindow] Cube Orange link ({(simulator ? "simulator" : "real drone")}): {_mavConnection}");
+            _mav.Start(_mavConnection);
 
             // Also attempt the BCube/older-Pixhawk (MAVLink v1) path -- separate
             // hardware/port, so this is safe to try alongside the Cube Orange
@@ -538,12 +559,13 @@ public partial class MainWindow : Window
                 Console.WriteLine($"[MainWindow] Bluegrass connection error: {ex.Message}");
             }
 
-            ConnText.Text = "Connecting...";
+            ConnText.Text = simulator ? "Connecting (simulator)..." : "Connecting...";
         }
         else
         {
             _mav.Stop();
             _mavRunning = false;
+            _mavConnection = null;
             _ = _bluegrass.DisconnectAsync();
             ConnText.Text = "Offline";
         }

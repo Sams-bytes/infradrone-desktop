@@ -8,19 +8,22 @@
 //   3. socat                   -> replaced by the built-in UDP relay below
 //   4. the app itself          -> already running; this service only starts 1-3
 //
-// DATA FLOW
-//   arduplane  --tcp:5760-->  mavproxy  --udp-->  127.0.0.1:14561  [relay socket A]
+// DATA FLOW (ports defined in LinkPorts.cs)
+//   arduplane  --tcp:5760-->  mavproxy  --udp-->  127.0.0.1:14591  [relay socket A]
 //                                        --udp-->  127.0.0.1:14552  (scripts, e.g. verify_mission.py)
-//   relay socket B (bound 127.0.0.1:14445)  <-->  app on 127.0.0.1:14571
+//   relay socket B (bound 127.0.0.1:14455)  <-->  app on 127.0.0.1:14581
 //
 // WHY THE RELAY EXISTS
-//   AsvMavLinkService connects with "udp://127.0.0.1:14571?rhost=127.0.0.1&rport=14445",
-//   so it only exchanges packets with 127.0.0.1:14445. MAVProxy sends from a random
-//   port, so the app ignored it. The relay talks to the app FROM port 14445.
+//   In simulator mode AsvMavLinkService connects with LinkPorts.SimulatorConnection
+//   ("udp://127.0.0.1:14581?rhost=127.0.0.1&rport=14455"), so it only exchanges
+//   packets with 127.0.0.1:14455. MAVProxy sends from a random port, so the app
+//   would ignore it. The relay talks to the app FROM port 14455.
 //
-// PORT CONFLICT
-//   The DAMbv "mavproxy-router" systemd service also binds 14445. Start() detects
-//   this and returns a clear message instead of failing silently.
+// PORTS
+//   The simulator has its OWN ports, separate from the real drone's (14571/14445,
+//   used by the DAMbv "mavproxy-router" systemd service). So the router can keep
+//   running and both never collide. If a simulator port is busy anyway, Start()
+//   names the program holding it.
 //
 // SAFETY
 //   Simulation only. Nothing here touches serial ports or real radios.
@@ -53,17 +56,17 @@ namespace InfraDroneDesktop.Services
         public string ArduPlaneLog => Path.Combine(WorkDir, "arduplane.log");
         public string MavProxyLog => Path.Combine(WorkDir, "mavproxy.log");
 
-        private const int AppPort = 14571;        // AsvMavLinkService listens here
-        private const int AppRemotePort = 14445;  // AsvMavLinkService sends here (relay socket B)
-        private const int RelayInPort = 14561;    // MAVProxy -> relay socket A
-        private const int ScriptPort = 14552;     // extra MAVProxy output for scripts
-        private const int SitlTcpPort = 5760;     // ArduPlane SERIAL0
+        private const int AppPort = LinkPorts.SimAppListen;       // AsvMavLinkService listens here (sim mode)
+        private const int AppRemotePort = LinkPorts.SimAppSend;   // AsvMavLinkService sends here (relay socket B)
+        private const int RelayInPort = LinkPorts.SimRelayIn;     // MAVProxy -> relay socket A
+        private const int ScriptPort = LinkPorts.SimScript;       // extra MAVProxy output for scripts
+        private const int SitlTcpPort = LinkPorts.SimTcp;         // ArduPlane SERIAL0
 
         // ---- State ---------------------------------------------------------
         private Process? _arduplane;
         private Process? _mavproxy;
         private UdpClient? _relayA;   // talks to MAVProxy
-        private UdpClient? _relayB;   // talks to the app, from port 14445
+        private UdpClient? _relayB;   // talks to the app, from port 14455
         private IPEndPoint? _mavproxyEndpoint;
         private CancellationTokenSource? _relayCts;
         private StreamWriter? _arduLogWriter;
@@ -92,16 +95,16 @@ namespace InfraDroneDesktop.Services
                     "Build it once with: cd ~/ardupilot && ./waf configure --board sitl && ./waf plane");
 
             // Port checks first, so nothing is half-started on failure.
-            if (!UdpPortFree(AppRemotePort))
-                return (false,
-                    "Port 14445 is in use, most likely by the DAMbv MAVProxy Router service. " +
-                    "Stop it in a terminal with: sudo systemctl stop mavproxy-router  — then click Start again.");
-            if (!UdpPortFree(RelayInPort))
-                return (false, "Port 14561 is in use — an old simulator relay (socat?) may still be running. " +
-                               "In a terminal run: pkill -f socat  — then click Start again.");
+            // These are the simulator's own ports (LinkPorts.cs), separate from the
+            // real drone's, so the mavproxy-router service does NOT need stopping.
             if (!TcpPortFree(SitlTcpPort))
-                return (false, "Port 5760 is in use — an old simulator is still running. " +
-                               "In a terminal run: pkill -f arduplane; pkill -f mavproxy  — then click Start again.");
+                return (false, "Port 5760 is in use — an old simulator is probably still running " +
+                               "(e.g. after the app crashed). In a terminal run: pkill -f arduplane; pkill -f mavproxy  " +
+                               "— then click Start again.");
+            if (!UdpPortFree(AppRemotePort))
+                return (false, LinkPorts.BusyMessage(AppRemotePort));
+            if (!UdpPortFree(RelayInPort))
+                return (false, LinkPorts.BusyMessage(RelayInPort));
 
             Directory.CreateDirectory(WorkDir);
             PacketsToApp = 0; PacketsFromApp = 0; _mavproxyEndpoint = null;
