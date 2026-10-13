@@ -552,8 +552,11 @@ public partial class FlightView : UserControl
 
     private void LoadAirspace(Map map)
     {
-        _airspaceFillLayer = new MemoryLayer { Name = "Airspace", IsMapInfoLayer = true, Opacity = 0.12 };
-        _airspaceLineLayer = new MemoryLayer { Name = "Airspace outline", IsMapInfoLayer = true, Opacity = 0.9 };
+        // Style = null: a Mapsui layer's DEFAULT style (white fill) is drawn in
+        // addition to each feature's own style. Left on, it painted every zone
+        // near-solid white on the 90%-opaque outline layer and hid the street names.
+        _airspaceFillLayer = new MemoryLayer { Name = "Airspace", IsMapInfoLayer = true, Opacity = 0.12, Style = null };
+        _airspaceLineLayer = new MemoryLayer { Name = "Airspace outline", IsMapInfoLayer = true, Opacity = 0.9, Style = null };
         map.Layers.Add(_airspaceFillLayer);
         map.Layers.Add(_airspaceLineLayer);
         map.Info += OnAirspaceMapInfo;
